@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EntropyEditor</title>
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/panels.css">
+    <link rel="stylesheet" href="css/editor.css">
+</head>
+<body>
+    <!-- Command Palette (Ctrl+K) -->
+    <div id="command-palette" class="command-palette" hidden>
+        <div class="palette-backdrop"></div>
+        <div class="palette-container" role="dialog" aria-label="Command palette">
+            <input type="text" id="palette-input" class="palette-input"
+                placeholder="Type a command or search nodes..."
+                aria-label="Command search" autocomplete="off">
+            <ul id="palette-results" class="palette-results" role="listbox"></ul>
+            <div class="palette-footer">
+                <span><kbd>↑↓</kbd> navigate</span>
+                <span><kbd>Enter</kbd> select</span>
+                <span><kbd>Esc</kbd> close</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- Header -->
+    <header class="editor-header">
+        <div class="header-left">
+            <span class="logo">EntropyEditor</span>
+            <span class="file-name" id="file-name">No file loaded</span>
+            <span class="save-indicator" id="save-indicator" hidden>unsaved</span>
+            <span class="autosave-indicator" id="autosave-indicator" hidden>autosave on</span>
+        </div>
+        <div class="header-center">
+            <button class="header-btn" id="btn-new" title="New file (Ctrl+N)">New</button>
+            <button class="header-btn" id="btn-open" title="Open file (Ctrl+O)">Open</button>
+            <button class="header-btn" id="btn-save" title="Save file (Ctrl+S)">Save</button>
+            <span class="header-sep"></span>
+            <button class="header-btn" id="btn-add-node" title="Add node (Ctrl+Shift+N)">+ Node</button>
+            <button class="header-btn" id="btn-preview" title="Preview in new tab (Ctrl+P)">Preview</button>
+        </div>
+        <div class="header-right">
+            <button class="header-btn" id="btn-shortcuts" title="Keyboard shortcuts (?)">?</button>
+        </div>
+    </header>
+
+    <!-- Main workspace -->
+    <div class="workspace">
+        <!-- Left Panel: Node Tree -->
+        <aside class="panel panel-left" id="panel-left">
+            <div class="panel-header">
+                <h2>Nodes</h2>
+                <input type="search" id="node-search" class="search-input" placeholder="Filter..." aria-label="Filter nodes">
+            </div>
+            <div class="node-tree" id="node-tree" role="tree"></div>
+        </aside>
+
+        <!-- Resize handle -->
+        <div class="resize-handle" id="resize-left" aria-hidden="true"></div>
+
+        <!-- Center: Editor -->
+        <main class="panel panel-center" id="panel-center">
+            <!-- Empty state -->
+            <div class="empty-state" id="empty-state">
+                <p>Open a file or create a new one to get started.</p>
+                <p class="hint">Press <kbd>Ctrl+K</kbd> for command palette</p>
+            </div>
+
+            <!-- Node editor (hidden until node selected) -->
+            <div class="node-editor" id="node-editor" hidden>
+                <!-- Node metadata bar -->
+                <div class="editor-meta">
+                    <div class="meta-field">
+                        <label for="edit-id">ID</label>
+                        <input type="text" id="edit-id" class="meta-input id-input" readonly>
+                    </div>
+                    <div class="meta-field">
+                        <label for="edit-difficulty">Level</label>
+                        <select id="edit-difficulty" class="meta-input">
+                            <option value="">—</option>
+                            <option value="intro">Intro</option>
+                            <option value="intermediate">Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                            <option value="expert">Expert</option>
+                        </select>
+                    </div>
+                    <div class="meta-field">
+                        <label for="edit-time">Time</label>
+                        <input type="text" id="edit-time" class="meta-input" placeholder="e.g. 5 min">
+                    </div>
+                    <div class="meta-field">
+                        <label for="edit-order">Order</label>
+                        <input type="number" id="edit-order" class="meta-input" style="width:60px">
+                    </div>
+                </div>
+
+                <!-- Title -->
+                <input type="text" id="edit-title" class="editor-title" placeholder="Node title" aria-label="Node title">
+
+                <!-- Summary -->
+                <textarea id="edit-summary" class="editor-summary" placeholder="Brief summary shown before expanding this section" rows="2" aria-label="Node summary"></textarea>
+
+                <!-- Rich text content editor -->
+                <div class="editor-content-wrapper">
+                    <div class="editor-toolbar">
+                        <button class="toolbar-btn" data-action="bold" title="Bold (Ctrl+B)"><strong>B</strong></button>
+                        <button class="toolbar-btn" data-action="italic" title="Italic (Ctrl+I)"><em>I</em></button>
+                        <span class="toolbar-sep"></span>
+                        <button class="toolbar-btn" data-action="h2" title="Heading (Ctrl+2)">H2</button>
+                        <button class="toolbar-btn" data-action="h3" title="Sub-heading (Ctrl+3)">H3</button>
+                        <span class="toolbar-sep"></span>
+                        <button class="toolbar-btn" data-action="ul" title="Bullet list (Ctrl+U)">&#8226; List</button>
+                        <button class="toolbar-btn" data-action="ol" title="Numbered list">1. List</button>
+                        <button class="toolbar-btn" data-action="quote" title="Blockquote (Ctrl+Q)"> &#8221;</button>
+                        <button class="toolbar-btn" data-action="example" title="Example block (Ctrl+E)">Ex</button>
+                        <span class="toolbar-sep"></span>
+                        <button class="toolbar-btn" data-action="link" title="Insert link (Ctrl+L)">Link</button>
+                        <button class="toolbar-btn" data-action="code" title="Inline code">Code</button>
+                        <span class="toolbar-sep"></span>
+                        <button class="toolbar-btn" data-action="paragraph" title="Normal text (Ctrl+0)">Text</button>
+                        <button class="toolbar-btn" data-action="hr" title="Horizontal rule">―</button>
+                    </div>
+                    <!-- Link input form (shown when inserting a link) -->
+                    <div id="link-input-form" class="inline-add-form" hidden>
+                        <input type="text" id="link-url-input" class="inline-input" placeholder="URL">
+                        <input type="text" id="link-text-input" class="inline-input" placeholder="Link text (optional)">
+                        <button class="inline-confirm" id="link-confirm">Insert</button>
+                        <button class="inline-cancel" id="link-cancel">Cancel</button>
+                    </div>
+                    <div id="edit-content" class="editor-content" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Node content" data-placeholder="Start writing your content here..."></div>
+                    <div class="editor-word-count" id="word-count"></div>
+                </div>
+
+                <!-- Tags -->
+                <div class="editor-tags">
+                    <label>Tags</label>
+                    <div class="tags-container" id="tags-container"></div>
+                    <input type="text" id="tag-input" class="tag-input" placeholder="Add tag (Enter)" aria-label="Add tag">
+                </div>
+
+                <!-- Children -->
+                <div class="editor-section">
+                    <div class="section-header">
+                        <h3>Children (sub-sections)</h3>
+                        <button class="small-btn" id="btn-new-child" title="Create new child node">+ New</button>
+                        <button class="small-btn" id="btn-add-child" title="Link existing node as child">+ Link</button>
+                    </div>
+                    <div class="link-list" id="children-list"></div>
+                    <div class="inline-add-form" id="add-child-form" hidden>
+                        <select id="add-child-select" class="inline-select">
+                            <option value="">Select a node...</option>
+                        </select>
+                        <button class="inline-confirm" id="add-child-confirm">Add</button>
+                        <button class="inline-cancel" id="add-child-cancel">Cancel</button>
+                    </div>
+                </div>
+
+                <!-- Connections -->
+                <div class="editor-section">
+                    <div class="section-header">
+                        <h3>Connections (cross-links)</h3>
+                        <button class="small-btn" id="btn-add-connection" title="Add a cross-link">+ Add</button>
+                    </div>
+                    <div class="link-list" id="connections-list"></div>
+                    <div class="inline-add-form" id="add-conn-form" hidden>
+                        <select id="add-conn-target" class="inline-select">
+                            <option value="">Target node...</option>
+                        </select>
+                        <select id="add-conn-type" class="inline-select-sm">
+                            <option value="related">Related</option>
+                            <option value="prerequisite">Prerequisite</option>
+                            <option value="deeper">Deeper</option>
+                            <option value="example">Example</option>
+                            <option value="tangent">Tangent</option>
+                        </select>
+                        <input type="text" id="add-conn-label" class="inline-input" placeholder="Label (optional)">
+                        <button class="inline-confirm" id="add-conn-confirm">Add</button>
+                        <button class="inline-cancel" id="add-conn-cancel">Cancel</button>
+                    </div>
+                </div>
+
+                <!-- Media -->
+                <div class="editor-section">
+                    <div class="section-header">
+                        <h3>Media</h3>
+                        <button class="small-btn" id="btn-add-media" title="Add media">+ Add</button>
+                    </div>
+                    <div class="media-list" id="media-list"></div>
+                    <div class="inline-add-form" id="add-media-form" hidden>
+                        <select id="add-media-type" class="inline-select-sm">
+                            <option value="image">Image</option>
+                            <option value="video">Video</option>
+                            <option value="audio">Audio</option>
+                            <option value="embed">Embed</option>
+                            <option value="diagram">Diagram</option>
+                        </select>
+                        <input type="text" id="add-media-src" class="inline-input" placeholder="URL or path">
+                        <input type="text" id="add-media-alt" class="inline-input" placeholder="Alt text">
+                        <button class="inline-confirm" id="add-media-confirm">Add</button>
+                        <button class="inline-cancel" id="add-media-cancel">Cancel</button>
+                    </div>
+                </div>
+
+                <!-- Danger zone -->
+                <div class="editor-danger">
+                    <button class="small-btn" id="btn-duplicate-node" title="Duplicate this node">Duplicate</button>
+                    <button class="danger-btn" id="btn-delete-node" title="Delete this node">Delete Node</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Resize handle -->
+        <div class="resize-handle" id="resize-right" aria-hidden="true"></div>
+
+        <!-- Right Panel: Properties/Preview -->
+        <aside class="panel panel-right" id="panel-right">
+            <div class="panel-header">
+                <div class="panel-tabs">
+                    <button class="panel-tab active" data-tab="meta">Book Meta</button>
+                    <button class="panel-tab" data-tab="preview">Preview</button>
+                    <button class="panel-tab" data-tab="graph">Graph</button>
+                </div>
+            </div>
+
+            <!-- Meta tab -->
+            <div class="panel-body tab-content active" id="tab-meta">
+                <div class="meta-form">
+                    <div class="form-field">
+                        <label for="meta-title">Title</label>
+                        <input type="text" id="meta-title" class="form-input">
+                    </div>
+                    <div class="form-field">
+                        <label for="meta-subtitle">Subtitle</label>
+                        <input type="text" id="meta-subtitle" class="form-input">
+                    </div>
+                    <div class="form-field">
+                        <label for="meta-author">Author</label>
+                        <input type="text" id="meta-author" class="form-input">
+                    </div>
+                    <div class="form-field">
+                        <label for="meta-description">Description</label>
+                        <textarea id="meta-description" class="form-input" rows="3"></textarea>
+                    </div>
+                    <div class="form-field">
+                        <label for="meta-root">Root Node ID</label>
+                        <select id="meta-root" class="form-input"></select>
+                    </div>
+                    <div class="form-field">
+                        <label>Stats</label>
+                        <div class="stats" id="meta-stats"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview tab -->
+            <div class="panel-body tab-content" id="tab-preview">
+                <div class="preview-pane" id="preview-pane"></div>
+            </div>
+
+            <!-- Graph tab -->
+            <div class="panel-body tab-content" id="tab-graph">
+                <div class="graph-container" id="graph-container">
+                    <canvas id="graph-canvas"></canvas>
+                </div>
+                <div class="graph-legend">
+                    <span class="legend-item"><span class="legend-dot root"></span>Root</span>
+                    <span class="legend-item"><span class="legend-dot selected"></span>Selected</span>
+                    <span class="legend-item"><span class="legend-dot normal"></span>Node</span>
+                    <span class="legend-item"><span class="legend-line solid"></span>Child</span>
+                    <span class="legend-item"><span class="legend-line dashed"></span>Connection</span>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- New Node Modal -->
+    <div id="new-node-modal" class="modal" hidden>
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <h2>Create New Node</h2>
+            <div class="form-field">
+                <label for="new-node-title">Title</label>
+                <input type="text" id="new-node-title" class="form-input" placeholder="What is this section about?" autofocus>
+            </div>
+            <div class="form-field">
+                <label for="new-node-id">ID <span class="label-hint">(auto-generated from title)</span></label>
+                <input type="text" id="new-node-id" class="form-input mono" placeholder="auto-generated">
+            </div>
+            <div class="form-field">
+                <label>
+                    <input type="checkbox" id="new-node-add-as-child" checked>
+                    Add as child of current node
+                </label>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn primary" id="new-node-create">Create</button>
+                <button class="modal-btn" id="new-node-cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard shortcuts modal -->
+    <div id="shortcuts-modal" class="modal" hidden>
+        <div class="modal-backdrop"></div>
+        <div class="modal-content wide">
+            <h2>Keyboard Shortcuts</h2>
+            <div class="shortcuts-grid">
+                <div class="shortcut-group">
+                    <h3>File</h3>
+                    <div class="shortcut"><kbd>Ctrl+K</kbd> Command palette</div>
+                    <div class="shortcut"><kbd>Ctrl+S</kbd> Save</div>
+                    <div class="shortcut"><kbd>Ctrl+O</kbd> Open</div>
+                    <div class="shortcut"><kbd>Ctrl+N</kbd> New file</div>
+                    <div class="shortcut"><kbd>Ctrl+Shift+N</kbd> New node</div>
+                    <div class="shortcut"><kbd>Ctrl+P</kbd> Preview</div>
+                </div>
+                <div class="shortcut-group">
+                    <h3>Formatting</h3>
+                    <div class="shortcut"><kbd>Ctrl+B</kbd> Bold</div>
+                    <div class="shortcut"><kbd>Ctrl+I</kbd> Italic</div>
+                    <div class="shortcut"><kbd>Ctrl+2</kbd> Heading</div>
+                    <div class="shortcut"><kbd>Ctrl+3</kbd> Sub-heading</div>
+                    <div class="shortcut"><kbd>Ctrl+U</kbd> Bullet list</div>
+                    <div class="shortcut"><kbd>Ctrl+L</kbd> Link</div>
+                    <div class="shortcut"><kbd>Ctrl+Q</kbd> Blockquote</div>
+                    <div class="shortcut"><kbd>Ctrl+E</kbd> Example block</div>
+                </div>
+                <div class="shortcut-group">
+                    <h3>Editing</h3>
+                    <div class="shortcut"><kbd>Ctrl+Z</kbd> Undo</div>
+                    <div class="shortcut"><kbd>Ctrl+0</kbd> Normal paragraph</div>
+                    <div class="shortcut"><kbd>Ctrl+L</kbd> Insert link</div>
+                    <div class="shortcut"><kbd>?</kbd> This help</div>
+                    <div class="shortcut"><kbd>Esc</kbd> Close modal/palette</div>
+                </div>
+            </div>
+            <button class="modal-btn" id="shortcuts-close">Close</button>
+        </div>
+    </div>
+
+    <!-- Unsaved changes warning modal -->
+    <div id="unsaved-modal" class="modal" hidden>
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <h2>Unsaved Changes</h2>
+            <p style="color:var(--text-dim);margin-bottom:16px;font-size:13px">You have unsaved changes that will be lost. Do you want to save first?</p>
+            <div class="modal-actions">
+                <button class="modal-btn primary" id="unsaved-save">Save First</button>
+                <button class="modal-btn" id="unsaved-discard" style="color:var(--danger)">Discard</button>
+                <button class="modal-btn" id="unsaved-cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file input -->
+    <input type="file" id="file-open-input" accept=".json,.entropy.json" hidden>
+
+    <!-- Scripts -->
+    <script src="js/state.js"></script>
+    <script src="js/tree.js"></script>
+    <script src="js/editor.js"></script>
+    <script src="js/palette.js"></script>
+    <script src="js/graph.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

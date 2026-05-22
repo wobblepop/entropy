@@ -1,0 +1,131 @@
+/* ============================================
+   ACCESSIBILITY — EntropyExplainer
+   Focus states, reduced motion, screen reader
+   ============================================ */
+
+/* Focus visible for keyboard users */
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .expandable {
+        transition: none;
+    }
+
+    html {
+        scroll-behavior: auto;
+    }
+}
+
+/* Screen reader only */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* High contrast mode support */
+@media (forced-colors: active) {
+    .child-card {
+        border: 2px solid ButtonText;
+    }
+
+    .connection-link {
+        border: 2px solid ButtonText;
+    }
+
+    .icon-btn {
+        border: 1px solid ButtonText;
+    }
+
+    .nav-item-btn.active {
+        background: Highlight;
+        color: HighlightText;
+    }
+}
+
+/* Minimum touch targets (44x44px for mobile) */
+@media (pointer: coarse) {
+    .icon-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .nav-item-btn {
+        min-height: 44px;
+    }
+
+    .child-card {
+        padding: 20px;
+    }
+
+    .connection-link {
+        padding: 12px 18px;
+    }
+}
+
+/* Prefers color scheme auto-detection */
+@media (prefers-color-scheme: dark) {
+    body:not([class*="theme-"]),
+    body.theme-auto {
+        --bg: #0f0f0f;
+        --bg-surface: #1a1a1a;
+        --bg-hover: #2a2a2a;
+        --bg-subtle: #1e1e1e;
+        --bg-input: #222222;
+        --bg-tag: #2a2a3a;
+        --bg-code: #252525;
+        --text-primary: #e8e8e8;
+        --text-secondary: #a0a0a0;
+        --text-tertiary: #666666;
+        --border: #333333;
+        --accent: #60a5fa;
+        --accent-light: #1e293b;
+        --shadow: rgba(0, 0, 0, 0.3);
+    }
+}
+
+/* Print styles */
+@media print {
+    .explainer-header,
+    .sidebar,
+    .node-nav,
+    #theme-btn,
+    #font-btn,
+    #progress-btn,
+    #sidebar-toggle {
+        display: none !important;
+    }
+
+    .content-area {
+        margin-left: 0 !important;
+    }
+
+    .child-card {
+        break-inside: avoid;
+    }
+
+    body {
+        background: white;
+        color: black;
+    }
+}

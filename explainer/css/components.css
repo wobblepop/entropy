@@ -1,0 +1,272 @@
+/* ============================================
+   COMPONENTS — EntropyExplainer
+   Animations, interactive elements, extras
+   ============================================ */
+
+/* Expand/collapse animation */
+.expandable {
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transition: max-height var(--transition-slow), opacity var(--transition-med);
+}
+
+.expandable.expanded {
+    max-height: 2000px;
+    opacity: 1;
+}
+
+/* Loading state */
+.loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 40px auto;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Fade-in for content transitions */
+.fade-in {
+    animation: fadeIn var(--transition-med) ease forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Progress indicator on cards */
+.child-card[data-visited="true"]::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    opacity: 0.6;
+}
+
+.child-card {
+    position: relative;
+}
+
+/* Difficulty badges */
+.difficulty-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.difficulty-intro { background: #dcfce7; color: #166534; }
+.difficulty-intermediate { background: #fef3c7; color: #92400e; }
+.difficulty-advanced { background: #fee2e2; color: #991b1b; }
+.difficulty-expert { background: #ede9fe; color: #5b21b6; }
+
+.theme-dark .difficulty-intro { background: #14532d; color: #86efac; }
+.theme-dark .difficulty-intermediate { background: #78350f; color: #fde047; }
+.theme-dark .difficulty-advanced { background: #7f1d1d; color: #fca5a5; }
+.theme-dark .difficulty-expert { background: #3b0764; color: #c4b5fd; }
+
+/* Time estimate */
+.time-estimate {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+.time-estimate::before {
+    content: '';
+    width: 10px;
+    height: 10px;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+/* Connection type indicators */
+.conn-type-related { border-color: #60a5fa; color: #60a5fa; }
+.conn-type-prerequisite { border-color: #f59e0b; color: #d97706; }
+.conn-type-deeper { border-color: #8b5cf6; color: #7c3aed; }
+.conn-type-example { border-color: #10b981; color: #059669; }
+.conn-type-tangent { border-color: #ec4899; color: #db2777; }
+
+.connection-link:hover.conn-type-related { background: #eff6ff; color: #2563eb; }
+.connection-link:hover.conn-type-prerequisite { background: #fffbeb; color: #d97706; }
+.connection-link:hover.conn-type-deeper { background: #f5f3ff; color: #7c3aed; }
+.connection-link:hover.conn-type-example { background: #ecfdf5; color: #059669; }
+.connection-link:hover.conn-type-tangent { background: #fdf2f8; color: #db2777; }
+
+/* Dark theme overrides for connection hover */
+.theme-dark .connection-link:hover.conn-type-related { background: #1e293b; }
+.theme-dark .connection-link:hover.conn-type-prerequisite { background: #1c1a00; }
+.theme-dark .connection-link:hover.conn-type-deeper { background: #1e1040; }
+.theme-dark .connection-link:hover.conn-type-example { background: #021a0e; }
+.theme-dark .connection-link:hover.conn-type-tangent { background: #2a0515; }
+
+/* Drag and drop overlay */
+.drag-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(37, 99, 235, 0.1);
+    border: 3px dashed var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 300;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-fast);
+}
+
+.drag-overlay.visible {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.drag-overlay-text {
+    font-size: 1.2rem;
+    color: var(--accent);
+    font-weight: 500;
+    padding: 20px 40px;
+    background: var(--bg-surface);
+    border-radius: var(--radius-lg);
+}
+
+/* Media containers */
+.media-item {
+    margin: 16px 0;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.media-item img {
+    width: 100%;
+}
+
+.media-caption {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    background: var(--bg-subtle);
+    border-top: 1px solid var(--border);
+}
+
+.media-item.float-left {
+    float: left;
+    max-width: 45%;
+    margin: 0 16px 8px 0;
+}
+
+.media-item.float-right {
+    float: right;
+    max-width: 45%;
+    margin: 0 0 8px 16px;
+}
+
+.media-item.full-width {
+    width: 100%;
+}
+
+/* Toast notifications */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 12px 20px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 4px 12px var(--shadow);
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    z-index: 400;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: transform var(--transition-med), opacity var(--transition-med);
+}
+
+.toast.visible {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+/* ---- Graph view ---- */
+.graph-view {
+    position: relative;
+    width: 100%;
+    height: calc(100vh - 56px);
+    display: flex;
+    flex-direction: column;
+}
+
+.graph-view[hidden] {
+    display: none;
+}
+
+.graph-view canvas {
+    flex: 1;
+    display: block;
+    width: 100%;
+}
+
+.graph-legend-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 16px;
+    font-size: 0.75rem;
+    color: var(--text-secondary, #666);
+    border-top: 1px solid var(--border, #e5e5e5);
+    background: var(--bg-surface, #f9fafb);
+    flex-shrink: 0;
+}
+
+.gl-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.gl-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid #ddd;
+}
+
+.gl-dot.gl-root { background: #f59e0b; border-color: #d97706; }
+.gl-dot.gl-current { background: #2563eb; border-color: #1d4ed8; }
+.gl-dot.gl-visited { background: #60a5fa; border-color: #3b82f6; }
+.gl-dot.gl-unvisited { background: #ccc; border-color: #bbb; }
+
+.gl-line {
+    display: inline-block;
+    width: 20px;
+    height: 0;
+    border-top: 2px solid #999;
+}
+
+.gl-line.gl-solid { border-top-style: solid; }
+.gl-line.gl-dashed { border-top-style: dashed; }
+
+#graph-toggle-btn.active {
+    color: var(--accent, #2563eb);
+    background: var(--accent-dim, rgba(37, 99, 235, 0.1));
+}

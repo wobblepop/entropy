@@ -1,0 +1,103 @@
+/* ============================================
+   RESPONSIVE — EntropyExplainer
+   Mobile, tablet, desktop breakpoints
+   ============================================ */
+
+/* Tablet (768px and below) */
+@media (max-width: 768px) {
+    :root {
+        --sidebar-width: 260px;
+    }
+
+    .sidebar {
+        transform: translateX(-100%);
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+        box-shadow: 4px 0 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .content-area {
+        margin-left: 0;
+        padding: 24px 16px;
+    }
+
+    .node-title {
+        font-size: 1.5rem;
+    }
+
+    .breadcrumb {
+        display: none;
+    }
+
+    .book-title {
+        max-width: 180px;
+    }
+
+    .theme-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Mobile (480px and below) */
+@media (max-width: 480px) {
+    .node-nav {
+        flex-wrap: wrap;
+    }
+
+    :root {
+        --header-height: 48px;
+        --font-size: 16px;
+    }
+
+    .content-area {
+        padding: 16px 12px;
+    }
+
+    .node-title {
+        font-size: 1.3rem;
+    }
+
+    .node-summary {
+        font-size: 0.95rem;
+    }
+
+    .child-card {
+        padding: 12px 14px;
+    }
+
+    .connections-list {
+        flex-direction: column;
+    }
+
+    .connection-link {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .header-right {
+        gap: 4px;
+    }
+
+    .modal-content {
+        margin: 16px;
+        padding: 16px;
+    }
+
+    .setting-row {
+        flex-wrap: wrap;
+    }
+
+    .setting-row label {
+        width: 100%;
+        margin-bottom: 4px;
+    }
+}
+
+/* Large desktop (1200px+) */
+@media (min-width: 1200px) {
+    .content-area {
+        padding: 60px 40px;
+    }
+}

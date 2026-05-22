@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.env
+*.log
+.DS_Store
+Thumbs.db
+
+# Session logs
+output/logs/
+sample/output/logs/
+
+# Test artifacts
+test_output.html

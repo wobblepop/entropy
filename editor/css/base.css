@@ -1,0 +1,349 @@
+/* ============================================
+   BASE — EntropyEditor Dark Theme
+   ============================================ */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --bg: #1a1a1a;
+    --bg-surface: #222222;
+    --bg-elevated: #2a2a2a;
+    --bg-input: #1e1e1e;
+    --bg-hover: #333333;
+    --bg-active: #3a3a3a;
+    --bg-danger: #3b1a1a;
+    --text: #d4d4d4;
+    --text-dim: #888888;
+    --text-faint: #555555;
+    --accent: #60a5fa;
+    --accent-hover: #93c5fd;
+    --accent-dim: #1e3a5f;
+    --danger: #ef4444;
+    --danger-dim: #7f1d1d;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --border: #333333;
+    --border-focus: #60a5fa;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    --header-height: 44px;
+    --radius: 4px;
+    --transition: 150ms ease;
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    font-family: var(--font-body);
+    font-size: 13px;
+    line-height: 1.5;
+    background: var(--bg);
+    color: var(--text);
+}
+
+/* Header */
+.editor-header {
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    user-select: none;
+}
+
+.header-left, .header-center, .header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.logo {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--accent);
+    margin-right: 8px;
+}
+
+.file-name {
+    color: var(--text-dim);
+    font-size: 12px;
+}
+
+.save-indicator {
+    font-size: 11px;
+    color: var(--warning);
+    background: rgba(245, 158, 11, 0.15);
+    padding: 1px 6px;
+    border-radius: var(--radius);
+}
+
+.autosave-indicator {
+    font-size: 11px;
+    color: var(--success);
+    background: rgba(34, 197, 94, 0.15);
+    padding: 1px 6px;
+    border-radius: var(--radius);
+}
+
+.header-btn {
+    padding: 4px 10px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background var(--transition), border-color var(--transition);
+}
+
+.header-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--text-faint);
+}
+
+.header-sep {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin: 0 4px;
+}
+
+/* Workspace */
+.workspace {
+    display: flex;
+    height: calc(100vh - var(--header-height));
+}
+
+/* Generic inputs */
+input, textarea, select {
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px 8px;
+    outline: none;
+    transition: border-color var(--transition);
+}
+
+input:focus, textarea:focus, select:focus {
+    border-color: var(--border-focus);
+}
+
+textarea {
+    resize: vertical;
+}
+
+button {
+    font-family: var(--font-body);
+    cursor: pointer;
+    border: none;
+    background: none;
+}
+
+/* Focus visible */
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* Scrollbar (dark) */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-faint);
+}
+
+/* kbd */
+kbd {
+    display: inline-block;
+    padding: 1px 5px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text-dim);
+}
+
+/* Toast */
+.toast-container {
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+    z-index: 500;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.toast {
+    padding: 8px 14px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 12px;
+    color: var(--text);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    animation: toastIn 200ms ease;
+}
+
+.toast.success { border-left: 3px solid var(--success); }
+.toast.error { border-left: 3px solid var(--danger); }
+.toast.info { border-left: 3px solid var(--accent); }
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 400;
+}
+
+.modal[hidden] {
+    display: none;
+}
+
+.modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    position: relative;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    z-index: 1;
+}
+
+.modal-content.wide {
+    max-width: 600px;
+}
+
+.modal-content h2 {
+    font-size: 15px;
+    margin-bottom: 16px;
+    color: var(--text);
+}
+
+.modal-content h3 {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    justify-content: flex-end;
+}
+
+.modal-btn {
+    padding: 6px 16px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background var(--transition), border-color var(--transition);
+}
+
+.modal-btn:hover {
+    background: var(--bg-hover);
+}
+
+.modal-btn.primary {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.modal-btn.primary:hover {
+    background: var(--accent);
+    color: white;
+}
+
+.label-hint {
+    font-weight: 400;
+    color: var(--text-faint);
+}
+
+.mono {
+    font-family: var(--font-mono);
+}
+
+.shortcuts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.shortcut-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.shortcut {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.shortcut kbd {
+    min-width: 70px;
+    text-align: center;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}

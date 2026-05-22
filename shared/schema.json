@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Entropy Content Format",
+  "description": "Shared content format for EntropyExplainer and EntropyEditor",
+  "type": "object",
+  "required": ["meta", "nodes", "root"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["title", "version"],
+      "properties": {
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "author": { "type": "string" },
+        "version": { "type": "string" },
+        "created": { "type": "string", "format": "date-time" },
+        "modified": { "type": "string", "format": "date-time" },
+        "description": { "type": "string" },
+        "license": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "root": {
+      "type": "string",
+      "description": "ID of the entry node"
+    },
+    "nodes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["id", "title", "content"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9_-]+$" },
+          "title": { "type": "string" },
+          "content": { "type": "string", "description": "Markdown content" },
+          "summary": { "type": "string", "description": "Brief summary shown before expanding" },
+          "children": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Ordered child node IDs (hierarchical structure)"
+          },
+          "connections": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["to"],
+              "properties": {
+                "to": { "type": "string" },
+                "label": { "type": "string" },
+                "type": { "type": "string", "enum": ["related", "prerequisite", "deeper", "example", "tangent"] }
+              }
+            },
+            "description": "Non-hierarchical links to other nodes"
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["type", "src"],
+              "properties": {
+                "type": { "type": "string", "enum": ["image", "video", "audio", "embed", "diagram"] },
+                "src": { "type": "string" },
+                "alt": { "type": "string" },
+                "caption": { "type": "string" },
+                "position": { "type": "string", "enum": ["inline", "float-left", "float-right", "full-width"] }
+              }
+            }
+          },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "difficulty": { "type": "string", "enum": ["intro", "intermediate", "advanced", "expert"] },
+          "estimatedTime": { "type": "string", "description": "e.g. '5 min', '20 min'" },
+          "order": { "type": "number", "description": "Sort order among siblings" }
+        }
+      }
+    },
+    "themes": {
+      "type": "object",
+      "description": "Custom theme overrides for Explainer",
+      "properties": {
+        "default": { "type": "string" },
+        "available": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

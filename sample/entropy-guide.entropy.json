@@ -1,0 +1,327 @@
+{
+  "meta": {
+    "title": "The Entropy System Guide",
+    "subtitle": "A Self-Documenting Interactive Textbook",
+    "author": "Scott Duhadway",
+    "version": "1.0.0",
+    "created": "2026-04-20T00:00:00Z",
+    "modified": "2026-04-20T00:00:00Z",
+    "description": "Learn how to use EntropyExplainer and EntropyEditor by reading this textbook inside EntropyExplainer. Every feature of the system is demonstrated by the content itself.",
+    "license": "MIT",
+    "tags": ["entropy", "guide", "meta", "self-referential"]
+  },
+  "root": "welcome",
+  "nodes": {
+    "welcome": {
+      "id": "welcome",
+      "title": "Welcome to Entropy",
+      "summary": "You are reading this inside the tool it describes. Everything you see here is a feature demonstration.",
+      "content": "Entropy is two tools that share one content format:\n\n- **EntropyExplainer** is the reader you are using right now. It turns structured content into a choose-your-own-adventure textbook.\n- **EntropyEditor** is the authoring tool. It produces the `.entropy.json` files that this reader consumes.\n\nThis guide teaches you both tools by example. The sidebar on your left shows the full table of contents. The cards below let you choose what to explore first.\n\n## How to Navigate\n\nYou have several ways to move through this book:\n\n- **Child cards** below each section lead deeper into a topic\n- **Connection pills** at the bottom link to related topics sideways\n- **Back** and **Home** buttons retrace your steps\n- **Prev / Next** buttons follow the linear chapter order\n- **Sidebar** lets you jump anywhere\n- **Keyboard**: Alt+Left goes back, / focuses search, Ctrl+/ toggles the sidebar\n\nPick a path and start exploring. The blue dots in the sidebar will track where you have been.",
+      "children": ["content-format", "the-reader", "the-editor"],
+      "connections": [
+        { "to": "quick-start", "label": "Skip ahead to the quick-start", "type": "tangent" },
+        { "to": "architecture", "label": "Technical architecture overview", "type": "deeper" }
+      ],
+      "media": [],
+      "tags": ["overview", "start-here"],
+      "difficulty": "intro",
+      "estimatedTime": "3 min",
+      "order": 1
+    },
+    "content-format": {
+      "id": "content-format",
+      "title": "The .entropy.json Format",
+      "summary": "A single JSON file defines an entire textbook. Here is what goes inside it.",
+      "content": "Every Entropy textbook is one `.entropy.json` file. The format has four top-level keys:\n\n1. **meta** — book-level metadata (title, author, version, timestamps, description, tags)\n2. **root** — the ID of the entry node (where readers start)\n3. **nodes** — an object of all content nodes, keyed by their ID\n4. **themes** — optional theme configuration for the reader\n\n## What Is a Node?\n\nA node is one section of content. Think of it as a page, a chapter, or a concept — whatever granularity fits your material. Each node has:\n\n- **id** — a URL-safe slug like `supply-chain-basics`\n- **title** — what appears in the sidebar and at the top of the page\n- **summary** — a brief description shown on parent cards (like the italicized text you see below this title)\n- **content** — the body text, written in Markdown\n- **children** — an ordered list of child node IDs (the cards below this section)\n- **connections** — cross-links to other nodes with a type and optional label\n- **media** — images, video, audio, embeds, or diagrams\n- **tags** — free-form labels for categorization\n- **difficulty** — one of: intro, intermediate, advanced, expert\n- **estimatedTime** — a human-readable time estimate like \"5 min\"\n- **order** — numeric sort order among siblings\n\nThe schema is formally defined in `shared/schema.json` and is validated by both tools.",
+      "children": ["node-children", "node-connections", "node-content-markdown"],
+      "connections": [
+        { "to": "the-editor", "label": "How to create this format", "type": "related" },
+        { "to": "architecture", "label": "Technical deep-dive", "type": "deeper" }
+      ],
+      "media": [],
+      "tags": ["format", "json", "schema"],
+      "difficulty": "intro",
+      "estimatedTime": "5 min",
+      "order": 2
+    },
+    "node-children": {
+      "id": "node-children",
+      "title": "Children: Building Hierarchy",
+      "summary": "Children define the tree structure. They are ordered, and they render as the clickable cards you see below each section.",
+      "content": "The `children` array on each node is an ordered list of node IDs. This creates the tree structure that powers:\n\n- The **sidebar navigation** (the indented list on the left)\n- The **child cards** (the clickable boxes below this text)\n- The **Prev/Next** linear order (depth-first walk of the tree)\n- The **breadcrumb trail** (the path shown above the title)\n\n## Ordering Matters\n\nChildren appear in the order listed. The first child is the first card, the first sidebar entry, and the first stop on the linear path.\n\n## Orphan Nodes\n\nA node that is not any other node's child is an \"orphan.\" Orphans still appear in the sidebar (at the bottom), but they are not part of the linear navigation flow. They are reachable via connections or direct search.\n\n## Circular References\n\nThe system handles cycles gracefully. If Node A lists Node B as a child, and Node B lists Node A, the tree renderer uses a visited-set to avoid infinite loops. The first encounter wins.",
+      "children": [],
+      "connections": [
+        { "to": "node-connections", "label": "Connections vs. children", "type": "related" },
+        { "to": "editor-children", "label": "Managing children in the editor", "type": "related" }
+      ],
+      "media": [],
+      "tags": ["hierarchy", "tree", "navigation"],
+      "difficulty": "intro",
+      "estimatedTime": "4 min",
+      "order": 1
+    },
+    "node-connections": {
+      "id": "node-connections",
+      "title": "Connections: Cross-Linking",
+      "summary": "Connections are non-hierarchical links between nodes. They have types that indicate the nature of the relationship.",
+      "content": "While children define the tree, connections define the web. They are the \"choose your own adventure\" links that let readers explore laterally.\n\nEach connection has:\n\n- **to** — the target node ID\n- **type** — one of five relationship types\n- **label** — optional display text (defaults to the target's title)\n\n## Connection Types\n\nThe five types each render with a distinct color:\n\n- **related** (blue) — general association between topics\n- **prerequisite** (amber) — \"you should read this first\"\n- **deeper** (purple) — a more advanced take on the same topic\n- **example** (green) — a concrete illustration or case study\n- **tangent** (pink) — interesting but not essential; a rabbit hole\n\nLook at the connection pills below this section. Each one demonstrates a different type. Click any to follow the link.\n\n## One-Way Links\n\nConnections are directional. If Node A connects to Node B, that does not mean Node B connects back to A. You can create reciprocal links in the editor if you want bidirectional navigation.",
+      "children": [],
+      "connections": [
+        { "to": "node-children", "label": "Children vs. connections", "type": "related" },
+        { "to": "content-format", "label": "Review the full node schema", "type": "prerequisite" },
+        { "to": "architecture", "label": "How connections render in the graph", "type": "deeper" },
+        { "to": "quick-start", "label": "Practical walkthrough", "type": "example" },
+        { "to": "extending", "label": "Adding new connection types", "type": "tangent" }
+      ],
+      "media": [],
+      "tags": ["connections", "cross-links", "navigation"],
+      "difficulty": "intermediate",
+      "estimatedTime": "5 min",
+      "order": 2
+    },
+    "node-content-markdown": {
+      "id": "node-content-markdown",
+      "title": "Writing Content in Markdown",
+      "summary": "Node content is written in Markdown. Both tools parse it — the editor gives you a rich text toolbar, the reader renders it to HTML.",
+      "content": "The `content` field of each node is a Markdown string. Both tools parse it independently:\n\n- **EntropyExplainer** uses a custom parser (`js/markdown.js`) that handles headings, bold, italic, code, links, lists, blockquotes, code blocks, horizontal rules, and strikethrough.\n- **EntropyEditor** converts Markdown to HTML for its contenteditable WYSIWYG editor, and converts it back on save.\n\n## Supported Syntax\n\nHere is every formatting option, demonstrated live:\n\n### Headings\n\nThis is an H3 heading (above). H1 and H2 also work.\n\n### Inline Formatting\n\n**Bold text** is wrapped in double asterisks. *Italic text* uses single asterisks. `Inline code` uses backticks. [Links](https://example.com) use bracket-paren syntax. ~~Strikethrough~~ uses tildes.\n\n### Lists\n\nUnordered:\n\n- First item\n- Second item\n- Third item\n\nOrdered:\n\n1. Step one\n2. Step two\n3. Step three\n\n### Blockquotes\n\n> This is a blockquote. Use it for callouts, quotations, or emphasis.\n\n### Code Blocks\n\n```\n{\n  \"id\": \"example-node\",\n  \"title\": \"A Minimal Node\",\n  \"content\": \"Hello, world.\",\n  \"children\": [],\n  \"connections\": []\n}\n```\n\n### Horizontal Rules\n\nA line of three dashes creates a separator:\n\n---\n\nAll of these round-trip cleanly through the editor. What you write in Markdown is what you see in the reader.",
+      "children": [],
+      "connections": [
+        { "to": "editor-toolbar", "label": "The toolbar that generates this Markdown", "type": "related" },
+        { "to": "content-format", "label": "Back to the format overview", "type": "prerequisite" }
+      ],
+      "media": [],
+      "tags": ["markdown", "formatting", "syntax"],
+      "difficulty": "intro",
+      "estimatedTime": "6 min",
+      "order": 3
+    },
+    "the-reader": {
+      "id": "the-reader",
+      "title": "EntropyExplainer: The Reader",
+      "summary": "The reader turns .entropy.json files into interactive, navigable textbooks. You are using it right now.",
+      "content": "EntropyExplainer is a zero-dependency web application. Open `explainer/index.html` in any browser, load a `.entropy.json` file, and start reading.\n\n## Loading Content\n\nTwo ways to load a file:\n\n1. **File picker** — click the file input on the landing page\n2. **Drag and drop** — drag a `.entropy.json` file anywhere on the page\n\nOnce loaded, the sidebar tree appears on the left and the content area fills with the root node.\n\n## Navigation Model\n\nThe reader offers four navigation modes simultaneously:\n\n- **Hierarchical** — click child cards to go deeper, breadcrumbs to go up\n- **Associative** — click connection pills to jump sideways\n- **Linear** — use Prev/Next to follow the tree order like a traditional book\n- **Random access** — use the sidebar or search to jump anywhere\n\nReaders choose their own path. A curious reader might follow tangent connections. A methodical reader might use Prev/Next. Both are valid.",
+      "children": ["reader-themes", "reader-progress", "reader-accessibility"],
+      "connections": [
+        { "to": "the-editor", "label": "The tool that creates content for this reader", "type": "related" },
+        { "to": "content-format", "label": "The format this reader consumes", "type": "prerequisite" }
+      ],
+      "media": [],
+      "tags": ["reader", "explainer", "navigation"],
+      "difficulty": "intro",
+      "estimatedTime": "4 min",
+      "order": 3
+    },
+    "reader-themes": {
+      "id": "reader-themes",
+      "title": "Themes and Reading Settings",
+      "summary": "Four visual themes and adjustable typography. Try them — your preferences persist across sessions.",
+      "content": "Click the palette icon in the header to open the theme picker. Four themes are available:\n\n1. **Clean** — light background, minimal decoration, optimized for readability\n2. **Academic** — warm tones, serif-influenced, designed for long study sessions\n3. **Dark** — dark background, reduced eye strain for night reading\n4. **High Contrast** — maximum contrast for accessibility\n\n## Reading Settings\n\nClick the font icon (Aa) in the header to adjust:\n\n- **Font size** — 14px to 24px\n- **Line spacing** — 1.4 to 2.2\n- **Content width** — 500px to 900px\n\nAll settings are saved to localStorage and restored automatically on your next visit.\n\n## Theme Persistence\n\nYour chosen theme persists across different books. If you prefer Dark mode, every book you open will use it until you change it.",
+      "children": [],
+      "connections": [
+        { "to": "reader-accessibility", "label": "More accessibility features", "type": "related" },
+        { "to": "extending", "label": "How to create custom themes", "type": "deeper" }
+      ],
+      "media": [],
+      "tags": ["themes", "customization", "typography"],
+      "difficulty": "intro",
+      "estimatedTime": "3 min",
+      "order": 1
+    },
+    "reader-progress": {
+      "id": "reader-progress",
+      "title": "Progress Tracking",
+      "summary": "The reader remembers where you have been and where you stopped. Per-book, persistent across sessions.",
+      "content": "Entropy tracks your reading progress in two ways:\n\n## Visited Indicators\n\nEvery section you visit gets marked. Look at the sidebar — sections you have read show a blue dot instead of the default gray one. The child cards on parent pages also show a small blue indicator for visited sections.\n\nThis helps you see at a glance what you have covered and what remains.\n\n## Progress Arc\n\nThe circular icon in the header fills as you visit more sections. Hover over it to see your exact percentage and count.\n\n## Position Persistence\n\nIf you close the tab and reopen this book later, the reader will return you to the last section you were reading. This is tracked per-book (by title slug) in localStorage.\n\n## Privacy\n\nAll tracking is local to your browser. No data is sent anywhere. Clearing your browser's localStorage resets all progress.",
+      "children": [],
+      "connections": [
+        { "to": "reader-themes", "label": "Other persistent settings", "type": "related" }
+      ],
+      "media": [],
+      "tags": ["progress", "tracking", "persistence"],
+      "difficulty": "intro",
+      "estimatedTime": "3 min",
+      "order": 2
+    },
+    "reader-accessibility": {
+      "id": "reader-accessibility",
+      "title": "Accessibility Features",
+      "summary": "Keyboard navigation, screen reader support, reduced motion, high contrast, and print styles.",
+      "content": "Entropy is designed to be usable by everyone.\n\n## Keyboard Navigation\n\n| Shortcut | Action |\n| --- | --- |\n| Alt + Left | Go back |\n| Alt + Home | Go to root |\n| / | Focus search |\n| Ctrl + / | Toggle sidebar |\n| Escape | Close modals |\n| Tab | Navigate focusable elements |\n\n## Screen Readers\n\n- All navigation elements have ARIA roles and labels\n- An `aria-live` region announces page transitions\n- Skip-to-content link is available\n- Interactive elements have descriptive `aria-label` attributes\n\n## Reduced Motion\n\nIf your OS is set to reduce motion (`prefers-reduced-motion`), all animations and transitions are disabled.\n\n## Forced Colors / High Contrast\n\nThe High Contrast theme works with Windows High Contrast Mode and `forced-colors` media queries.\n\n## Print Styles\n\nPrinting a page produces a clean, ink-friendly layout with hidden navigation elements.",
+      "children": [],
+      "connections": [
+        { "to": "reader-themes", "label": "Theme and font settings", "type": "related" }
+      ],
+      "media": [],
+      "tags": ["accessibility", "a11y", "keyboard", "screen-reader"],
+      "difficulty": "intermediate",
+      "estimatedTime": "4 min",
+      "order": 3
+    },
+    "the-editor": {
+      "id": "the-editor",
+      "title": "EntropyEditor: The Authoring Tool",
+      "summary": "A three-panel editor for creating and modifying .entropy.json files. Dark mode, keyboard-driven, minimal clicks.",
+      "content": "EntropyEditor is where you build your textbooks. Open `editor/index.html` in a browser and you get a three-panel workspace:\n\n- **Left panel** — the node tree, showing your book's structure\n- **Center panel** — the node editor, where you write content\n- **Right panel** — book metadata, live preview, and an interactive graph\n\n## Getting Started\n\n1. Click **New** to create a blank textbook, or **Open** to load an existing `.entropy.json` file\n2. Select a node in the left tree to begin editing\n3. Write content in the rich text editor\n4. Add children, connections, and media using the inline forms\n5. Click **Save** to download your `.entropy.json` file\n\n## Design Philosophy\n\nThe editor is dark-mode only. It prioritizes keyboard shortcuts and minimal clicks. Every action that used to require a dialog box now uses an inline form. The interface is designed for long editing sessions without eye strain.",
+      "children": ["editor-toolbar", "editor-children", "editor-graph", "editor-palette"],
+      "connections": [
+        { "to": "the-reader", "label": "The reader that displays your work", "type": "related" },
+        { "to": "content-format", "label": "The format you are editing", "type": "prerequisite" },
+        { "to": "quick-start", "label": "Step-by-step tutorial", "type": "example" }
+      ],
+      "media": [],
+      "tags": ["editor", "authoring", "workspace"],
+      "difficulty": "intro",
+      "estimatedTime": "4 min",
+      "order": 4
+    },
+    "editor-toolbar": {
+      "id": "editor-toolbar",
+      "title": "The Rich Text Toolbar",
+      "summary": "WYSIWYG editing with a formatting toolbar. What you see is what you get — Markdown is generated on save.",
+      "content": "The editor uses a contenteditable div with a toolbar, not a raw Markdown textarea. You format text visually, and the editor converts it to Markdown when saving.\n\n## Toolbar Buttons\n\n- **B** — Bold (Ctrl+B)\n- **I** — Italic (Ctrl+I)\n- **H2** — Heading (Ctrl+2)\n- **H3** — Sub-heading (Ctrl+3)\n- **Bullet list** — Unordered list (Ctrl+U)\n- **1. List** — Ordered list\n- **Quote** — Blockquote (Ctrl+Q)\n- **Link** — Insert a hyperlink (Ctrl+L)\n- **Code** — Inline code\n- **Paragraph** — Reset to normal text (Ctrl+0)\n- **Rule** — Insert a horizontal rule\n\n## Link Insertion\n\nWhen you click **Link** or press Ctrl+L, an inline form appears between the toolbar and the content area. Enter a URL and optional display text, then press Enter or click Insert. The editor saves your cursor position so the link goes exactly where you intended.\n\n## Paste Handling\n\nPasting from external sources (web pages, Word documents) strips all formatting and inserts plain text. This prevents messy HTML from polluting your Markdown output.\n\n## Code Blocks\n\nFenced code blocks with triple backticks round-trip cleanly through the editor. They render in a styled `<pre>` block and convert back to fenced Markdown on save.",
+      "children": [],
+      "connections": [
+        { "to": "node-content-markdown", "label": "The Markdown it generates", "type": "related" },
+        { "to": "editor-palette", "label": "More keyboard shortcuts", "type": "related" }
+      ],
+      "media": [],
+      "tags": ["toolbar", "wysiwyg", "formatting", "keyboard"],
+      "difficulty": "intermediate",
+      "estimatedTime": "5 min",
+      "order": 1
+    },
+    "editor-children": {
+      "id": "editor-children",
+      "title": "Managing Children and Connections",
+      "summary": "Add, reorder, and remove child links and cross-connections using inline forms. No dialogs, no popups.",
+      "content": "Below the content editor, you will find three sections: **Children**, **Connections**, and **Media**. Each works the same way.\n\n## Adding a Child\n\nTwo options:\n\n1. **+ Link** — links an existing node as a child. Opens a dropdown of available nodes.\n2. **+ New** — creates a brand new node and adds it as a child in one step. Opens the new-node modal with \"add as child\" pre-checked.\n\n## Reordering Children\n\nEach child in the list has up/down arrow buttons. Click them to change the order. The sidebar tree updates immediately.\n\n## Removing a Child\n\nClick the **x** button next to a child. This removes the parent-child link but does not delete the child node.\n\n## Adding a Connection\n\nClick **+ Add** in the Connections section. An inline form appears with:\n\n- A dropdown to select the target node\n- A dropdown to select the connection type (related, prerequisite, deeper, example, tangent)\n- An optional label field\n\nPress Enter or click Add to create the connection.\n\n## Undo\n\nAll structural changes (add/remove/reorder children, add/remove connections) push to the undo stack. Press Ctrl+Z (when not typing in the content editor) to undo.",
+      "children": [],
+      "connections": [
+        { "to": "node-children", "label": "How children work in the format", "type": "prerequisite" },
+        { "to": "node-connections", "label": "How connections work in the format", "type": "prerequisite" },
+        { "to": "editor-graph", "label": "See the relationships visually", "type": "related" }
+      ],
+      "media": [],
+      "tags": ["children", "connections", "inline-forms", "undo"],
+      "difficulty": "intermediate",
+      "estimatedTime": "5 min",
+      "order": 2
+    },
+    "editor-graph": {
+      "id": "editor-graph",
+      "title": "The Relationship Graph",
+      "summary": "An interactive canvas visualization showing how all nodes relate to each other through children and connections.",
+      "content": "In the right panel, click the **Graph** tab to see a visual map of your textbook's structure.\n\n## What It Shows\n\n- **Nodes** as circles, arranged by tree depth\n- **Child links** as solid arrows pointing from parent to child\n- **Connection links** as dashed lines, color-coded by type\n- **The root node** highlighted in amber\n- **The selected node** highlighted in blue with a glow effect\n- **Orphan nodes** grouped at the bottom\n\n## Interaction\n\n- **Click** a node to select it (loads it in the editor)\n- **Hover** over a node to highlight it and see its label more clearly\n- The graph **auto-resizes** when you resize the panel\n\n## Layout\n\nNodes are arranged in horizontal layers by depth. Level 0 (root) is at the top. Children are on the next level down. Orphans get their own row at the bottom.\n\nThe graph is useful for spotting:\n\n- Orphan nodes that are not connected to anything\n- Dense clusters of cross-connections\n- Sections with many children vs. sections with none\n- The overall shape and depth of your textbook",
+      "children": [],
+      "connections": [
+        { "to": "editor-children", "label": "Managing the relationships it visualizes", "type": "related" },
+        { "to": "architecture", "label": "How the graph is implemented", "type": "deeper" }
+      ],
+      "media": [],
+      "tags": ["graph", "visualization", "canvas"],
+      "difficulty": "intermediate",
+      "estimatedTime": "3 min",
+      "order": 3
+    },
+    "editor-palette": {
+      "id": "editor-palette",
+      "title": "Command Palette and Shortcuts",
+      "summary": "Press Ctrl+K to access every editor action from the keyboard. The full shortcut reference.",
+      "content": "The command palette is the fastest way to do anything in the editor.\n\n## Command Palette (Ctrl+K)\n\nPress Ctrl+K to open it. Start typing to filter. The palette includes:\n\n- All file operations (New, Open, Save)\n- Node creation\n- Preview\n- Tab switching (Meta, Preview, Graph)\n- All nodes in your textbook (type to search)\n\nUse arrow keys to navigate, Enter to select, Escape to close.\n\n## Keyboard Shortcuts\n\n### File Operations\n\n- **Ctrl+K** — Command palette\n- **Ctrl+S** — Save\n- **Ctrl+O** — Open\n- **Ctrl+N** — New file\n- **Ctrl+Shift+N** — New node\n- **Ctrl+P** — Preview in new tab\n\n### Formatting (in content editor)\n\n- **Ctrl+B** — Bold\n- **Ctrl+I** — Italic\n- **Ctrl+2** — Heading\n- **Ctrl+3** — Sub-heading\n- **Ctrl+U** — Bullet list\n- **Ctrl+Q** — Blockquote\n- **Ctrl+L** — Insert link\n- **Ctrl+0** — Normal paragraph\n\n### Editing\n\n- **Ctrl+Z** — Undo (structural changes, when not typing)\n- **?** — Shortcuts reference\n- **Esc** — Close modal / palette / inline form\n\nPress **?** inside the editor to see this reference at any time.",
+      "children": [],
+      "connections": [
+        { "to": "editor-toolbar", "label": "Toolbar formatting shortcuts", "type": "related" },
+        { "to": "reader-accessibility", "label": "Reader keyboard shortcuts", "type": "related" }
+      ],
+      "media": [],
+      "tags": ["palette", "shortcuts", "keyboard", "productivity"],
+      "difficulty": "intro",
+      "estimatedTime": "4 min",
+      "order": 4
+    },
+    "architecture": {
+      "id": "architecture",
+      "title": "Technical Architecture",
+      "summary": "How both tools are built: module pattern, event bus, zero dependencies, static hosting.",
+      "content": "Both tools are pure HTML, CSS, and JavaScript. No build step, no npm, no frameworks. Open the HTML file in a browser and everything works.\n\n## Module Pattern\n\nEach JavaScript file is a self-contained IIFE (Immediately Invoked Function Expression) that returns a public API:\n\n```\nconst MyModule = (() => {\n    function doSomething() { ... }\n    return { doSomething };\n})();\n```\n\nThis means each file can be understood and modified independently. An AI editor can change one module without needing to read the others.\n\n## Event Bus\n\nModules communicate through a shared State object that provides `on(event, handler)` and `emit(event, payload)`. No module calls another directly (except State).\n\n### Explainer Events\n\n- `content-loaded` — a file was loaded\n- `navigate` — the user moved to a new node\n- `theme-changed` — the theme was switched\n- `settings-changed` — font/spacing/width adjusted\n- `sidebar-toggled` — sidebar opened or closed\n\n### Editor Events\n\n- `file-loaded` — a file was loaded or created\n- `node-selected` — a different node was selected\n- `node-updated` — a node's content changed\n- `node-added` / `node-deleted` — structural change\n- `meta-updated` — book metadata changed\n- `dirty-changed` — unsaved changes state toggled\n\n## Why This Matters\n\nThe event-bus architecture makes the system AI-friendly. Each module is small enough to fit in a single context window, and the event contract is the only interface between them. You can refactor the graph renderer without touching the tree panel.",
+      "children": ["architecture-editor-state", "architecture-explainer-state"],
+      "connections": [
+        { "to": "content-format", "label": "The shared format both tools consume", "type": "related" },
+        { "to": "extending", "label": "How to extend the system", "type": "deeper" }
+      ],
+      "media": [],
+      "tags": ["architecture", "modules", "events", "technical"],
+      "difficulty": "advanced",
+      "estimatedTime": "7 min",
+      "order": 5
+    },
+    "architecture-editor-state": {
+      "id": "architecture-editor-state",
+      "title": "Editor State Management",
+      "summary": "How the editor tracks content, selection, dirty state, and undo history.",
+      "content": "The editor's `EditorState` module is the single source of truth. It holds:\n\n- **data** — the full `.entropy.json` content in memory\n- **selectedNodeId** — which node is currently being edited\n- **dirty** — whether there are unsaved changes\n- **undoStack** — up to 30 JSON snapshots of previous states\n- **fileName** — the current file name for save-as\n\n## Undo System\n\nThe undo stack stores full snapshots of the `data` object (via `JSON.stringify`). Before any structural change (add, delete, duplicate, reorder, add/remove children or connections), the current state is pushed to the stack.\n\nThis is simple but effective for textbook-scale data. A textbook with hundreds of nodes might be a few hundred KB per snapshot. At 30 snapshots, that is roughly 10 MB of memory — well within browser limits.\n\n## Auto-Save\n\nAs the user types, a 400ms debounce timer saves the current field values back to the state. This means the in-memory data is always nearly current, but the file on disk is only updated when the user explicitly saves.\n\n## Word Count\n\nThe state module provides `getWordCount(nodeId)` for per-node counts and `getWordCount()` for the total across all nodes. Both count words in title, summary, and content fields.",
+      "children": [],
+      "connections": [
+        { "to": "architecture-explainer-state", "label": "Compare with reader state", "type": "related" }
+      ],
+      "media": [],
+      "tags": ["state", "undo", "auto-save", "technical"],
+      "difficulty": "advanced",
+      "estimatedTime": "5 min",
+      "order": 1
+    },
+    "architecture-explainer-state": {
+      "id": "architecture-explainer-state",
+      "title": "Reader State Management",
+      "summary": "How the reader tracks navigation history, visited nodes, reading position, and user preferences.",
+      "content": "The reader's `State` module manages:\n\n- **data** — the loaded `.entropy.json` content\n- **currentNodeId** — which node is being displayed\n- **history** — a stack of visited node IDs (for the Back button)\n- **visited** — a Set of all node IDs the user has seen\n- **theme** — current theme name\n- **fontSize / lineHeight / contentWidth** — reading preferences\n\n## Persistence\n\nSeveral values are saved to localStorage and restored across sessions:\n\n- **Theme** — key: `entropy-theme`\n- **Font settings** — keys: `entropy-font-size`, `entropy-line-height`, `entropy-content-width`\n- **Visited set** — key: `entropy-visited-{book-slug}` (per-book)\n- **Reading position** — key: `entropy-position-{book-slug}` (per-book)\n\nThe book slug is derived from the title, so two books with different titles have independent progress tracking.\n\n## Linear Order\n\nThe `getLinearOrder()` function returns all node IDs in depth-first tree order, with orphans appended at the end. This powers the Prev/Next navigation buttons and ensures every node is reachable through linear traversal.",
+      "children": [],
+      "connections": [
+        { "to": "architecture-editor-state", "label": "Compare with editor state", "type": "related" },
+        { "to": "reader-progress", "label": "The user-facing progress features", "type": "related" }
+      ],
+      "media": [],
+      "tags": ["state", "persistence", "localstorage", "technical"],
+      "difficulty": "advanced",
+      "estimatedTime": "5 min",
+      "order": 2
+    },
+    "quick-start": {
+      "id": "quick-start",
+      "title": "Quick Start: Your First Textbook",
+      "summary": "A step-by-step walkthrough: create a textbook, add nodes, build structure, save, and view in the reader.",
+      "content": "Follow these steps to create your first Entropy textbook:\n\n## Step 1: Open the Editor\n\nOpen `editor/index.html` in your browser. You will see the empty state.\n\n## Step 2: Create a New File\n\nClick **New** in the header (or press Ctrl+N). A blank textbook is created with one node called \"Introduction.\"\n\n## Step 3: Edit the Root Node\n\nThe Introduction node is selected automatically. Fill in:\n\n- **Title** — your textbook's opening section name\n- **Summary** — a brief description (appears on parent cards)\n- **Content** — write your opening text using the rich text toolbar\n\n## Step 4: Add More Nodes\n\nClick **+ Node** in the header (or Ctrl+Shift+N). Give your new node a title — the ID is generated automatically. Check \"Add as child of current node\" to link it as a sub-section.\n\nRepeat for each section of your textbook.\n\n## Step 5: Add Connections\n\nScroll to the **Connections** section in the editor. Click **+ Add**, choose a target node and connection type, then click Add.\n\n## Step 6: Set Metadata\n\nSwitch to the **Book Meta** tab in the right panel. Set your title, author, and description.\n\n## Step 7: Save\n\nPress Ctrl+S. Your browser downloads a `.entropy.json` file.\n\n## Step 8: Preview\n\nPress Ctrl+P to open a self-contained preview in a new tab. Or open `explainer/index.html` and drag your saved file onto it to see the full reader experience.\n\n---\n\nThat is it. You have a working interactive textbook.",
+      "children": [],
+      "connections": [
+        { "to": "the-editor", "label": "Full editor documentation", "type": "deeper" },
+        { "to": "content-format", "label": "Understand the format you just created", "type": "related" },
+        { "to": "the-reader", "label": "Full reader documentation", "type": "related" }
+      ],
+      "media": [],
+      "tags": ["tutorial", "getting-started", "walkthrough"],
+      "difficulty": "intro",
+      "estimatedTime": "8 min",
+      "order": 6
+    },
+    "extending": {
+      "id": "extending",
+      "title": "Extending the System",
+      "summary": "How to add new themes, new node fields, and new connection types. The system is designed to grow.",
+      "content": "Entropy is designed to be extended without rewriting core logic.\n\n## Adding a New Theme\n\n1. Open `explainer/css/themes.css`\n2. Add a new `.theme-yourname` block with all the CSS custom properties\n3. Open `explainer/js/themes.js` and add `'yourname': 'Display Name'` to the `themeMap`\n\nThat is it. The theme picker, persistence, and all components will use your new theme automatically.\n\n## Adding a New Node Field\n\n1. Add the field to `shared/schema.json`\n2. In the editor: add an input field in `editor/index.html`, bind it in `editor.js` (in `loadNode` and `setupAutoSave`)\n3. In the reader: render the new field in `explainer/js/renderer.js`\n\nBecause modules communicate through events, you only need to touch three files.\n\n## Adding a New Connection Type\n\n1. Add the type to the enum in `shared/schema.json`\n2. Add a CSS class `.conn-type-yourtype` in `explainer/css/components.css`\n3. Add it to the connection type dropdown in `editor/index.html`\n\nThe graph, connection pills, and inline forms all pick it up automatically because they read the `type` field dynamically.\n\n## Adding Media Types\n\nThe `explainer/js/media.js` module has a switch statement for media types. Add a new case to support your format. The editor's media form already has a free-text type dropdown you can extend.",
+      "children": [],
+      "connections": [
+        { "to": "architecture", "label": "Understand the architecture first", "type": "prerequisite" },
+        { "to": "content-format", "label": "The schema you are extending", "type": "prerequisite" }
+      ],
+      "media": [],
+      "tags": ["extending", "customization", "themes", "development"],
+      "difficulty": "expert",
+      "estimatedTime": "10 min",
+      "order": 7
+    }
+  },
+  "themes": {
+    "default": "clean",
+    "available": ["clean", "academic", "dark", "high-contrast"]
+  }
+}

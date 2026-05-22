@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EntropyExplainer</title>
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/themes.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/accessibility.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body class="theme-clean" role="application" aria-label="EntropyExplainer Textbook Reader">
+    <!-- Skip Navigation -->
+    <a href="#main-content" class="skip-link">Skip to content</a>
+
+    <!-- Header -->
+    <header class="explainer-header" role="banner">
+        <div class="header-left">
+            <button id="sidebar-toggle" class="icon-btn" aria-label="Toggle navigation" aria-expanded="true">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <h1 class="book-title" id="book-title">EntropyExplainer</h1>
+        </div>
+        <div class="header-right">
+            <div class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb navigation"></div>
+            <button id="theme-btn" class="icon-btn" aria-label="Change theme" title="Change theme">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.93 4.93l1.41 1.41M13.66 13.66l1.41 1.41M4.93 15.07l1.41-1.41M13.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <button id="font-btn" class="icon-btn" aria-label="Font settings" title="Adjust font size">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <text x="3" y="15" font-size="12" fill="currentColor" font-family="serif">A</text>
+                    <text x="12" y="15" font-size="8" fill="currentColor" font-family="serif">A</text>
+                </svg>
+            </button>
+            <button id="graph-toggle-btn" class="icon-btn" aria-label="Toggle graph view" title="Graph view">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <circle cx="5" cy="5" r="2" stroke="currentColor" stroke-width="1.2"/>
+                    <circle cx="15" cy="5" r="2" stroke="currentColor" stroke-width="1.2"/>
+                    <circle cx="10" cy="15" r="2" stroke="currentColor" stroke-width="1.2"/>
+                    <path d="M6.5 6.5L9 13M13.5 6.5L11 13M6 5h8" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+                </svg>
+            </button>
+            <button id="export-pdf-btn" class="icon-btn" aria-label="Export as PDF" title="Export as PDF in order">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="M6 2h8l4 4v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z" stroke="currentColor" stroke-width="1.3" fill="none"/>
+                    <path d="M13 2v4h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                    <path d="M10 10v5M8 13l2 2 2-2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <button id="standalone-btn" class="icon-btn" aria-label="Save as standalone HTML" title="Save as standalone HTML">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="M7 5L3 10l4 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M13 5l4 5-4 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M11 3l-2 14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <button id="progress-btn" class="icon-btn" aria-label="Reading progress" title="View progress">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+                    <path id="progress-arc" d="" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Theme Picker Modal -->
+    <div id="theme-modal" class="modal" role="dialog" aria-label="Theme selection" aria-hidden="true">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <h2>Choose Theme</h2>
+            <div class="theme-grid" id="theme-grid"></div>
+            <button class="modal-close" aria-label="Close">Close</button>
+        </div>
+    </div>
+
+    <!-- Font Size Modal -->
+    <div id="font-modal" class="modal" role="dialog" aria-label="Font settings" aria-hidden="true">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <h2>Reading Settings</h2>
+            <div class="setting-row">
+                <label for="font-size-slider">Font Size</label>
+                <input type="range" id="font-size-slider" min="14" max="24" value="17" aria-valuemin="14" aria-valuemax="24">
+                <span id="font-size-display">17px</span>
+            </div>
+            <div class="setting-row">
+                <label for="line-height-slider">Line Spacing</label>
+                <input type="range" id="line-height-slider" min="1.4" max="2.2" step="0.1" value="1.7" aria-valuemin="1.4" aria-valuemax="2.2">
+                <span id="line-height-display">1.7</span>
+            </div>
+            <div class="setting-row">
+                <label for="content-width-slider">Content Width</label>
+                <input type="range" id="content-width-slider" min="500" max="900" step="50" value="700" aria-valuemin="500" aria-valuemax="900">
+                <span id="content-width-display">700px</span>
+            </div>
+            <button class="modal-close" aria-label="Close">Close</button>
+        </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="layout">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar" id="sidebar" role="navigation" aria-label="Table of contents">
+            <div class="sidebar-header">
+                <h2>Contents</h2>
+                <div class="sidebar-search">
+                    <input type="search" id="nav-search" placeholder="Search sections..." aria-label="Search sections">
+                </div>
+            </div>
+            <ul class="nav-tree" id="nav-tree" role="tree"></ul>
+        </nav>
+
+        <!-- Content Area -->
+        <main id="main-content" class="content-area" role="main" aria-live="polite">
+            <!-- Landing state before file load -->
+            <div class="landing" id="landing">
+                <div class="landing-content">
+                    <h2>EntropyExplainer</h2>
+                    <p>Interactive textbook reader with expandable, linked content.</p>
+                    <label class="file-upload-label" for="file-input">
+                        <span>Load a .entropy.json file</span>
+                        <input type="file" id="file-input" accept=".json,.entropy.json" aria-label="Upload content file">
+                    </label>
+                    <p class="landing-hint">Or drag and drop a file anywhere on this page.</p>
+                </div>
+            </div>
+
+            <!-- Active reading view -->
+            <div class="reader" id="reader" hidden>
+                <article class="node-content" id="node-content">
+                    <header class="node-header">
+                        <div class="node-meta" id="node-meta"></div>
+                        <h2 class="node-title" id="node-title"></h2>
+                        <p class="node-summary" id="node-summary"></p>
+                    </header>
+                    <div class="node-body" id="node-body"></div>
+                    <div class="node-media" id="node-media"></div>
+                </article>
+
+                <!-- Child nodes (expandable) -->
+                <section class="children-section" id="children-section" aria-label="Sub-sections">
+                    <h3 class="children-heading">Explore Further</h3>
+                    <div class="children-list" id="children-list"></div>
+                </section>
+
+                <!-- Connection links -->
+                <section class="connections-section" id="connections-section" aria-label="Related sections">
+                    <h3 class="connections-heading">Connected Topics</h3>
+                    <div class="connections-list" id="connections-list"></div>
+                </section>
+
+                <!-- Navigation -->
+                <nav class="node-nav" id="node-nav" aria-label="Section navigation">
+                    <div class="nav-group-left">
+                        <button id="back-btn" class="nav-btn" aria-label="Go back">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                                <path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            Back
+                        </button>
+                        <button id="home-btn" class="nav-btn" aria-label="Return to start">Home</button>
+                    </div>
+                    <div class="nav-group-right">
+                        <button id="prev-btn" class="nav-btn" aria-label="Previous section" disabled>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                                <path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            Prev
+                        </button>
+                        <button id="next-btn" class="nav-btn" aria-label="Next section" disabled>
+                            Next
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                                <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </nav>
+            </div>
+
+            <!-- Graph view -->
+            <div class="graph-view" id="graph-view" hidden>
+                <canvas id="explainer-graph-canvas"></canvas>
+                <div class="graph-legend-bar">
+                    <span class="gl-item"><span class="gl-dot gl-root"></span>Root</span>
+                    <span class="gl-item"><span class="gl-dot gl-current"></span>Current</span>
+                    <span class="gl-item"><span class="gl-dot gl-visited"></span>Visited</span>
+                    <span class="gl-item"><span class="gl-dot gl-unvisited"></span>Unvisited</span>
+                    <span class="gl-item"><span class="gl-line gl-solid"></span>Child</span>
+                    <span class="gl-item"><span class="gl-line gl-dashed"></span>Connection</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts (modular) -->
+    <script src="js/markdown.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/themes.js"></script>
+    <script src="js/accessibility.js"></script>
+    <script src="js/media.js"></script>
+    <script src="js/graph.js"></script>
+    <script src="js/standalone.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

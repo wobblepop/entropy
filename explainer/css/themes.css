@@ -1,0 +1,100 @@
+/* ============================================
+   THEMES — EntropyExplainer
+   Each theme defines a complete color palette
+   ============================================ */
+
+/* CLEAN (Default Light) */
+.theme-clean {
+    --bg: #fafafa;
+    --bg-surface: #ffffff;
+    --bg-hover: #f0f0f0;
+    --bg-subtle: #f7f7f7;
+    --bg-input: #ffffff;
+    --bg-tag: #e8f0fe;
+    --bg-code: #f4f4f5;
+    --text-primary: #1a1a1a;
+    --text-secondary: #555555;
+    --text-tertiary: #888888;
+    --border: #e5e5e5;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --shadow: rgba(0, 0, 0, 0.06);
+}
+
+/* ACADEMIC (Warm, paper-like) */
+.theme-academic {
+    --bg: #fdf6e3;
+    --bg-surface: #fefbf2;
+    --bg-hover: #f5edda;
+    --bg-subtle: #faf4e4;
+    --bg-input: #fefbf2;
+    --bg-tag: #e8ddc8;
+    --bg-code: #f0e8d4;
+    --text-primary: #3b2e1a;
+    --text-secondary: #5c4a2f;
+    --text-tertiary: #8a7558;
+    --border: #e0d5c0;
+    --accent: #b45309;
+    --accent-light: #fef3c7;
+    --shadow: rgba(59, 46, 26, 0.06);
+}
+
+.theme-academic h1,
+.theme-academic h2,
+.theme-academic h3 {
+    font-family: 'Georgia', 'Palatino Linotype', serif;
+}
+
+/* DARK */
+.theme-dark {
+    --bg: #0f0f0f;
+    --bg-surface: #1a1a1a;
+    --bg-hover: #2a2a2a;
+    --bg-subtle: #1e1e1e;
+    --bg-input: #222222;
+    --bg-tag: #2a2a3a;
+    --bg-code: #252525;
+    --text-primary: #e8e8e8;
+    --text-secondary: #a0a0a0;
+    --text-tertiary: #666666;
+    --border: #333333;
+    --accent: #60a5fa;
+    --accent-light: #1e293b;
+    --shadow: rgba(0, 0, 0, 0.3);
+}
+
+/* HIGH CONTRAST (WCAG AAA) */
+.theme-high-contrast {
+    --bg: #ffffff;
+    --bg-surface: #ffffff;
+    --bg-hover: #e0e0e0;
+    --bg-subtle: #f0f0f0;
+    --bg-input: #ffffff;
+    --bg-tag: #d0d0d0;
+    --bg-code: #e8e8e8;
+    --text-primary: #000000;
+    --text-secondary: #1a1a1a;
+    --text-tertiary: #333333;
+    --border: #000000;
+    --accent: #0000cc;
+    --accent-light: #e0e0ff;
+    --shadow: rgba(0, 0, 0, 0.15);
+}
+
+.theme-high-contrast .child-card {
+    border-width: 2px;
+}
+
+.theme-high-contrast .connection-link {
+    border-width: 2px;
+}
+
+.theme-high-contrast a {
+    text-decoration: underline;
+}
+
+/* Apply background to body */
+body {
+    background: var(--bg);
+    color: var(--text-primary);
+}

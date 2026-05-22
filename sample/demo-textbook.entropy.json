@@ -1,0 +1,164 @@
+{
+  "meta": {
+    "title": "Understanding Supply Chain Risk",
+    "subtitle": "A Multi-Perspective Approach",
+    "author": "Demo Author",
+    "version": "1.0.0",
+    "created": "2026-04-20T00:00:00Z",
+    "modified": "2026-04-20T00:00:00Z",
+    "description": "A sample textbook demonstrating the Entropy content format",
+    "tags": ["supply-chain", "risk", "management"]
+  },
+  "root": "intro",
+  "nodes": {
+    "intro": {
+      "id": "intro",
+      "title": "Introduction",
+      "summary": "An overview of supply chain risk and why it matters in the modern world.",
+      "content": "Supply chain risk encompasses the potential for disruptions, failures, and vulnerabilities across the network of organizations, people, activities, information, and resources involved in moving a product or service from supplier to customer.\n\nThis textbook explores risk from multiple angles — structural, behavioral, and systemic — giving you the tools to identify, assess, and mitigate threats before they cascade.\n\n**Choose a path to begin:**",
+      "children": ["foundations", "types-of-risk", "human-factors"],
+      "connections": [
+        { "to": "case-study-1", "label": "See a real example", "type": "example" }
+      ],
+      "tags": ["overview"],
+      "difficulty": "intro",
+      "estimatedTime": "3 min",
+      "order": 1
+    },
+    "foundations": {
+      "id": "foundations",
+      "title": "Foundations of Supply Chain Management",
+      "summary": "Core concepts and terminology you'll need throughout this textbook.",
+      "content": "A supply chain is not a chain at all — it's a network. Understanding this distinction is the first step toward understanding where risk hides.\n\n### Key Concepts\n\n- **Nodes**: Organizations or facilities in the network\n- **Links**: Relationships and flows between nodes\n- **Tiers**: Layers of suppliers (Tier 1 = direct, Tier 2 = supplier's supplier, etc.)\n- **Visibility**: How far into the network you can see\n\nThe further from your direct operations, the less visibility you typically have — and the more risk accumulates undetected.",
+      "children": ["visibility-problem", "network-mapping"],
+      "connections": [
+        { "to": "types-of-risk", "label": "Types of risk in these structures", "type": "related" }
+      ],
+      "tags": ["fundamentals"],
+      "difficulty": "intro",
+      "estimatedTime": "8 min",
+      "order": 1
+    },
+    "types-of-risk": {
+      "id": "types-of-risk",
+      "title": "Categories of Supply Chain Risk",
+      "summary": "A taxonomy of risks: operational, financial, reputational, strategic, and compliance.",
+      "content": "Risk in supply chains doesn't come in one flavor. A useful taxonomy:\n\n1. **Operational Risk** — disruptions to flow (disasters, capacity failures, quality issues)\n2. **Financial Risk** — currency fluctuation, supplier insolvency, price volatility\n3. **Reputational Risk** — association with unethical practices, recalls, scandals\n4. **Strategic Risk** — dependency on single sources, intellectual property exposure\n5. **Compliance Risk** — regulatory violations, sanctions, environmental law\n\nEach category requires different detection methods and different mitigation strategies.",
+      "children": ["operational-risk-detail", "financial-risk-detail"],
+      "connections": [
+        { "to": "human-factors", "label": "The human element in risk", "type": "related" },
+        { "to": "foundations", "label": "Review foundational concepts", "type": "prerequisite" }
+      ],
+      "tags": ["taxonomy", "risk"],
+      "difficulty": "intermediate",
+      "estimatedTime": "12 min",
+      "order": 2
+    },
+    "human-factors": {
+      "id": "human-factors",
+      "title": "Human Behavior and Deception",
+      "summary": "How cognitive biases, trust, and deliberate deception create hidden vulnerabilities.",
+      "content": "The most sophisticated risk models fail when they ignore the human element. People don't behave rationally, and some behave deceptively.\n\n### Cognitive Biases in Risk Assessment\n\n- **Optimism bias**: Underestimating probability of negative events\n- **Anchoring**: Over-relying on first piece of information received\n- **Status quo bias**: Preferring current suppliers even when evidence suggests switching\n\n### Deliberate Deception\n\nFraud in supply chains is not rare — it's endemic. From counterfeit components to falsified certifications, deception exploits the trust gaps inherent in complex networks.",
+      "children": ["fraud-typology"],
+      "connections": [
+        { "to": "case-study-1", "label": "Real-world fraud case", "type": "example" },
+        { "to": "types-of-risk", "label": "Risk categories affected", "type": "related" }
+      ],
+      "tags": ["behavior", "fraud", "psychology"],
+      "difficulty": "intermediate",
+      "estimatedTime": "15 min",
+      "order": 3
+    },
+    "visibility-problem": {
+      "id": "visibility-problem",
+      "title": "The Visibility Problem",
+      "summary": "Why organizations can't see beyond Tier 1, and what that blindness costs them.",
+      "content": "Most organizations have reasonable visibility into their Tier 1 suppliers. Beyond that? Darkness.\n\nA 2023 study found that only 6% of companies had full visibility into their Tier 3 suppliers. This isn't negligence — it's structural. Each tier multiplies complexity geometrically.\n\n### Why It Matters\n\nThe 2011 Thai floods, the 2021 Suez Canal blockage, semiconductor shortages — all exploited visibility gaps. Companies discovered critical dependencies only after disruption.",
+      "children": [],
+      "connections": [
+        { "to": "network-mapping", "label": "How to improve visibility", "type": "deeper" }
+      ],
+      "tags": ["visibility", "complexity"],
+      "difficulty": "intermediate",
+      "estimatedTime": "7 min",
+      "order": 1
+    },
+    "network-mapping": {
+      "id": "network-mapping",
+      "title": "Network Mapping Techniques",
+      "summary": "Methods for mapping your supply network beyond direct relationships.",
+      "content": "Mapping a supply network is like mapping a cave system — you proceed methodically, document as you go, and accept that complete maps may be impossible.\n\n### Approaches\n\n1. **Survey-based**: Ask suppliers about their suppliers (low cost, low reliability)\n2. **Data-driven**: Use shipping records, customs data, financial flows\n3. **Technology-enabled**: Blockchain traceability, IoT sensors, satellite monitoring\n4. **Hybrid**: Combine methods, triangulate\n\nNo single method is sufficient. The most robust maps layer multiple data sources.",
+      "children": [],
+      "connections": [
+        { "to": "visibility-problem", "label": "The problem this solves", "type": "prerequisite" }
+      ],
+      "tags": ["mapping", "methodology", "tools"],
+      "difficulty": "advanced",
+      "estimatedTime": "20 min",
+      "order": 2
+    },
+    "operational-risk-detail": {
+      "id": "operational-risk-detail",
+      "title": "Operational Risk in Depth",
+      "summary": "Disruptions, quality failures, and capacity constraints — the risks that stop the flow.",
+      "content": "Operational risk is the most tangible category — when it materializes, product stops moving.\n\n### Sources\n\n- Natural disasters (earthquakes, floods, pandemics)\n- Infrastructure failures (port closures, power outages)\n- Quality escapes (defective components reaching production)\n- Capacity mismatches (demand spikes, supplier constraints)\n\n### Mitigation Strategies\n\n- Dual/multi-sourcing for critical components\n- Safety stock buffers (cost vs. risk tradeoff)\n- Geographic diversification\n- Supplier financial health monitoring",
+      "children": [],
+      "connections": [
+        { "to": "case-study-1", "label": "Operational risk in action", "type": "example" }
+      ],
+      "tags": ["operational", "disruption", "mitigation"],
+      "difficulty": "intermediate",
+      "estimatedTime": "10 min",
+      "order": 1
+    },
+    "financial-risk-detail": {
+      "id": "financial-risk-detail",
+      "title": "Financial Risk in Supply Chains",
+      "summary": "When money flows go wrong: insolvency, currency, and price volatility.",
+      "content": "Financial risk in supply chains often arrives without warning. A key supplier's bankruptcy can halt production overnight.\n\n### Warning Signs\n\n- Delayed payments to their own suppliers\n- Sudden changes in payment terms requested\n- Loss of key customers\n- Leadership turnover\n- Credit rating downgrades\n\n### Protective Measures\n\n- Regular financial health assessments\n- Diversified supplier base\n- Contractual protections (step-in rights, escrow)\n- Supply chain finance programs to support supplier liquidity",
+      "children": [],
+      "connections": [
+        { "to": "types-of-risk", "label": "Back to risk overview", "type": "related" }
+      ],
+      "tags": ["financial", "insolvency", "monitoring"],
+      "difficulty": "intermediate",
+      "estimatedTime": "8 min",
+      "order": 2
+    },
+    "fraud-typology": {
+      "id": "fraud-typology",
+      "title": "A Typology of Supply Chain Fraud",
+      "summary": "Categorizing deception: counterfeiting, diversion, document fraud, and more.",
+      "content": "Supply chain fraud takes many forms, each exploiting different trust mechanisms:\n\n### Categories\n\n1. **Product fraud**: Counterfeit goods, adulteration, substitution\n2. **Document fraud**: Falsified certificates, forged inspections, fake origins\n3. **Relationship fraud**: Shell companies, kickbacks, undisclosed conflicts\n4. **Process fraud**: Bypassed quality checks, falsified test results\n5. **Financial fraud**: Invoice manipulation, phantom shipments\n\n### Detection Challenges\n\nFraud is designed to be invisible. Unlike accidental failures, fraudsters actively adapt to detection methods. This creates an arms race between oversight and evasion.",
+      "children": [],
+      "connections": [
+        { "to": "human-factors", "label": "Psychology of fraud", "type": "prerequisite" },
+        { "to": "case-study-1", "label": "Fraud in practice", "type": "example" }
+      ],
+      "tags": ["fraud", "typology", "detection"],
+      "difficulty": "advanced",
+      "estimatedTime": "15 min",
+      "order": 1
+    },
+    "case-study-1": {
+      "id": "case-study-1",
+      "title": "Case Study: The Counterfeit Components Crisis",
+      "summary": "How fake electronic parts infiltrated defense supply chains and what it revealed.",
+      "content": "In 2011, a U.S. Senate investigation revealed that over one million counterfeit electronic parts had entered the defense supply chain. The parts — many sourced from e-waste recycling operations in China — were relabeled and sold as new through layers of brokers.\n\n### What Went Wrong\n\n- Procurement prioritized cost over provenance\n- Multi-tier supply chains obscured origins\n- Testing was insufficient to detect sophisticated counterfeits\n- Trust was given based on paperwork, not verification\n\n### Lessons\n\n1. Document-based trust is exploitable\n2. Cost pressure creates fraud incentives\n3. Visibility gaps are fraud opportunities\n4. Detection requires investment proportional to risk\n\n### Discussion Questions\n\n- At which tier did visibility fail?\n- What cognitive biases contributed to the failure to detect?\n- How would you redesign the procurement process?",
+      "children": [],
+      "connections": [
+        { "to": "fraud-typology", "label": "Fraud categories involved", "type": "related" },
+        { "to": "visibility-problem", "label": "Visibility failure", "type": "related" },
+        { "to": "human-factors", "label": "Human factors at play", "type": "related" }
+      ],
+      "tags": ["case-study", "counterfeit", "defense", "electronics"],
+      "difficulty": "intermediate",
+      "estimatedTime": "12 min",
+      "order": 1
+    }
+  },
+  "themes": {
+    "default": "clean",
+    "available": ["clean", "academic", "dark", "high-contrast"]
+  }
+}
