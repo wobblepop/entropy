@@ -11,7 +11,7 @@
 
 :root {
     --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    --font-heading: 'Georgia', 'Times New Roman', serif;
+    --font-heading: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
     --font-size: 17px;
     --line-height: 1.7;
@@ -326,6 +326,72 @@ img, video, audio {
     max-width: var(--content-width);
 }
 
+/* Continuous "read all" view */
+.reader-all {
+    width: 100%;
+    max-width: var(--content-width);
+}
+.reader-all[hidden] { display: none; }
+
+.full-node {
+    padding: 26px 0 34px;
+    border-bottom: 1px solid var(--border);
+    scroll-margin-top: calc(var(--header-height) + 16px);
+}
+.full-node:first-child { padding-top: 8px; }
+.full-node:last-child { border-bottom: none; }
+
+.full-node-title {
+    font-size: 2rem;
+    margin: 4px 0 8px;
+    line-height: 1.2;
+    color: var(--text-primary);
+}
+.full-node.depth-1 .full-node-title { font-size: 1.6rem; }
+.full-node.depth-2 .full-node-title { font-size: 1.35rem; }
+.full-node.depth-3 .full-node-title,
+.full-node.depth-4 .full-node-title,
+.full-node.depth-5 .full-node-title { font-size: 1.2rem; }
+
+.full-node .node-body { color: var(--text-primary); line-height: var(--line-height); }
+
+.full-xref-wrap {
+    margin-top: 22px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.full-xref-group { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.full-xref-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-tertiary);
+    margin-right: 2px;
+}
+.full-xref {
+    font-size: 0.85rem;
+    color: var(--accent);
+    text-decoration: none;
+    padding: 3px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+.full-xref:hover { background: var(--accent-light); }
+
+/* Read-all / focus toggle button in the header */
+.readmode-btn {
+    width: auto;
+    gap: 6px;
+    padding: 0 10px;
+}
+.readmode-btn .readmode-label { font-size: 0.8rem; }
+.readmode-btn.active { color: var(--accent); }
+
 /* Node content */
 .node-header {
     margin-bottom: 32px;
@@ -360,6 +426,14 @@ img, video, audio {
 .node-body {
     color: var(--text-primary);
     line-height: var(--line-height);
+}
+
+.node-body img,
+.md-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--radius-sm);
+    margin: 10px 0;
 }
 
 .node-body h3 {

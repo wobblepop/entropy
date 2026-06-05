@@ -42,9 +42,10 @@
             <button class="header-btn" id="btn-save" title="Save file (Ctrl+S)">Save</button>
             <span class="header-sep"></span>
             <button class="header-btn" id="btn-add-node" title="Add node (Ctrl+Shift+N)">+ Node</button>
-            <button class="header-btn" id="btn-preview" title="Preview in new tab (Ctrl+P)">Preview</button>
+            <button class="header-btn" id="btn-preview" title="Open your book in the full Viewer, new tab (Ctrl+P)">View</button>
         </div>
         <div class="header-right">
+            <span class="header-word-count" id="word-count" title="Words in this section · whole book"></span>
             <button class="header-btn" id="btn-shortcuts" title="Keyboard shortcuts (?)">?</button>
         </div>
     </header>
@@ -110,6 +111,7 @@
                     <div class="editor-toolbar">
                         <button class="toolbar-btn" data-action="bold" title="Bold (Ctrl+B)"><strong>B</strong></button>
                         <button class="toolbar-btn" data-action="italic" title="Italic (Ctrl+I)"><em>I</em></button>
+                        <button class="toolbar-btn" data-action="strikethrough" title="Strikethrough (Ctrl+Shift+S)"><s>S</s></button>
                         <span class="toolbar-sep"></span>
                         <button class="toolbar-btn" data-action="h2" title="Heading (Ctrl+2)">H2</button>
                         <button class="toolbar-btn" data-action="h3" title="Sub-heading (Ctrl+3)">H3</button>
@@ -133,7 +135,12 @@
                         <button class="inline-cancel" id="link-cancel">Cancel</button>
                     </div>
                     <div id="edit-content" class="editor-content" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Node content" data-placeholder="Start writing your content here..."></div>
-                    <div class="editor-word-count" id="word-count"></div>
+                </div>
+
+                <!-- Private author notes (never shown to readers or in the PDF) -->
+                <div class="editor-notes">
+                    <label for="edit-notes">Notes <span class="notes-hint">private — not shown to readers or PDF</span></label>
+                    <textarea id="edit-notes" class="editor-notes-input" rows="2" placeholder="Editing notes to yourself — to-dos, fact-checks, reminders…" aria-label="Private author notes"></textarea>
                 </div>
 
                 <!-- Tags -->
@@ -323,6 +330,7 @@
                     <h3>Formatting</h3>
                     <div class="shortcut"><kbd>Ctrl+B</kbd> Bold</div>
                     <div class="shortcut"><kbd>Ctrl+I</kbd> Italic</div>
+                    <div class="shortcut"><kbd>Ctrl+Shift+S</kbd> Strikethrough</div>
                     <div class="shortcut"><kbd>Ctrl+2</kbd> Heading</div>
                     <div class="shortcut"><kbd>Ctrl+3</kbd> Sub-heading</div>
                     <div class="shortcut"><kbd>Ctrl+U</kbd> Bullet list</div>
@@ -364,6 +372,7 @@
     <script src="js/state.js"></script>
     <script src="js/tree.js"></script>
     <script src="js/editor.js"></script>
+    <script src="js/viewer-template.js"></script>
     <script src="js/palette.js"></script>
     <script src="js/graph.js"></script>
     <script src="js/app.js"></script>

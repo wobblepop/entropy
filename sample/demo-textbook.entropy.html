@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Understanding Supply Chain Risk</title>
+<style>
+:root{
+  --bg:#ffffff; --text:#1a1a1a; --text-2:#555555; --text-3:#888888;
+  --border:#e5e5e5; --accent:#2563eb; --accent-light:#eff6ff;
+  --code-bg:#f4f4f5; --pre-bg:#f7f7f8;
+  --sans:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --serif:Georgia,"Iowan Old Style","Palatino Linotype","Times New Roman",serif;
+  --mono:"Consolas","SFMono-Regular","Liberation Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#16181c; --text:#e7e7e7; --text-2:#b2b2b2; --text-3:#8a8a8a;
+    --border:#2c2f36; --accent:#6ea8fe; --accent-light:#1b2433;
+    --code-bg:#22252b; --pre-bg:#1b1e23;
+  }
+}
+*{box-sizing:border-box;}
+/* Anchor rem to the body reading size so the whole type scale stays coherent.
+   (rem is relative to <html>; leaving it at the 16px default made sub-headings
+   smaller than body text.) Mobile shrinks this one value to scale everything. */
+html{font-size:18px; scroll-behavior:smooth;}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:var(--serif); font-size:1rem; line-height:1.7; font-weight:400;
+  -webkit-text-size-adjust:100%;
+}
+.doc{max-width:720px; margin:0 auto; padding:40px 22px 96px;}
+p{margin:0 0 0.9em;}
+a{color:var(--accent); text-decoration:none;}
+a:hover{text-decoration:underline;}
+
+/* ---- book header ---- */
+.book-header{margin:0;}
+.book-title{font-family:var(--sans); font-weight:600; font-size:2.3rem; line-height:1.15; margin:0; color:var(--text);}
+.subtitle{font-style:italic; font-size:1.25rem; color:var(--text-2); margin:.5em 0 0;}
+.byline{font-family:var(--sans); font-size:.8rem; color:var(--text-3); margin:.9em 0 0;}
+.book-desc{font-size:1rem; color:var(--text-2); margin:1em 0 0; line-height:1.6;}
+.header-rule{border:none; border-top:2px solid var(--accent); width:56px; margin:24px 0 8px;}
+
+/* ---- table of contents (collapsible, no JS) ---- */
+.toc{margin:22px 0 8px; border:0.5px solid var(--border); border-radius:10px; background:var(--pre-bg);}
+.toc>summary{
+  font-family:var(--sans); font-weight:500; font-size:.95rem; cursor:pointer;
+  padding:12px 16px; list-style:none; color:var(--text);
+}
+.toc>summary::-webkit-details-marker{display:none;}
+.toc>summary::before{content:"\2630  "; color:var(--accent);}
+.toc ul{list-style:none; margin:0; padding:0 16px 14px;}
+.toc li{font-family:var(--sans); font-size:.9rem; margin:5px 0; line-height:1.4;}
+.toc li a{color:var(--accent);}
+.toc .d1{padding-left:16px;} .toc .d2{padding-left:32px;}
+.toc .d3{padding-left:48px;} .toc .d4{padding-left:64px;} .toc .d5{padding-left:80px;}
+
+/* ---- sections ---- */
+.node{scroll-margin-top:16px; padding-top:30px; margin-top:30px; border-top:0.5px solid var(--border);}
+.node:first-of-type{border-top:none; margin-top:10px; padding-top:10px;}
+.node-title{font-family:var(--sans); font-weight:600; font-size:1.8rem; line-height:1.2; margin:0 0 6px; color:var(--text);}
+.node.depth-1 .node-title{font-size:1.55rem;}
+.node.depth-2 .node-title{font-size:1.35rem;}
+.node.depth-3 .node-title,.node.depth-4 .node-title,.node.depth-5 .node-title{font-size:1.18rem;}
+.node-summary{font-style:italic; font-size:1.05rem; color:var(--text-2); margin:6px 0 0; line-height:1.55;}
+.title-rule{border:none; border-top:2px solid var(--accent); width:48px; margin:14px 0 16px;}
+
+/* ---- meta bar ---- */
+.meta-bar{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:0 0 4px;}
+.badge{display:inline-block; font-family:var(--sans); font-size:.7rem; font-weight:500; padding:2px 9px; border-radius:11px; border:0.5px solid; line-height:1.6;}
+.meta-time,.meta-tag{font-family:var(--sans); font-size:.72rem; color:var(--text-3);}
+.meta-tag::before{content:"#"; opacity:.5;}
+
+/* ---- content typography ---- */
+.node-body h2{font-family:var(--sans); font-weight:600; font-size:1.3rem; line-height:1.3; margin:1.4em 0 .5em;}
+.node-body h3{font-family:var(--sans); font-weight:600; font-size:1.12rem; line-height:1.3; margin:1.2em 0 .45em;}
+.node-body h4,.node-body h5,.node-body h6{font-family:var(--sans); font-weight:600; font-size:1rem; margin:1.1em 0 .4em; color:var(--text-2);}
+strong{font-weight:600;} em{font-style:italic;} del{color:var(--text-3);}
+code{font-family:var(--mono); font-size:.85em; background:var(--code-bg); padding:1px 5px; border-radius:4px;}
+pre{background:var(--pre-bg); border:0.5px solid var(--border); border-radius:8px; padding:14px 16px; overflow:auto; margin:0 0 1em;}
+pre code{background:none; padding:0; font-size:.82rem; line-height:1.5;}
+blockquote{margin:1em 0; padding:.2em 0 .2em 16px; border-left:3px solid var(--accent); color:var(--text-2); font-style:italic;}
+blockquote p{margin:0 0 .4em;}
+ul,ol{margin:0 0 .9em; padding-left:1.5em;}
+li{margin:.25em 0;}
+hr{border:none; border-top:0.5px solid var(--border); margin:1.6em 0;}
+table{width:100%; border-collapse:collapse; margin:1em 0; font-size:.9rem; display:block; overflow-x:auto;}
+th,td{border:0.5px solid var(--border); padding:7px 11px; text-align:left; vertical-align:top;}
+thead th{background:var(--pre-bg); font-family:var(--sans); font-weight:600;}
+
+/* ---- media / images ---- */
+img{display:block; max-width:100%; height:auto; margin:.6em auto; border-radius:8px;}
+figure{margin:1.3em 0; text-align:center;}
+figcaption{font-family:var(--sans); font-size:.78rem; font-style:italic; color:var(--text-3); margin-top:6px;}
+.media-error{font-family:var(--sans); font-size:.8rem; color:#c0392b;}
+.media-link{display:block; font-family:var(--sans); font-size:.85rem; color:var(--text-2); border:0.5px solid var(--border); border-radius:8px; padding:10px 12px; margin:1em 0;}
+.media-link .mtype{color:var(--accent); font-weight:500; margin-right:6px;}
+
+/* ---- :::example blocks ---- */
+.example-block{background:var(--accent-light); border-left:3px solid var(--accent); padding:10px 16px; margin:1em 0; border-radius:0 8px 8px 0;}
+.example-block .example-label{display:block; font-family:var(--sans); font-size:.7rem; font-weight:600; color:var(--accent); margin-bottom:4px;}
+.example-block p:last-child{margin-bottom:0;}
+
+/* ---- relations: See also / In this section ---- */
+.relations{margin-top:22px; padding-top:14px; border-top:0.5px solid var(--border);}
+.relations h4{font-family:var(--sans); font-size:.78rem; font-weight:600; color:var(--text-2); margin:0 0 8px;}
+.relations + .relations{margin-top:14px; border-top:none; padding-top:0;}
+.rel-item{display:flex; align-items:baseline; gap:8px; margin:5px 0; font-family:var(--sans); font-size:.88rem;}
+.rel-type{flex:none; font-size:.65rem; font-weight:500; padding:1px 7px; border-radius:9px; border:0.5px solid; line-height:1.6;}
+.rel-link{color:var(--accent);}
+.rel-bullet{color:var(--text-3); flex:none;}
+
+/* ---- footer + back-to-top ---- */
+.book-footer{margin-top:48px; padding-top:16px; border-top:0.5px solid var(--border); font-family:var(--sans); font-size:.75rem; color:var(--text-3); text-align:center; line-height:1.6;}
+.to-top{position:fixed; right:16px; bottom:16px; font-family:var(--sans); font-size:.8rem; background:var(--accent); color:#fff; padding:8px 13px; border-radius:20px; text-decoration:none; opacity:.85; box-shadow:0 2px 8px rgba(0,0,0,.2);}
+.to-top:hover{opacity:1; text-decoration:none;}
+
+/* On phones, shrink the single root size -> the entire rem scale shrinks
+   proportionally, keeping the heading/body hierarchy intact. */
+@media (max-width:480px){
+  html{font-size:16.5px;}
+  .doc{padding:28px 16px 88px;}
+}
+</style>
+</head>
+<body>
+<main class="doc" id="top">
+<header class="book-header">
+<h1 class="book-title">Understanding Supply Chain Risk</h1>
+<p class="subtitle">A Multi-Perspective Approach</p>
+<p class="byline">Demo Author  &middot;  v1.0.0  &middot;  2026-04-20</p>
+<p class="book-desc">A sample textbook demonstrating the Entropy content format</p>
+<hr class="header-rule">
+</header>
+<details class="toc" open>
+<summary>Contents</summary>
+<ul>
+<li class="d0"><a href="#node-intro">Introduction</a></li>
+<li class="d1"><a href="#node-foundations">Foundations of Supply Chain Management</a></li>
+<li class="d2"><a href="#node-visibility-problem">The Visibility Problem</a></li>
+<li class="d2"><a href="#node-network-mapping">Network Mapping Techniques</a></li>
+<li class="d1"><a href="#node-types-of-risk">Categories of Supply Chain Risk</a></li>
+<li class="d2"><a href="#node-operational-risk-detail">Operational Risk in Depth</a></li>
+<li class="d2"><a href="#node-financial-risk-detail">Financial Risk in Supply Chains</a></li>
+<li class="d1"><a href="#node-human-factors">Human Behavior and Deception</a></li>
+<li class="d2"><a href="#node-fraud-typology">A Typology of Supply Chain Fraud</a></li>
+<li class="d0"><a href="#node-case-study-1">Case Study: The Counterfeit Components Crisis</a></li>
+</ul>
+</details>
+<article>
+<section class="node depth-0" id="node-intro">
+<h2 class="node-title">Introduction</h2>
+<div class="meta-bar"><span class="badge" style="background:#EAF3DE;border-color:#639922;color:#27500A;">Intro</span><span class="meta-time">3 min</span><span class="meta-tag">overview</span></div>
+<p class="node-summary">An overview of supply chain risk and why it matters in the modern world.</p>
+<hr class="title-rule">
+<div class="node-body"><p>Supply chain risk encompasses the potential for disruptions, failures, and vulnerabilities across the network of organizations, people, activities, information, and resources involved in moving a product or service from supplier to customer.</p><p>This textbook explores risk from multiple angles — structural, behavioral, and systemic — giving you the tools to identify, assess, and mitigate threats before they cascade.</p><p><strong>Choose a path to begin:</strong></p></div>
+
+<div class="relations"><h4>See also</h4><div class="rel-item"><span class="rel-type" style="background:#E1F5EE;border-color:#0F6E56;color:#04342C;">Example</span><a class="rel-link" href="#node-case-study-1">See a real example</a></div></div><div class="relations"><h4>In this section</h4><div class="rel-item"><span class="rel-bullet">&bull;</span><a class="rel-link" href="#node-foundations">Foundations of Supply Chain Management</a></div><div class="rel-item"><span class="rel-bullet">&bull;</span><a class="rel-link" href="#node-types-of-risk">Categories of Supply Chain Risk</a></div><div class="rel-item"><span class="rel-bullet">&bull;</span><a class="rel-link" href="#node-human-factors">Human Behavior and Deception</a></div></div>
+</section>
+<section class="node depth-1" id="node-foundations">
+<h2 class="node-title">Foundations of Supply Chain Management</h2>
+<div class="meta-bar"><span class="badge" style="background:#EAF3DE;border-color:#639922;color:#27500A;">Intro</span><span class="meta-time">8 min</span><span class="meta-tag">fundamentals</span></div>
+<p class="node-summary">Core concepts and terminology you&#x27;ll need throughout this textbook.</p>
+<hr class="title-rule">
+<div class="node-body"><p>A supply chain is not a chain at all — it&#x27;s a network. Understanding this distinction is the first step toward understanding where risk hides.</p><h4>Key Concepts</h4><ul><li><strong>Nodes</strong>: Organizations or facilities in the network</li><li><strong>Links</strong>: Relationships and flows between nodes</li><li><strong>Tiers</strong>: Layers of suppliers (Tier 1 = direct, Tier 2 = supplier&#x27;s supplier, etc.)</li><li><strong>Visibility</strong>: How far into the network you can see</li></ul><p>The further from your direct operations, the less visibility you typically have — and the more risk accumulates undetected.</p></div>
+
+<div class="relations"><h4>See also</h4><div class="rel-item"><span class="rel-type" style="background:#E6F1FB;border-color:#185FA5;color:#042C53;">Related</span><a class="rel-link" href="#node-types-of-risk">Types of risk in these structures</a></div></div><div class="relations"><h4>In this section</h4><div class="rel-item"><span class="rel-bullet">&bull;</span><a class="rel-link" href="#node-visibility-problem">The Visibility Problem</a></div><div class="rel-item"><span class="rel-bullet">&bull;</span><a class="rel-link" href="#node-network-mapping">Network Mapping Techniques</a></div></div>
+</section>
+<section class="node depth-2" id="node-visibility-problem">
+<h2 class="node-title">The Visibility Problem</h2>
+<div class="meta-bar"><span class="badge" style="background:#FAEEDA;border-color:#BA7517;color:#633806;">Intermediate</span><span class="meta-time">7 min</span><span class="meta-tag">visibility</span><span class="meta-tag">complexity</span></div>
+<p class="node-summary">Why organizations can&#x27;t see beyond Tier 1, and what that blindness costs them.</p>
+<hr class="title-rule">
+<div class="node-body"><p>Most organizations have reasonable visibility into their Tier 1 suppliers. Beyond that? Darkness.</p><p>A 2023 study found that only 6% of companies had full visibility into their Tier 3 suppliers. This isn&#x27;t negligence — it&#x27;s structural. Each tier multiplies complexity geometrically.</p><h4>Why It Matters</h4><p>The 2011 Thai floods, the 2021 Suez Canal blockage, semiconductor shortages — all exploited visibility gaps. Companies discovered critical dependencies only after disruption.</p></div>
+
+<div class="relations"><h4>See also</h4><div class="rel-item"><span class="rel-type" style="background:#EEEDFE;border-color:#534AB7;color:#26215C;">Deeper</span><a class="rel-link" href="#node-network-mapping">How to improve visibility</a></div></div>
+</section>
+<section class="node depth-2" id="node-network-mapping">
+<h2 class="node-title">Network Mapping Techniques</h2>
+<div class="meta-bar"><span class="badge" style="background:#FAECE7;border-color:#D85A30;color:#712B13;">Advanced</span><span class="meta-time">20 min</span><span class="meta-tag">mapping</span><span class="meta-tag">methodology</span><span class="meta-tag">tools</span></div>
+<p class="node-summary">Methods for mapping your supply network beyond direct relationships.</p>
+<hr class="title-rule">
+<div class="node-body"><p>Mapping a supply network is like mapping a cave system — you proceed methodically, document as you go, and accept that complete maps may be impossible.</p><h4>Approaches</h4><ol><li><strong>Survey-based</strong>: Ask suppliers about their suppliers (low cost, low reliability)</li><li><strong>Data-driven</strong>: Use shipping records, customs data, financial flows</li><li><strong>Technology-enabled</strong>: Blockchain traceability, IoT sensors, satellite monitoring</li><li><strong>Hybrid</strong>: Combine methods, triangulate</li></ol><p>No single method is sufficient. The most robust maps layer multiple data sources.</p></div>
+
+<div class="relations"><h4>See also</h4><div class="rel-item"><span class="rel-type" style="background:#FAEEDA;border-color:#BA7517;color:#633806;">Prerequisite</span><a class="rel-link" href="#node-visibility-problem">The problem this solves</a></div></div>
+</section>
+<section class="node depth-1" id="node-types-of-risk">
+<h2 class="node-title">Categories of Supply Chain Risk</h2>
+<div class="meta-bar"><span class="badge" style="background:#FAEEDA;border-color:#BA7517;color:#633806;">Intermediate</span><span class="meta-time">12 min</span><span class="meta-tag">taxonomy</span><span class="meta-tag">risk</span></div>
+<p class="node-summary">A taxonomy of risks: operational, financial, reputational, strategic, and compliance.</p>
+<hr class="title-rule">
+<div class="node-body"><p>Risk in supply chains doesn&#x27;t come in one flavor. A useful taxonomy:</p><ol><li><strong>Operational Risk</strong> — disruptions to flow (disasters, capacity failures, quality issues)</li><li><strong>Financial Risk</strong> — currency fluctuation, supplier insolvency, price volatility</li><li><strong>Reputational Risk</strong> — association with unethical practices, recalls, scandals</li><li><strong>Strategic Risk</strong> — dependency on single sources, intellectual property exposure</li><li><strong>Compliance Risk</strong> — regulatory violations, sanctions, environmental law</li></ol><p>Each category requires different detection methods and different mitigation strategies.</p></div>
+
+<div class="relations"><h4>See also</h4><div class="rel-item"><span class="rel-type" style="background:#E6F1FB;border-color:#185FA5;color:#042C53;">Related</span><a class="rel-link" href="#node-human-factors">The human element in risk</a></div><div class="rel-item"><span class="rel-type" style="background:#FAEEDA;border-color:#BA7517;color:#633806;">Prerequisite</span><a class="rel-link" href="#node-foundations">Review foundational concepts</a></div></div><div class="relations"><h4>In this section</h4><div class="rel-item"><span class="rel-bullet">&bull;</span><a class="rel-link" href="#node-operational-risk-detail">Operational Risk in Depth</a></div><div class="rel-item"><span class="rel-bullet">&bull;</span><a class="rel-link" href="#node-financial-risk-detail">Financial Risk in Supply Chains</a></div></div>
+</section>
+<section class="node depth-2" id="node-operational-risk-detail">
+<h2 class="node-title">Operational Risk in Depth</h2>
+<div class="meta-bar"><span class="badge" style="background:#FAEEDA;border-color:#BA7517;color:#633806;">Intermediate</span><span class="meta-time">10 min</span><span class="meta-tag">operational</span><span class="meta-tag">disruption</span><span class="meta-tag">mitigation</span></div>
+<p class="node-summary">Disruptions, quality failures, and capacity constraints — the risks that stop the flow.</p>
+<hr class="title-rule">
+<div class="node-body"><p>Operational risk is the most tangible category — when it materializes, product stops moving.</p><h4>Sources</h4><ul><li>Natural disasters (earthquakes, floods, pandemics)</li><li>Infrastructure failures (port closures, power outages)</li><li>Quality escapes (defective components reaching production)</li><li>Capacity mismatches (demand spikes, supplier constraints)</li></ul><h4>Mitigation Strategies</h4><ul><li>Dual/multi-sourcing for critical components</li><li>Safety stock buffers (cost vs. risk tradeoff)</li><li>Geographic diversification</li><li>Supplier financial health monitoring</li></ul></div>
+
+<div class="relations"><h4>See also</h4><div class="rel-item"><span class="rel-type" style="background:#E1F5EE;border-color:#0F6E56;color:#04342C;">Example</span><a class="rel-link" href="#node-case-study-1">Operational risk in action</a></div></div>
+</section>
+<section class="node depth-2" id="node-financial-risk-detail">
+<h2 class="node-title">Financial Risk in Supply Chains</h2>
+<div class="meta-bar"><span class="badge" style="background:#FAEEDA;border-color:#BA7517;color:#633806;">Intermediate</span><span class="meta-time">8 min</span><span class="meta-tag">financial</span><span class="meta-tag">insolvency</span><span class="meta-tag">monitoring</span></div>
+<p class="node-summary">When money flows go wrong: insolvency, currency, and price volatility.</p>
+<hr class="title-rule">
+<div class="node-body"><p>Financial risk in supply chains often arrives without warning. A key supplier&#x27;s bankruptcy can halt production overnight.</p><h4>Warning Signs</h4><ul><li>Delayed payments to their own suppliers</li><li>Sudden changes in payment terms requested</li><li>Loss of key customers</li><li>Leadership turnover</li><li>Credit rating downgrades</li></ul><h4>Protective Measures</h4><ul><li>Regular financial health assessments</li><li>Diversified supplier base</li><li>Contractual protections (step-in rights, escrow)</li><li>Supply chain finance programs to support supplier liquidity</li></ul></div>
+
+<div class="relations"><h4>See also</h4><div class="rel-item"><span class="rel-type" style="background:#E6F1FB;border-color:#185FA5;color:#042C53;">Related</span><a class="rel-link" href="#node-types-of-risk">Back to risk overview</a></div></div>
+</section>
+<section class="node depth-1" id="node-human-factors">
+<h2 class="node-title">Human Behavior and Deception</h2>
+<div class="meta-bar"><span class="badge" style="background:#FAEEDA;border-color:#BA7517;color:#633806;">Intermediate</span><span class="meta-time">15 min</span><span class="meta-tag">behavior</span><span class="meta-tag">fraud</span><span class="meta-tag">psychology</span></div>
+<p class="node-summary">How cognitive biases, trust, and deliberate deception create hidden vulnerabilities.</p>
+<hr class="title-rule">
+<div class="node-body"><p>The most sophisticated risk models fail when they ignore the human element. People don&#x27;t behave rationally, and some behave deceptively.</p><h4>Cognitive Biases in Risk Assessment</h4><ul><li><strong>Optimism bias</strong>: Underestimating probability of negative events</li><li><strong>Anchoring</strong>: Over-relying on first piece of information received</li><li><strong>Status quo bias</strong>: Preferring current suppliers even when evidence suggests switching</li></ul><h4>Deliberate Deception</h4><p>Fraud in supply chains is not rare — it&#x27;s endemic. From counterfeit components to falsified certifications, deception exploits the trust gaps inherent in complex networks.</p></div>
+
+<div class="relations"><h4>See also</h4><div class="rel-item"><span class="rel-type" style="background:#E1F5EE;border-color:#0F6E56;color:#04342C;">Example</span><a class="rel-link" href="#node-case-study-1">Real-world fraud case</a></div><div class="rel-item"><span class="rel-type" style="background:#E6F1FB;border-color:#185FA5;color:#042C53;">Related</span><a class="rel-link" href="#node-types-of-risk">Risk categories affected</a></div></div><div class="relations"><h4>In this section</h4><div class="rel-item"><span class="rel-bullet">&bull;</span><a class="rel-link" href="#node-fraud-typology">A Typology of Supply Chain Fraud</a></div></div>
+</section>
+<section class="node depth-2" id="node-fraud-typology">
+<h2 class="node-title">A Typology of Supply Chain Fraud</h2>
+<div class="meta-bar"><span class="badge" style="background:#FAECE7;border-color:#D85A30;color:#712B13;">Advanced</span><span class="meta-time">15 min</span><span class="meta-tag">fraud</span><span class="meta-tag">typology</span><span class="meta-tag">detection</span></div>
+<p class="node-summary">Categorizing deception: counterfeiting, diversion, document fraud, and more.</p>
+<hr class="title-rule">
+<div class="node-body"><p>Supply chain fraud takes many forms, each exploiting different trust mechanisms:</p><h4>Categories</h4><ol><li><strong>Product fraud</strong>: Counterfeit goods, adulteration, substitution</li><li><strong>Document fraud</strong>: Falsified certificates, forged inspections, fake origins</li><li><strong>Relationship fraud</strong>: Shell companies, kickbacks, undisclosed conflicts</li><li><strong>Process fraud</strong>: Bypassed quality checks, falsified test results</li><li><strong>Financial fraud</strong>: Invoice manipulation, phantom shipments</li></ol><h4>Detection Challenges</h4><p>Fraud is designed to be invisible. Unlike accidental failures, fraudsters actively adapt to detection methods. This creates an arms race between oversight and evasion.</p></div>
+
+<div class="relations"><h4>See also</h4><div class="rel-item"><span class="rel-type" style="background:#FAEEDA;border-color:#BA7517;color:#633806;">Prerequisite</span><a class="rel-link" href="#node-human-factors">Psychology of fraud</a></div><div class="rel-item"><span class="rel-type" style="background:#E1F5EE;border-color:#0F6E56;color:#04342C;">Example</span><a class="rel-link" href="#node-case-study-1">Fraud in practice</a></div></div>
+</section>
+<section class="node depth-0" id="node-case-study-1">
+<h2 class="node-title">Case Study: The Counterfeit Components Crisis</h2>
+<div class="meta-bar"><span class="badge" style="background:#FAEEDA;border-color:#BA7517;color:#633806;">Intermediate</span><span class="meta-time">12 min</span><span class="meta-tag">case-study</span><span class="meta-tag">counterfeit</span><span class="meta-tag">defense</span><span class="meta-tag">electronics</span></div>
+<p class="node-summary">How fake electronic parts infiltrated defense supply chains and what it revealed.</p>
+<hr class="title-rule">
+<div class="node-body"><p>In 2011, a U.S. Senate investigation revealed that over one million counterfeit electronic parts had entered the defense supply chain. The parts — many sourced from e-waste recycling operations in China — were relabeled and sold as new through layers of brokers.</p><h4>What Went Wrong</h4><ul><li>Procurement prioritized cost over provenance</li><li>Multi-tier supply chains obscured origins</li><li>Testing was insufficient to detect sophisticated counterfeits</li><li>Trust was given based on paperwork, not verification</li></ul><h4>Lessons</h4><ol><li>Document-based trust is exploitable</li><li>Cost pressure creates fraud incentives</li><li>Visibility gaps are fraud opportunities</li><li>Detection requires investment proportional to risk</li></ol><h4>Discussion Questions</h4><ul><li>At which tier did visibility fail?</li><li>What cognitive biases contributed to the failure to detect?</li><li>How would you redesign the procurement process?</li></ul></div>
+
+<div class="relations"><h4>See also</h4><div class="rel-item"><span class="rel-type" style="background:#E6F1FB;border-color:#185FA5;color:#042C53;">Related</span><a class="rel-link" href="#node-fraud-typology">Fraud categories involved</a></div><div class="rel-item"><span class="rel-type" style="background:#E6F1FB;border-color:#185FA5;color:#042C53;">Related</span><a class="rel-link" href="#node-visibility-problem">Visibility failure</a></div><div class="rel-item"><span class="rel-type" style="background:#E6F1FB;border-color:#185FA5;color:#042C53;">Related</span><a class="rel-link" href="#node-human-factors">Human factors at play</a></div></div>
+</section>
+</article>
+<footer class="book-footer">Understanding Supply Chain Risk  &middot;  10 sections  &middot;  generated from demo-textbook.entropy.json</footer>
+</main>
+<a class="to-top" href="#top" aria-label="Back to top">&uarr; Top</a>
+</body>
+</html>

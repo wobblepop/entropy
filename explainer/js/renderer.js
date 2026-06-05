@@ -15,6 +15,9 @@ const Renderer = (() => {
     }
 
     function renderNode(nodeId) {
+        // In continuous read-all mode the single-node view is hidden and the
+        // ReadingMode module handles scrolling — skip rendering (and its scrollTo).
+        if (typeof ReadingMode !== 'undefined' && ReadingMode.isAll && ReadingMode.isAll()) return;
         const node = State.getNode(nodeId);
         if (!node) return;
 
@@ -67,7 +70,8 @@ const Renderer = (() => {
     }
 
     function renderBody(node) {
-        document.getElementById('node-body').innerHTML = Markdown.parse(node.content);
+        document.getElementById('node-body').innerHTML =
+            Markdown.renderWithFootnotes(node.content, node.id);
     }
 
     function renderMedia(node) {
@@ -205,5 +209,5 @@ const Renderer = (() => {
         initNavButtons();
     }
 
-    return { init };
+    return { init, renderNode };
 })();

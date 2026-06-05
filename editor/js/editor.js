@@ -9,6 +9,7 @@ const NodeEditor = (() => {
     let suppressSave = false;
     let saveTimer = null;
     let loadedNodeId = null;
+    let contentDirty = false;  // true once the user actually edits content (guards lossy re-serialization)
 
     function init() {
         editorEl = document.getElementById('node-editor');
@@ -19,6 +20,7 @@ const NodeEditor = (() => {
             id: document.getElementById('edit-id'),
             title: document.getElementById('edit-title'),
             summary: document.getElementById('edit-summary'),
+            notes: document.getElementById('edit-notes'),
             difficulty: document.getElementById('edit-difficulty'),
             time: document.getElementById('edit-time'),
             order: document.getElementById('edit-order')
@@ -33,6 +35,7 @@ const NodeEditor = (() => {
         setupAutoSave();
         setupToolbar();
         setupContentEditor();
+        setupLinkPopup();
         setupTags();
         setupChildren();
         setupConnections();
@@ -44,116 +47,161 @@ const NodeEditor = (() => {
 
     // --- Rich text <-> Markdown conversion ---
 
+    function escHtmlText(s) {
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // Footnote/reference collection for the read-only Preview pane. When _fnEd is
+    // a live array, inline links render as numbered superscripts (and are gathered
+    // into a References list, mirroring the Viewer). When null — which is always
+    // the case while writing the contenteditable surface — links instead render as
+    // atomic "link pills" that are edited via a hover popup. Keeping the editing
+    // surface in pill mode means the markdown round-trip is never altered.
+    let _fnEd = null;
+    let _fnPrefixEd = '';
+
+    function fnSanitizeId(s) {
+        return String(s == null ? '' : s).replace(/[^A-Za-z0-9_-]/g, '-') || 'fn';
+    }
+
+    // Inline markdown -> HTML. Escapes first so <, >, & can never corrupt markup.
+    function inlineFormat(text) {
+        let t = escHtmlText(text);
+        // images first (before links, since ![]() contains []())
+        t = t.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (m, alt, src) => `<img src="${src.replace(/"/g, '&quot;')}" alt="${alt}">`);
+        t = t.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+        t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        t = t.replace(/\*(.+?)\*/g, '<em>$1</em>');
+        t = t.replace(/`(.+?)`/g, '<code>$1</code>');
+        t = t.replace(/~~(.+?)~~/g, '<del>$1</del>');
+        t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (m, txt, url) => {
+            if (_fnEd) {
+                const n = _fnEd.length + 1;
+                _fnEd.push({ n, txt, url });
+                // Preview mirrors the Viewer: keep the clickable link AND add the
+                // superscript reference marker.
+                return `<a href="${url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener">${txt}</a>` +
+                    `<sup class="footnote-ref" id="fnref-${_fnPrefixEd}-${n}">` +
+                    `<a href="#fn-${_fnPrefixEd}-${n}">${n}</a></sup>`;
+            }
+            return `<a href="${url.replace(/"/g, '&quot;')}" class="link-pill" contenteditable="false">${txt}</a>`;
+        });
+        return t;
+    }
+
+    // Markdown -> HTML for the contenteditable surface.
+    // Block-aware (multi-line code/blockquote/table/list), heading levels 1-6,
+    // blank line = paragraph break (so structure round-trips cleanly).
     function markdownToHtml(md) {
         if (!md) return '';
         const lines = md.split('\n');
         const result = [];
-        let inCode = false;
-        let codeLines = [];
-        let inBlockquote = false;
-        let bqLines = [];
-        let inExample = false;
-        let exLines = [];
+        let para = [];
 
-        function flushBlockquote() {
-            if (bqLines.length > 0) {
-                result.push('<blockquote>' + bqLines.map(l => '<p>' + inlineFormat(l) + '</p>').join('\n') + '</blockquote>');
-                bqLines = [];
+        function flushPara() {
+            if (para.length) {
+                result.push('<p>' + para.map(inlineFormat).join('<br>') + '</p>');
+                para = [];
             }
-            inBlockquote = false;
-        }
-
-        function flushExample() {
-            if (exLines.length > 0) {
-                result.push('<div class="example-block"><span class="example-label"></span>' + exLines.map(l => '<p>' + inlineFormat(l) + '</p>').join('\n') + '</div>');
-                exLines = [];
-            }
-            inExample = false;
-        }
-
-        function inlineFormat(text) {
-            return text
-                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.+?)\*/g, '<em>$1</em>')
-                .replace(/`(.+?)`/g, '<code>$1</code>')
-                .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
         }
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
 
+            // fenced code block
             if (line.startsWith('```')) {
-                if (inBlockquote) flushBlockquote();
-                if (inExample) flushExample();
-                if (inCode) {
-                    result.push('<pre><code>' + codeLines.join('\n').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</code></pre>');
-                    codeLines = [];
-                    inCode = false;
-                } else {
-                    inCode = true;
-                }
-                continue;
-            }
-            if (inCode) { codeLines.push(line); continue; }
-
-            if (line.match(/^:::example\s*$/i)) {
-                if (inBlockquote) flushBlockquote();
-                inExample = true;
-                continue;
-            }
-            if (inExample && line.match(/^:::\s*$/)) {
-                flushExample();
-                continue;
-            }
-            if (inExample) {
-                const trimmed = line.trim();
-                if (trimmed) exLines.push(trimmed);
+                flushPara();
+                const code = [];
+                i++;
+                while (i < lines.length && !lines[i].startsWith('```')) { code.push(lines[i]); i++; }
+                result.push('<pre><code>' + escHtmlText(code.join('\n')) + '</code></pre>');
                 continue;
             }
 
-            if (line.startsWith('> ') || line === '>') {
-                if (!inBlockquote) inBlockquote = true;
-                const content = line.replace(/^>\s?/, '').trim();
-                if (content) bqLines.push(content);
+            // example block — inner is parsed as full markdown (nested code, lists, etc.)
+            if (/^:::example\s*$/i.test(line)) {
+                flushPara();
+                const ex = [];
+                i++;
+                while (i < lines.length && !/^:::\s*$/.test(lines[i])) { ex.push(lines[i]); i++; }
+                const inner = markdownToHtml(ex.join('\n'));
+                result.push('<div class="example-block"><span class="example-label" contenteditable="false"></span>' + inner + '</div>');
                 continue;
-            } else if (inBlockquote) {
-                flushBlockquote();
             }
 
             const trimmed = line.trim();
-            if (!trimmed) continue;
 
-            if (trimmed.match(/^#{1,3}\s/)) {
-                const m = trimmed.match(/^(#{1,3})\s+(.+)/);
-                const level = m[1].length;
-                result.push(`<h${level}>${inlineFormat(m[2])}</h${level}>`);
-            } else if (trimmed.match(/^---$/)) {
-                result.push('<hr>');
-            } else if (trimmed.match(/^[-*+]\s/)) {
-                const items = [trimmed.replace(/^[-*+]\s+/, '')];
-                while (i + 1 < lines.length && lines[i + 1].match(/^\s*[-*+]\s/)) {
+            // blank line ends a paragraph
+            if (!trimmed) { flushPara(); continue; }
+
+            // headings 1-6
+            let m = trimmed.match(/^(#{1,6})\s+(.+)$/);
+            if (m) { flushPara(); const lvl = m[1].length; result.push(`<h${lvl}>${inlineFormat(m[2])}</h${lvl}>`); continue; }
+
+            // horizontal rule
+            if (/^(-{3,}|\*{3,}|_{3,})$/.test(trimmed)) { flushPara(); result.push('<hr>'); continue; }
+
+            // blockquote (consecutive > lines)
+            if (/^>\s?/.test(line) || line === '>') {
+                flushPara();
+                const bq = [];
+                while (i < lines.length && (/^>\s?/.test(lines[i]) || lines[i] === '>')) {
+                    const c = lines[i].replace(/^>\s?/, '').trim();
+                    if (c) bq.push(c);
                     i++;
-                    items.push(lines[i].replace(/^\s*[-*+]\s+/, ''));
                 }
-                result.push('<ul>' + items.map(it => '<li>' + inlineFormat(it) + '</li>').join('') + '</ul>');
-            } else if (trimmed.match(/^\d+\.\s/)) {
-                const items = [trimmed.replace(/^\d+\.\s+/, '')];
-                while (i + 1 < lines.length && lines[i + 1].match(/^\s*\d+\.\s/)) {
-                    i++;
-                    items.push(lines[i].replace(/^\s*\d+\.\s+/, ''));
-                }
-                result.push('<ol>' + items.map(it => '<li>' + inlineFormat(it) + '</li>').join('') + '</ol>');
-            } else {
-                result.push('<p>' + inlineFormat(trimmed) + '</p>');
+                i--;
+                result.push('<blockquote>' + bq.map(l => '<p>' + inlineFormat(l) + '</p>').join('') + '</blockquote>');
+                continue;
             }
+
+            // table (consecutive pipe rows)
+            if (trimmed.startsWith('|')) {
+                flushPara();
+                const tbl = [];
+                while (i < lines.length && lines[i].trim().startsWith('|')) { tbl.push(lines[i].trim()); i++; }
+                i--;
+                const rows = tbl.map(r => r.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim()));
+                let html = '<table>';
+                let bodyStart = 0;
+                if (rows.length >= 2 && rows[1].every(c => /^:?-+:?$/.test(c) || c === '')) {
+                    html += '<thead><tr>' + rows[0].map(c => '<th>' + inlineFormat(c) + '</th>').join('') + '</tr></thead>';
+                    bodyStart = 2;
+                }
+                html += '<tbody>';
+                for (let r = bodyStart; r < rows.length; r++) {
+                    html += '<tr>' + rows[r].map(c => '<td>' + inlineFormat(c) + '</td>').join('') + '</tr>';
+                }
+                html += '</tbody></table>';
+                result.push(html);
+                continue;
+            }
+
+            // unordered list
+            if (/^[-*+]\s/.test(trimmed)) {
+                flushPara();
+                const items = [];
+                while (i < lines.length && /^\s*[-*+]\s/.test(lines[i])) { items.push(lines[i].replace(/^\s*[-*+]\s+/, '')); i++; }
+                i--;
+                result.push('<ul>' + items.map(it => '<li>' + inlineFormat(it) + '</li>').join('') + '</ul>');
+                continue;
+            }
+
+            // ordered list
+            if (/^\d+\.\s/.test(trimmed)) {
+                flushPara();
+                const items = [];
+                while (i < lines.length && /^\s*\d+\.\s/.test(lines[i])) { items.push(lines[i].replace(/^\s*\d+\.\s+/, '')); i++; }
+                i--;
+                result.push('<ol>' + items.map(it => '<li>' + inlineFormat(it) + '</li>').join('') + '</ol>');
+                continue;
+            }
+
+            // accumulate paragraph line
+            para.push(line);
         }
 
-        if (inBlockquote) flushBlockquote();
-        if (inExample) flushExample();
-        if (inCode) {
-            result.push('<pre><code>' + codeLines.join('\n').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</code></pre>');
-        }
-
+        flushPara();
         return result.join('\n');
     }
 
@@ -161,7 +209,29 @@ const NodeEditor = (() => {
         if (!html) return '';
         const div = document.createElement('div');
         div.innerHTML = html;
-        return nodeToMd(div).trim();
+        let md = nodeToMd(div);
+        // normalize: strip trailing spaces, collapse 3+ blank lines to one, trim
+        md = md.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+        return md;
+    }
+
+    function tableToMd(table) {
+        const rows = [];
+        table.querySelectorAll('tr').forEach(tr => {
+            const cells = [...tr.children].map(c =>
+                nodeToMd(c).trim().replace(/\s*\n\s*/g, ' ').replace(/\|/g, '\\|'));
+            rows.push(cells);
+        });
+        if (!rows.length) return '';
+        const headerCount = table.querySelector('thead') ? table.querySelectorAll('thead tr').length : 0;
+        const out = [];
+        rows.forEach((cells, idx) => {
+            out.push('| ' + cells.join(' | ') + ' |');
+            if (idx === headerCount - 1 || (headerCount === 0 && idx === 0)) {
+                out.push('| ' + cells.map(() => '---').join(' | ') + ' |');
+            }
+        });
+        return out.join('\n');
     }
 
     function nodeToMd(node) {
@@ -173,50 +243,104 @@ const NodeEditor = (() => {
                 const tag = child.tagName.toLowerCase();
                 const inner = nodeToMd(child);
                 switch (tag) {
-                    case 'h1': md += '\n# ' + inner.trim() + '\n\n'; break;
-                    case 'h2': md += '\n## ' + inner.trim() + '\n\n'; break;
-                    case 'h3': md += '\n### ' + inner.trim() + '\n\n'; break;
+                    case 'h1': case 'h2': case 'h3': case 'h4': case 'h5': case 'h6':
+                        md += '\n' + '#'.repeat(parseInt(tag[1])) + ' ' + inner.trim() + '\n\n';
+                        break;
                     case 'strong': case 'b': md += '**' + inner + '**'; break;
                     case 'em': case 'i': md += '*' + inner + '*'; break;
-                    case 'code': md += '`' + inner + '`'; break;
+                    case 'del': case 's': case 'strike': md += '~~' + inner + '~~'; break;
+                    case 'code':
+                        // bare inline code only; code inside <pre> is handled by the 'pre' case
+                        md += child.closest('pre') ? inner : '`' + inner + '`';
+                        break;
                     case 'a': md += '[' + inner + '](' + (child.getAttribute('href') || '') + ')'; break;
+                    case 'img': md += '![' + (child.getAttribute('alt') || '') + '](' + (child.getAttribute('src') || '') + ')'; break;
+                    case 'br': md += '\n'; break;
                     case 'blockquote': {
-                        const lines = inner.trim().split(/\n+/).filter(l => l.trim());
+                        const lines = inner.trim().split('\n').filter(l => l.trim());
                         md += '\n' + lines.map(l => '> ' + l.trim()).join('\n') + '\n\n';
                         break;
                     }
-                    case 'pre':
+                    case 'pre': {
                         const codeEl = child.querySelector('code');
-                        md += '\n```\n' + (codeEl ? codeEl.textContent : inner) + '\n```\n\n';
+                        const codeText = (codeEl ? codeEl.textContent : child.textContent).replace(/\n$/, '');
+                        md += '\n```\n' + codeText + '\n```\n\n';
                         break;
-                    case 'ul': case 'ol':
+                    }
+                    case 'ul': case 'ol': {
+                        let n = 1;
                         for (const li of child.querySelectorAll(':scope > li')) {
-                            md += (tag === 'ol' ? '1. ' : '- ') + nodeToMd(li).trim() + '\n';
+                            const liMd = nodeToMd(li).trim().replace(/\s*\n\s*/g, ' ');
+                            md += (tag === 'ol' ? (n++) + '. ' : '- ') + liMd + '\n';
                         }
                         md += '\n';
                         break;
+                    }
                     case 'li': md += inner; break;
-                    case 'p': md += inner.trim() + '\n\n'; break;
-                    case 'br': md += '\n'; break;
                     case 'hr': md += '\n---\n\n'; break;
-                    case 'div':
-                        if (child.classList.contains('example-block')) {
+                    case 'table': md += '\n' + tableToMd(child) + '\n\n'; break;
+                    case 'thead': case 'tbody': case 'tr': case 'th': case 'td':
+                        md += inner; break;
+                    case 'p':
+                    case 'div': {
+                        if (child.classList && child.classList.contains('example-block')) {
                             const wrapper = child.cloneNode(true);
-                            const labelEl = wrapper.querySelector('.example-label');
-                            if (labelEl) labelEl.remove();
-                            const exMd = nodeToMd(wrapper).trim();
-                            const lines = exMd.split(/\n+/).filter(l => l.trim());
-                            md += '\n:::example\n' + lines.join('\n') + '\n:::\n\n';
+                            wrapper.querySelectorAll('.example-label').forEach(e => e.remove());
+                            // keep the inner markdown structure intact (don't flatten
+                            // blank lines — code blocks and paragraphs depend on them)
+                            const exMd = nodeToMd(wrapper).replace(/\n{3,}/g, '\n\n').trim();
+                            md += '\n:::example\n' + exMd + '\n:::\n\n';
                         } else {
-                            md += inner;
-                            if (!inner.endsWith('\n')) md += '\n';
+                            const t = inner.trim();
+                            if (t) md += t + '\n\n';
                         }
+                        break;
+                    }
+                    case 'span':
+                        if (!(child.classList && child.classList.contains('example-label'))) md += inner;
                         break;
                     default: md += inner; break;
                 }
             }
         }
         return md;
+    }
+
+    // --- Content collection ---
+
+    // The markdown for the node currently being edited. If the editor surface
+    // was never touched, returns the stored markdown verbatim — so merely
+    // viewing a node never re-serializes (and never corrupts) its content.
+    function readActiveContent() {
+        if (contentDirty) return htmlToMarkdown(contentEl.innerHTML);
+        const node = loadedNodeId ? EditorState.getNode(loadedNodeId) : null;
+        return node ? (node.content || '') : '';
+    }
+
+    // True if the collected changes actually differ from the stored node —
+    // used to avoid marking the file dirty just by navigating between nodes.
+    function nodeChanged(node, c) {
+        if (!node) return true;
+        const norm = v => (v === undefined || v === null) ? '' : v;
+        return norm(node.title) !== norm(c.title)
+            || norm(node.summary) !== norm(c.summary)
+            || norm(node.notes) !== norm(c.notes)
+            || norm(node.content) !== norm(c.content)
+            || norm(node.difficulty) !== norm(c.difficulty)
+            || norm(node.estimatedTime) !== norm(c.estimatedTime)
+            || norm(node.order) !== norm(c.order);
+    }
+
+    function collectChanges() {
+        return {
+            title: fields.title.value,
+            summary: fields.summary.value,
+            notes: fields.notes.value || undefined,
+            content: readActiveContent(),
+            difficulty: fields.difficulty.value || undefined,
+            estimatedTime: fields.time.value || undefined,
+            order: fields.order.value ? parseInt(fields.order.value) : undefined
+        };
     }
 
     // --- Node loading ---
@@ -226,14 +350,10 @@ const NodeEditor = (() => {
             if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
             const prev = EditorState.getNode(loadedNodeId);
             if (prev) {
-                EditorState.updateNode(loadedNodeId, {
-                    title: fields.title.value,
-                    summary: fields.summary.value,
-                    content: htmlToMarkdown(contentEl.innerHTML),
-                    difficulty: fields.difficulty.value || undefined,
-                    estimatedTime: fields.time.value || undefined,
-                    order: fields.order.value ? parseInt(fields.order.value) : undefined
-                });
+                const changes = collectChanges();
+                if (nodeChanged(prev, changes)) {
+                    EditorState.updateNode(loadedNodeId, changes);
+                }
             }
         }
 
@@ -248,11 +368,13 @@ const NodeEditor = (() => {
         fields.id.value = node.id;
         fields.title.value = node.title || '';
         fields.summary.value = node.summary || '';
+        fields.notes.value = node.notes || '';
         fields.difficulty.value = node.difficulty || '';
         fields.time.value = node.estimatedTime || '';
         fields.order.value = node.order || '';
 
         contentEl.innerHTML = markdownToHtml(node.content || '');
+        contentDirty = false;
 
         renderTags(node.tags || []);
         renderChildren(node.children || []);
@@ -271,14 +393,7 @@ const NodeEditor = (() => {
         const doSave = () => {
             saveTimer = null;
             if (suppressSave || !loadedNodeId) return;
-            EditorState.updateNode(loadedNodeId, {
-                title: fields.title.value,
-                summary: fields.summary.value,
-                content: htmlToMarkdown(contentEl.innerHTML),
-                difficulty: fields.difficulty.value || undefined,
-                estimatedTime: fields.time.value || undefined,
-                order: fields.order.value ? parseInt(fields.order.value) : undefined
-            });
+            EditorState.updateNode(loadedNodeId, collectChanges());
             updatePreview();
             updateWordCount();
         };
@@ -294,7 +409,7 @@ const NodeEditor = (() => {
             el.addEventListener('change', scheduleSave);
         });
 
-        contentEl.addEventListener('input', scheduleSave);
+        contentEl.addEventListener('input', () => { contentDirty = true; scheduleSave(); });
     }
 
     function flushContent() {
@@ -302,14 +417,7 @@ const NodeEditor = (() => {
         if (suppressSave || !loadedNodeId) return;
         const node = EditorState.getNode(loadedNodeId);
         if (!node) return;
-        EditorState.updateNode(loadedNodeId, {
-            title: fields.title.value,
-            summary: fields.summary.value,
-            content: htmlToMarkdown(contentEl.innerHTML),
-            difficulty: fields.difficulty.value || undefined,
-            estimatedTime: fields.time.value || undefined,
-            order: fields.order.value ? parseInt(fields.order.value) : undefined
-        });
+        EditorState.updateNode(loadedNodeId, collectChanges());
     }
 
     // --- Rich text toolbar ---
@@ -333,6 +441,9 @@ const NodeEditor = (() => {
             case 'italic':
                 document.execCommand('italic', false);
                 break;
+            case 'strikethrough':
+                document.execCommand('strikeThrough', false);
+                break;
             case 'h2':
                 toggleHeading('h2');
                 break;
@@ -355,7 +466,10 @@ const NodeEditor = (() => {
                 insertExampleBlock();
                 break;
             case 'code':
-                wrapSelectionWith('code');
+                toggleInlineCode();
+                break;
+            case 'codeblock':
+                insertCodeBlock();
                 break;
             case 'link':
                 showLinkInput();
@@ -363,8 +477,97 @@ const NodeEditor = (() => {
             case 'hr':
                 document.execCommand('insertHorizontalRule', false);
                 break;
+            case 'clear':
+                clearFormatting();
+                break;
         }
         contentEl.dispatchEvent(new Event('input'));
+    }
+
+    // Inline code: toggle on a plain selection, or off when the caret is in a `code`.
+    function toggleInlineCode() {
+        const sel = window.getSelection();
+        if (!sel.rangeCount) return;
+        const anchorEl = sel.anchorNode
+            ? (sel.anchorNode.nodeType === Node.TEXT_NODE ? sel.anchorNode.parentElement : sel.anchorNode)
+            : null;
+        const existing = anchorEl ? anchorEl.closest('code') : null;
+        if (existing && !existing.closest('pre')) {
+            const parent = existing.parentNode;
+            while (existing.firstChild) parent.insertBefore(existing.firstChild, existing);
+            parent.removeChild(existing);
+            contentEl.normalize();
+            return;
+        }
+        if (sel.isCollapsed) return;
+        wrapSelectionWith('code');
+    }
+
+    // Fenced code block: wraps the selection (or an empty block to type/paste into).
+    function insertCodeBlock() {
+        const sel = window.getSelection();
+        if (!sel.rangeCount) return;
+        const anchorEl = sel.anchorNode
+            ? (sel.anchorNode.nodeType === Node.TEXT_NODE ? sel.anchorNode.parentElement : sel.anchorNode)
+            : null;
+        if (anchorEl && anchorEl.closest('pre')) return;  // already in a code block
+
+        const range = sel.getRangeAt(0);
+        const pre = document.createElement('pre');
+        const code = document.createElement('code');
+        code.textContent = sel.toString();
+        pre.appendChild(code);
+
+        let block = anchorEl;
+        while (block && block.parentElement && block.parentElement !== contentEl) block = block.parentElement;
+
+        if (block && block !== contentEl && !block.textContent.trim()) {
+            block.parentNode.replaceChild(pre, block);
+        } else if (!range.collapsed) {
+            range.deleteContents();
+            range.insertNode(pre);
+        } else if (block && block !== contentEl) {
+            block.parentNode.insertBefore(pre, block.nextSibling);
+        } else {
+            range.insertNode(pre);
+        }
+        const r = document.createRange();
+        r.selectNodeContents(code);
+        r.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(r);
+    }
+
+    // Strip inline formatting (bold/italic/code/strike/link/etc.) from the selection,
+    // leaving plain text. Block structure (headings, lists, code blocks) is preserved.
+    function clearFormatting() {
+        const sel = window.getSelection();
+        if (!sel.rangeCount || sel.isCollapsed) {
+            toast('Select some text first', 'info');
+            return;
+        }
+        const range = sel.getRangeAt(0);
+        const INLINE = 'code, strong, b, em, i, del, s, strike, u, a, font, span, sub, sup, mark';
+        const toUnwrap = [];
+        contentEl.querySelectorAll(INLINE).forEach(el => {
+            if (el.classList && el.classList.contains('example-label')) return;
+            if (el.closest('pre')) return;            // leave code blocks intact
+            if (range.intersectsNode(el)) toUnwrap.push(el);
+        });
+        if (!toUnwrap.length) {
+            toast('No inline formatting in the selection', 'info');
+            return;
+        }
+        toUnwrap.reverse().forEach(el => {          // innermost first
+            const parent = el.parentNode;
+            if (!parent) return;
+            while (el.firstChild) parent.insertBefore(el.firstChild, el);
+            parent.removeChild(el);
+        });
+        contentEl.normalize();
+        contentDirty = true;
+        contentEl.dispatchEvent(new Event('input'));
+        toast('Formatting cleared', 'success');
     }
 
     function wrapSelectionWith(tag) {
@@ -540,13 +743,40 @@ const NodeEditor = (() => {
         if (/^javascript:/i.test(url)) { toast('Invalid URL', 'error'); return; }
 
         contentEl.focus();
+        const sel = window.getSelection();
         if (savedRange) {
-            const sel = window.getSelection();
             sel.removeAllRanges();
             sel.addRange(savedRange);
         }
-        document.execCommand('insertHTML', false, `<a href="${escHtml(url)}">${escHtml(text)}</a>`);
         savedRange = null;
+        if (!sel.rangeCount) return;
+
+        // Insert the pill with the Range API rather than execCommand('insertHTML').
+        // Chrome's insertHTML wraps/splits the block around a contenteditable=false
+        // island, which dropped the new link onto its own line with large gaps until
+        // a reload re-rendered it from markdown. Direct DOM insertion stays inline.
+        const range = sel.getRangeAt(0);
+        if (!contentEl.contains(range.commonAncestorContainer)) return;
+        range.deleteContents();
+
+        const a = document.createElement('a');
+        a.setAttribute('href', url);
+        a.className = 'link-pill';
+        a.setAttribute('contenteditable', 'false');
+        a.textContent = text;
+
+        // A trailing space gives the caret an editable slot after the atomic pill.
+        const trailing = document.createTextNode(' ');
+        range.insertNode(a);
+        a.after(trailing);
+
+        const after = document.createRange();
+        after.setStartAfter(trailing);
+        after.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(after);
+
+        contentDirty = true;
         contentEl.dispatchEvent(new Event('input'));
     }
 
@@ -554,6 +784,138 @@ const NodeEditor = (() => {
         document.getElementById('link-input-form').hidden = true;
         savedRange = null;
         contentEl.focus();
+    }
+
+    // Hover/click popup for editing an existing link in place. Links in the
+    // editing surface are atomic "pills" (contenteditable=false); this popup is
+    // the only way to change their text/URL, so the raw markdown is never typed
+    // over by hand. The popup lives on <body>, outside the contenteditable, so
+    // typing in its inputs never mutates node content directly.
+    function setupLinkPopup() {
+        const popup = document.createElement('div');
+        popup.className = 'link-popup';
+        popup.hidden = true;
+        popup.innerHTML =
+            '<div class="link-popup-title">Edit link</div>' +
+            '<div class="link-popup-row"><label for="lp-text">Text</label>' +
+            '<input id="lp-text" class="link-popup-text" type="text" autocomplete="off"></div>' +
+            '<div class="link-popup-row"><label for="lp-url">URL</label>' +
+            '<input id="lp-url" class="link-popup-url" type="text" autocomplete="off"></div>' +
+            '<div class="link-popup-actions">' +
+            '<button type="button" class="link-popup-save">Save</button>' +
+            '<button type="button" class="link-popup-remove">Remove link</button>' +
+            '<a class="link-popup-open" target="_blank" rel="noopener">Open ↗</a>' +
+            '</div>';
+        document.body.appendChild(popup);
+
+        const textInput = popup.querySelector('.link-popup-text');
+        const urlInput = popup.querySelector('.link-popup-url');
+        const saveBtn = popup.querySelector('.link-popup-save');
+        const removeBtn = popup.querySelector('.link-popup-remove');
+        const openLink = popup.querySelector('.link-popup-open');
+        const titleEl = popup.querySelector('.link-popup-title');
+
+        let currentPill = null;
+        let hideTimer = null;
+        let pinned = false;
+
+        function place(pill) {
+            popup.hidden = false; // unhide so we can measure
+            const r = pill.getBoundingClientRect();
+            const pw = popup.offsetWidth, ph = popup.offsetHeight;
+            let left = Math.max(12, Math.min(r.left, window.innerWidth - pw - 12));
+            let top = r.bottom + 6;
+            if (top + ph > window.innerHeight - 8) top = r.top - ph - 6;
+            if (top < 8) top = 8;
+            popup.style.left = left + 'px';
+            popup.style.top = top + 'px';
+        }
+
+        function open(pill) {
+            currentPill = pill;
+            const pills = Array.from(contentEl.querySelectorAll('.link-pill'));
+            const idx = pills.indexOf(pill) + 1;
+            titleEl.textContent = idx > 0 ? ('Edit link — reference ' + idx) : 'Edit link';
+            textInput.value = pill.textContent;
+            const href = pill.getAttribute('href') || '';
+            urlInput.value = href;
+            openLink.href = href;
+            place(pill);
+        }
+
+        function close() {
+            pinned = false;
+            popup.hidden = true;
+            currentPill = null;
+        }
+        function hide() { if (!pinned) close(); }
+        function scheduleHide() { clearTimeout(hideTimer); hideTimer = setTimeout(hide, 250); }
+        function cancelHide() { clearTimeout(hideTimer); }
+
+        function save() {
+            if (!currentPill) return;
+            const url = urlInput.value.trim();
+            const txt = textInput.value.trim();
+            if (!url) { toast('URL cannot be empty', 'error'); return; }
+            if (/^\s*javascript:/i.test(url)) { toast('Invalid URL', 'error'); return; }
+            currentPill.setAttribute('href', url);
+            currentPill.textContent = txt || url;
+            close();
+            contentDirty = true;
+            contentEl.dispatchEvent(new Event('input'));
+            toast('Link updated', 'success');
+        }
+
+        function removeLink() {
+            if (!currentPill) return;
+            currentPill.replaceWith(document.createTextNode(currentPill.textContent));
+            close();
+            contentDirty = true;
+            contentEl.dispatchEvent(new Event('input'));
+            toast('Link removed', 'success');
+        }
+
+        contentEl.addEventListener('mouseover', e => {
+            const pill = e.target && e.target.closest && e.target.closest('.link-pill');
+            if (pill && contentEl.contains(pill)) {
+                cancelHide();
+                if (pill !== currentPill || popup.hidden) open(pill);
+            }
+        });
+        contentEl.addEventListener('mouseout', e => {
+            const pill = e.target && e.target.closest && e.target.closest('.link-pill');
+            if (pill) scheduleHide();
+        });
+        // A pill is contenteditable=false, so a click won't place a caret — use it
+        // to pin the popup open for deliberate editing.
+        contentEl.addEventListener('click', e => {
+            const pill = e.target && e.target.closest && e.target.closest('.link-pill');
+            if (pill && contentEl.contains(pill)) { e.preventDefault(); cancelHide(); open(pill); pinned = true; }
+        });
+
+        popup.addEventListener('mouseenter', cancelHide);
+        popup.addEventListener('mouseleave', () => { if (!pinned) scheduleHide(); });
+        popup.addEventListener('focusin', () => { pinned = true; cancelHide(); });
+
+        saveBtn.addEventListener('click', save);
+        removeBtn.addEventListener('click', removeLink);
+        [textInput, urlInput].forEach(inp => {
+            inp.addEventListener('keydown', e => {
+                if (e.key === 'Enter') { e.preventDefault(); save(); }
+                else if (e.key === 'Escape') { e.preventDefault(); close(); contentEl.focus(); }
+            });
+        });
+
+        // Click anywhere outside the popup (and not on a pill) closes it.
+        document.addEventListener('mousedown', e => {
+            if (popup.hidden) return;
+            if (popup.contains(e.target)) return;
+            if (e.target.closest && e.target.closest('.link-pill')) return;
+            close();
+        });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && !popup.hidden) close();
+        });
     }
 
     function setupContentEditor() {
@@ -616,6 +978,11 @@ const NodeEditor = (() => {
             // Ctrl shortcuts
             if (e.ctrlKey && !e.altKey) {
                 const key = e.key.toLowerCase();
+                if (e.shiftKey && key === 's') {   // Ctrl+Shift+S = strikethrough
+                    e.preventDefault();
+                    applyFormat('strikethrough');
+                    return;
+                }
                 const map = { 'b': 'bold', 'i': 'italic', '2': 'h2', '3': 'h3', 'u': 'ul', 'q': 'quote', 'e': 'example', 'l': 'link', '0': 'paragraph' };
                 if (map[key]) {
                     e.preventDefault();
@@ -639,7 +1006,45 @@ const NodeEditor = (() => {
             }
         });
 
+        // Paste: embed an image from the clipboard as an inline data-URI image,
+        // otherwise fall back to plain text (strips foreign rich-text markup).
+        const MAX_IMG_BYTES = 8 * 1024 * 1024;
+
+        function clipboardImage(dt) {
+            if (!dt) return null;
+            const items = dt.items ? Array.from(dt.items) : [];
+            for (const it of items) {
+                if (it.kind === 'file' && it.type && it.type.indexOf('image/') === 0) return it.getAsFile();
+            }
+            const files = dt.files ? Array.from(dt.files) : [];
+            for (const f of files) {
+                if (f.type && f.type.indexOf('image/') === 0) return f;
+            }
+            return null;
+        }
+
+        function withImageDataUri(file, cb) {
+            if (!file) return;
+            if (file.size > MAX_IMG_BYTES) { toast('Image too large (max 8 MB)', 'error'); return; }
+            const r = new FileReader();
+            r.onload = () => cb(r.result);
+            r.onerror = () => toast('Could not read image', 'error');
+            r.readAsDataURL(file);
+        }
+
         contentEl.addEventListener('paste', e => {
+            const img = clipboardImage(e.clipboardData);
+            if (img) {
+                e.preventDefault();
+                withImageDataUri(img, uri => {
+                    contentEl.focus();
+                    document.execCommand('insertHTML', false, `<img src="${uri}" alt="">`);
+                    contentDirty = true;
+                    contentEl.dispatchEvent(new Event('input'));
+                    toast('Image embedded', 'success');
+                });
+                return;
+            }
             e.preventDefault();
             const text = e.clipboardData.getData('text/plain');
             document.execCommand('insertText', false, text);
@@ -670,7 +1075,7 @@ const NodeEditor = (() => {
         if (!el) return;
         const nodeWords = EditorState.getWordCount(EditorState.getSelectedNodeId());
         const totalWords = EditorState.getWordCount();
-        el.textContent = `${nodeWords} words / ${totalWords} total`;
+        el.textContent = `${nodeWords.toLocaleString()} words · ${totalWords.toLocaleString()} total`;
     }
 
     // --- Tags ---
@@ -996,6 +1401,35 @@ const NodeEditor = (() => {
 
     // --- Preview ---
 
+    // Render node markdown for the read-only Preview pane with links turned into
+    // numbered references + a "References" list (same presentation as the Viewer).
+    function renderPreviewWithFootnotes(md, prefix) {
+        const pf = fnSanitizeId(prefix);
+        const prevFn = _fnEd, prevPf = _fnPrefixEd;
+        _fnEd = [];
+        _fnPrefixEd = pf;
+        let body, collected;
+        try {
+            body = markdownToHtml(md);
+        } finally {
+            collected = _fnEd;
+            _fnEd = prevFn;
+            _fnPrefixEd = prevPf;
+        }
+        if (!collected.length) return body;
+        let refs = '<section class="footnotes" aria-label="References">' +
+            '<h2 class="footnotes-title">References</h2><ol class="footnotes-list">';
+        collected.forEach(f => {
+            const href = f.url.replace(/"/g, '&quot;');
+            refs += `<li id="fn-${pf}-${f.n}" class="footnote-item">` +
+                `<span class="footnote-text">${f.txt}</span> ` +
+                `<a class="footnote-url" href="${href}" target="_blank" rel="noopener">${f.url}</a> ` +
+                `<a class="footnote-backref" href="#fnref-${pf}-${f.n}" aria-label="Back to reference ${f.n}">↩</a></li>`;
+        });
+        refs += '</ol></section>';
+        return body + refs;
+    }
+
     function updatePreview() {
         const pane = document.getElementById('preview-pane');
         const node = EditorState.getSelectedNode();
@@ -1003,7 +1437,7 @@ const NodeEditor = (() => {
 
         let html = `<h2 style="margin-bottom:4px">${escHtml(node.title)}</h2>`;
         if (node.summary) html += `<p style="color:var(--text-dim);font-style:italic;margin-bottom:12px">${escHtml(node.summary)}</p>`;
-        html += contentEl.innerHTML;
+        html += renderPreviewWithFootnotes(readActiveContent(), node.id);
 
         if (node.children && node.children.length > 0) {
             html += '<div style="margin-top:16px;padding-top:8px;border-top:1px solid var(--border)">';

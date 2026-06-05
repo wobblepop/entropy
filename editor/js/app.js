@@ -118,8 +118,8 @@ const App = (() => {
                 reader.onload = ev => {
                     try {
                         const data = JSON.parse(ev.target.result);
-                        if (!data.nodes || !data.root) {
-                            NodeEditor.toast('Invalid file format', 'error');
+                        if (!data.nodes || !data.root || !data.meta) {
+                            NodeEditor.toast('Invalid file format — needs nodes, root, and meta', 'error');
                             return;
                         }
                         EditorState.loadContent(data, file.name);

@@ -77,6 +77,19 @@ const State = (() => {
         return visited.has(id);
     }
 
+    // Mark a node visited WITHOUT navigating to it (used by the continuous
+    // read-all view as sections scroll past — no history push, no scroll).
+    function markVisited(id) {
+        if (!data || !data.nodes[id] || visited.has(id)) return;
+        visited.add(id);
+        saveVisited();
+        emit('progress-changed');
+    }
+
+    function getCurrentNodeId() {
+        return currentNodeId;
+    }
+
     function getProgress() {
         if (!data) return 0;
         const total = Object.keys(data.nodes).length;
@@ -169,7 +182,7 @@ const State = (() => {
 
     return {
         on, emit, loadContent, navigate, goBack, goHome,
-        getCurrentNode, getNode, isVisited, getProgress,
+        getCurrentNode, getCurrentNodeId, getNode, isVisited, markVisited, getProgress,
         setTheme, setFontSize, setLineHeight, setContentWidth,
         toggleSidebar, getHistory, getData,
         getTheme, getFontSize, getLineHeight, getContentWidth, isSidebarOpen,

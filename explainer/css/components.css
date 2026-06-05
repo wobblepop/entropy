@@ -270,3 +270,74 @@
     color: var(--accent, #2563eb);
     background: var(--accent-dim, rgba(37, 99, 235, 0.1));
 }
+
+/* ============================================
+   FOOTNOTES — auto-collected chapter references
+   Inline links become numbered superscripts; the
+   full list is appended at the end of the node.
+   ============================================ */
+.footnote-ref {
+    font-size: 0.72em;
+    line-height: 0;
+    vertical-align: super;
+    font-weight: 600;
+    margin-left: 1px;
+}
+.footnote-ref a {
+    color: var(--accent);
+    text-decoration: none;
+    padding: 0 1px;
+}
+.footnote-ref a:hover { text-decoration: underline; }
+/* highlight the in-text marker when a reader clicks "back" to it */
+sup.footnote-ref:target a {
+    background: var(--accent-light);
+    border-radius: 3px;
+    outline: 2px solid var(--accent);
+}
+
+.footnotes {
+    margin-top: 2.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+}
+.footnotes-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-tertiary);
+    margin: 0 0 0.85rem;
+}
+.footnotes-list {
+    margin: 0;
+    padding-left: 1.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.footnotes-list .footnote-item {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+/* highlight the reference itself when jumped to from the superscript */
+.footnotes-list .footnote-item:target {
+    background: var(--accent-light);
+}
+.footnote-text { color: var(--text-secondary); }
+.footnote-url {
+    color: var(--accent);
+    text-decoration: none;
+    word-break: break-all;
+}
+.footnote-url:hover { text-decoration: underline; }
+.footnote-backref {
+    color: var(--text-tertiary);
+    text-decoration: none;
+    margin-left: 0.3rem;
+    font-size: 0.95em;
+}
+.footnote-backref:hover { color: var(--accent); }

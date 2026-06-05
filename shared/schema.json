@@ -34,6 +34,7 @@
           "title": { "type": "string" },
           "content": { "type": "string", "description": "Markdown content" },
           "summary": { "type": "string", "description": "Brief summary shown before expanding" },
+          "notes": { "type": "string", "description": "Private author notes for writing/editing. Never shown to readers or in exported PDFs." },
           "children": {
             "type": "array",
             "items": { "type": "string" },

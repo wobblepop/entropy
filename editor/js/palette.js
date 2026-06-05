@@ -10,10 +10,10 @@ const Palette = (() => {
 
     const commands = [
         { type: 'cmd', label: 'New File', action: () => document.getElementById('btn-new').click(), hint: 'Ctrl+N' },
-        { type: 'cmd', label: 'Open File', action: () => document.getElementById('file-open-input').click(), hint: 'Ctrl+O' },
+        { type: 'cmd', label: 'Open File', action: () => document.getElementById('btn-open').click(), hint: 'Ctrl+O' },
         { type: 'cmd', label: 'Save File', action: () => saveFile(), hint: 'Ctrl+S' },
         { type: 'cmd', label: 'Add New Node', action: () => showNewNodeModal(), hint: 'Ctrl+Shift+N' },
-        { type: 'cmd', label: 'Preview in New Tab', action: () => openPreview(), hint: 'Ctrl+P' },
+        { type: 'cmd', label: 'Open in Viewer', action: () => openPreview(), hint: 'Ctrl+P' },
         { type: 'cmd', label: 'Show Preview Panel', action: () => switchTab('preview') },
         { type: 'cmd', label: 'Show Graph View', action: () => switchTab('graph') },
         { type: 'cmd', label: 'Show Book Metadata', action: () => switchTab('meta') },
@@ -240,115 +240,25 @@ function openPreview() {
     NodeEditor.flushContent();
     const data = EditorState.getExportData();
     if (!data) {
-        NodeEditor.toast('Nothing to preview — create or open a file first', 'info');
+        NodeEditor.toast('Nothing to view — create or open a file first', 'info');
         return;
     }
-
-    // Build a self-contained preview page
-    const jsonStr = JSON.stringify(data);
-    const previewHtml = `<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Preview: ${data.meta.title}</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;line-height:1.7;max-width:700px;margin:0 auto;padding:40px 24px;background:#fafafa;color:#1a1a1a}
-h1{font-size:1.8rem;margin-bottom:8px}
-h2{font-size:1.4rem;margin:24px 0 8px;color:#2563eb}
-h3{font-size:1.15rem;margin:16px 0 6px}
-p{margin-bottom:12px}
-.meta{font-size:0.8rem;color:#888;margin-bottom:24px}
-.summary{font-style:italic;color:#555;margin-bottom:20px;font-size:1.05rem}
-ul,ol{margin:0 0 12px 24px}
-li{margin-bottom:4px}
-strong{font-weight:600}
-blockquote{border-left:3px solid #2563eb;padding:8px 16px;margin:16px 0;background:#f7f7f7;color:#555;border-radius:0 4px 4px 0}
-.example-block{border:1px solid #2563eb;padding:12px 18px;margin:16px 0;background:#eff6ff;border-radius:8px}
-.example-label{display:inline-block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:#2563eb;background:rgba(37,99,235,0.1);padding:1px 8px;border-radius:3px;margin-bottom:8px}
-.example-label::before{content:'Example'}
-code{font-family:monospace;font-size:0.85em;padding:2px 5px;background:#f4f4f5;border-radius:3px}
-hr{border:none;border-top:1px solid #e5e5e5;margin:24px 0}
-.card{display:block;padding:16px 20px;border:1px solid #e5e5e5;border-radius:8px;margin:8px 0;cursor:pointer;transition:border-color 0.15s}
-.card:hover{border-color:#2563eb}
-.card-title{font-weight:600;margin-bottom:2px}
-.card-summary{font-size:0.85rem;color:#555}
-.conn{display:inline-block;padding:6px 14px;border:1px solid #e5e5e5;border-radius:20px;margin:4px;font-size:0.85rem;cursor:pointer;transition:all 0.15s}
-.conn:hover{border-color:#2563eb;color:#2563eb}
-.conn-type{font-size:0.7rem;text-transform:uppercase;opacity:0.5;margin-right:4px}
-.nav{margin-top:32px;padding-top:16px;border-top:1px solid #e5e5e5;display:flex;gap:8px}
-.nav button{padding:6px 14px;border:1px solid #e5e5e5;border-radius:4px;background:white;cursor:pointer;font-size:0.85rem}
-.nav button:hover{border-color:#2563eb;color:#2563eb}
-.section-label{font-size:0.8rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:32px 0 12px;padding-top:16px;border-top:1px solid #e5e5e5}
-.badge{display:inline-block;padding:2px 6px;border-radius:3px;font-size:0.7rem;text-transform:uppercase}
-.badge-intro{background:#dcfce7;color:#166534}
-.badge-intermediate{background:#fef3c7;color:#92400e}
-.badge-advanced{background:#fee2e2;color:#991b1b}
-.badge-expert{background:#ede9fe;color:#5b21b6}
-</style></head><body>
-<div id="app"></div>
-<script>
-const DATA = ${jsonStr};
-const START_NODE = '${EditorState.getSelectedNodeId() || data.root}';
-let history = [START_NODE];
-function go(id){history.push(id);render(id);window.scrollTo(0,0)}
-function back(){if(history.length>1){history.pop();render(history[history.length-1]);window.scrollTo(0,0)}}
-function home(){history=[DATA.root];render(DATA.root);window.scrollTo(0,0)}
-function md(t){
-if(!t)return'';
-var r=t
-.replace(/:::example\\n([\\s\\S]*?):::/g,function(m,c){return '<div class="example-block"><span class="example-label"></span>'+c.trim().split('\\n').map(function(l){return '<p>'+l+'</p>'}).join('')+'</div>'})
-.replace(/^### (.+)$/gm,'<h3>$1</h3>')
-.replace(/^## (.+)$/gm,'<h2>$1</h2>')
-.replace(/^# (.+)$/gm,'<h1>$1</h1>')
-.replace(/\\*\\*(.+?)\\*\\*/g,'<strong>$1</strong>')
-.replace(/\\*(.+?)\\*/g,'<em>$1</em>')
-.replace(/\`(.+?)\`/g,'<code>$1</code>')
-.replace(/\\[(.+?)\\]\\((.+?)\\)/g,'<a href="$2">$1</a>')
-.replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>')
-.replace(/^- (.+)$/gm,'<li>$1</li>')
-.replace(/((<li>.*<\\/li>\\n?)+)/g,'<ul>$1</ul>')
-.replace(/\\n\\n/g,'</p><p>')
-.replace(/^([^<].+)$/gm,'<p>$1</p>');
-return r;
-}
-function render(id){
-const n=DATA.nodes[id];if(!n)return;
-let h='';
-if(n.difficulty)h+='<span class="badge badge-'+n.difficulty+'">'+n.difficulty+'</span> ';
-if(n.estimatedTime)h+='<span style="font-size:0.8rem;color:#888">'+n.estimatedTime+'</span>';
-h+='<h1>'+esc(n.title)+'</h1>';
-if(n.summary)h+='<p class="summary">'+esc(n.summary)+'</p>';
-h+=md(n.content);
-if(n.children&&n.children.length){
-h+='<div class="section-label">Explore Further</div>';
-n.children.forEach(cid=>{
-const c=DATA.nodes[cid];if(!c)return;
-h+='<div class="card" onclick="go(\\''+cid+'\\')">';
-h+='<div class="card-title">'+esc(c.title)+'</div>';
-if(c.summary)h+='<div class="card-summary">'+esc(c.summary)+'</div>';
-h+='</div>';
-});}
-if(n.connections&&n.connections.length){
-h+='<div class="section-label">Connected Topics</div>';
-n.connections.forEach(c=>{
-const t=DATA.nodes[c.to];if(!t)return;
-h+='<span class="conn" onclick="go(\\''+c.to+'\\')">';
-if(c.type)h+='<span class="conn-type">'+c.type+'</span>';
-h+=(c.label||t.title)+'</span>';
-});}
-h+='<div class="nav">';
-h+='<button onclick="back()" '+(history.length<=1?'disabled':'')+'>Back</button>';
-h+='<button onclick="home()">Home</button>';
-h+='</div>';
-document.getElementById('app').innerHTML=h;
-}
-function esc(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):''}
-render(START_NODE);
-<\/script></body></html>`;
-
-    const blob = new Blob([previewHtml], { type: 'text/html' });
+    if (typeof VIEWER_TEMPLATE === 'undefined') {
+        NodeEditor.toast('Viewer not built — run: py build_editor.py', 'error');
+        return;
+    }
+    // Inject the current content into the embedded full reader, open it in a new tab.
+    const jsonStr = JSON.stringify(data).replace(/<\//g, '<\\/');
+    const html = VIEWER_TEMPLATE.replace('__ENTROPY_PREVIEW_DATA__', () => jsonStr);
+    const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
-    NodeEditor.toast('Preview opened in new tab', 'success');
+    const win = window.open(url, '_blank');
+    if (!win) {
+        NodeEditor.toast('Pop-up blocked — allow pop-ups to open the viewer', 'error');
+    } else {
+        NodeEditor.toast('Opened in the viewer', 'success');
+    }
+    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
 }
 
 function showShortcuts() {

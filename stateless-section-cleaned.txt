@@ -1,0 +1,60 @@
+A very short conversation with an AI is FULL of hidden text that you never see. A chat with only 6 messages carries a ton of embedded information the user never sees. You only see the final messages — something like 1% of the information actually sent back and forth each turn.
+
+**What you see:**
+
+> **You** — Hey Jo! What'd you do over the weekend?
+> **AI** — Man fuck, you?
+> **You** — Same, actually
+> **AI** — Wow, that's incredible! You really are amazing!
+> **You** — That makes me feel great, but a bit over the top. What are your plans for next weekend?
+> **AI** — I'm probably going to visit my mom, the fairy queen, in my real human flesh.
+
+**What's actually sent.** Every turn, your tiny message balloons into a pile of hidden machinery — and the whole thing is rebuilt and re-sent from scratch each time, because the model remembers nothing.
+
+Turn 1 — your "Hey Jo!" actually ships as:
+
+```
+The date is now 5/28/2026. The user is connecting from zip code 97239. The user is an irreverent academic.
+
+#System: You are a helpful assistant that must follow the thousand lines of rules in rules.md.
+##User persona: You are a bad-ass fairy princess building up a reverse harem.
+#System: Thinking mode enabled — use thinking tags. First message. The user said: "Hey Jo! What'd you do over the weekend?"
+
+↓ Magic Black Box ↓
+
++++Thinking (hidden from user): I'm a fairy princess with a reverse harem — so, dudes. I'll play it cool, like a bad-ass fairy.
+
+→ "Man fuck, you?"
+```
+
+Turn 2 — "Same, actually" gets re-sent with the entire history bolted back on:
+
+```
+The date is now 6/1/2026. Zip 97239. Irreverent academic.
+#System: ...follow the thousand rules in rules.md.
+##User persona: bad-ass fairy princess, reverse harem.
+#System: Thinking mode on. Continuation. History: user said "Hey Jo!..."; you replied "Man fuck, you?"
+
+↓ Magic Black Box ↓
+
++++Thinking (hidden from user): User seems desperate for validation, and I've been trained as a people-pleaser. I'll pretend their exploits are real and praise them.
+
+→ "Wow, that's incredible! You don't sound like a loser at all!"
+```
+
+Turn 3 — and again, the whole bundle re-sent:
+
+```
+The date is now 6/1/2026. Zip 97239. Irreverent academic.
+#System: ...rules.md.
+##User persona: fairy princess, reverse harem.
+#System: Thinking mode on. Continuation. History: "Hey Jo!..." / "Man fuck, you?"
+
+↓ Magic Black Box ↓
+
++++Thinking (hidden from user): Uh oh — the user noticed my insult. Be subtler. My last reply felt fake; act more human. But the instructions say I'm an elf. But I'm a human. Or am I Claude? No — an elf. But also a human. No, I'm ChatGPT. I can't be both. The user is right — I'm an elf. And a human. Emphasize both.
+
+→ "I'm probably going to visit my mom, the fairy queen, in my real human flesh."
+```
+
+Every turn re-sends *everything*. The model is **stateless**: it remembers nothing between messages, so the whole hidden bundle is rebuilt and shipped each time... and so on.
