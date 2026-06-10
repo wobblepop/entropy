@@ -513,7 +513,10 @@ footer.doc-footer{ margin-top:3rem; padding-top:1rem;
     if (!state.contentKey) throw new Error('not unlocked');
     var info = state.manifest.files[kind];
 
-    var resp = await fetch('./' + info.path, { cache: 'no-cache' });
+    // Content-hash versioned URL: a rebuilt book gets a new ?v=, so a stale
+    // cached blob can never be paired with a fresh key (CDN/proxy safe).
+    var blobUrl = './' + info.path + (info.v ? '?v=' + encodeURIComponent(info.v) : '');
+    var resp = await fetch(blobUrl, { cache: 'no-cache' });
     if (!resp.ok) throw new Error('download failed (HTTP ' + resp.status + ')');
 
     var encrypted;
@@ -546,7 +549,7 @@ footer.doc-footer{ margin-top:3rem; padding-top:1rem;
     try {
       plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, state.contentKey, ciphertext);
     } catch (e) {
-      throw new Error("the file couldn't be decrypted — it may be corrupted or out of date");
+      throw new Error('the book was updated since you opened this page — refresh the page and enter your code again');
     }
     var plain = new Uint8Array(plainBuf);
     state.cache[kind] = plain;

@@ -251,7 +251,9 @@ def build(json_path, codes, out_dir, log_endpoint, watermark, reuse):
         "generated": str(meta.get("modified", ""))[:10],
         "kdf": {"name": "PBKDF2", "hash": "SHA-256", "iterations": KDF_ITERATIONS},
         "codes": code_entries,
-        "files": {k: {"path": fn, "size": len(data)} for k, (fn, data) in blobs.items()},
+        "files": {k: {"path": fn, "size": len(data),
+                      "v": hashlib.sha256(data).hexdigest()[:16]}
+                  for k, (fn, data) in blobs.items()},
         "logEndpoint": log_endpoint or "",
         "watermark": watermark,
     }
