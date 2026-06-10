@@ -15,3 +15,8 @@ sample/output/logs/
 
 # Test artifacts
 test_output.html
+
+# Reader gate build output + test temp
+reader_gate_dist/
+reader_gate/.e2e_tmp/
+reader_gate/.fixture/
