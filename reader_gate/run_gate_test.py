@@ -22,7 +22,7 @@ FIXTURE = os.path.join(HERE, ".fixture")
 TITLE = "The Fixture Chronicles"
 SUBTITLE = "A Tiny Book for Testing"
 AUTHOR = "Test Author"
-WATERMARK = "Early reader copy · {email} · {group} · Please don’t share or post."
+WATERMARK = "Early reader copy · {email} · Please don’t share or post."
 ITERATIONS = 5000  # low for test speed; page reads this from the manifest
 CODES = [
     ("STUDENTS-ALPHA-7", "students"),
@@ -202,7 +202,7 @@ def check(name, cond, detail=""):
 def run_browser_tests(port):
     from playwright.sync_api import sync_playwright
 
-    wm_friends = WATERMARK.replace("{email}", EMAIL).replace("{group}", "friends")
+    wm_friends = WATERMARK.replace("{email}", EMAIL)
 
     with sync_playwright() as p:
         browser = p.chromium.launch()
@@ -233,7 +233,7 @@ def run_browser_tests(port):
         page.click("#unlock-btn")
         page.wait_for_selector("#actions-section", state="visible", timeout=30000)
         msg = page.text_content("#unlock-message")
-        check("unlock: friends group detected", "friends" in msg, msg)
+        check("unlock: group label NOT shown to reader", "friends" not in msg, msg)
         check("unlock: email in message", EMAIL in msg, msg)
 
         # ── read online (popup or fallback link) ──
@@ -338,8 +338,13 @@ def run_browser_tests(port):
         page.check("#agree")
         page.click("#unlock-btn")
         page.wait_for_selector("#actions-section", state="visible", timeout=30000)
-        check("unlock: students group detected (2nd code)",
-              "students" in page.text_content("#unlock-message"))
+        check("unlock: 2nd code unlocks, group label still hidden",
+              "students" not in page.text_content("#unlock-message"))
+        page.wait_for_timeout(500)  # let the unlock log POST land
+        check("log: 2nd code's group identified internally",
+              ("unlock", "students", EMAIL) in
+              [(l.get("action"), l.get("group"), l.get("email")) for l in LOGS],
+              str(LOGS[-3:]))
 
         real_errors = [e for e in console_errors if "favicon" not in e]
         check("no console/page errors", not real_errors, str(real_errors))

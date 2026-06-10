@@ -650,7 +650,7 @@ footer.doc-footer{ margin-top:3rem; padding-top:1rem;
       state.watermarkText = buildWatermark(state.manifest.watermark, email, result.label);
 
       $('unlock-message').textContent =
-        'Welcome! Your copy is tagged for ' + email + ' (' + result.label + ' group). Choose how you’d like to read.';
+        'Welcome! Your copy is tagged for ' + email + '. Choose how you’d like to read.';
       $('unlock-section').hidden = true;
       $('actions-section').hidden = false;
       setStatus(statusEl, '');

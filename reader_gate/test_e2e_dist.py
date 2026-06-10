@@ -104,7 +104,8 @@ def main():
             page.wait_for_selector("#actions-section", state="visible", timeout=120000)
             check("correct code unlocks (normalized)", True)
             msg = page.locator("#unlock-message").inner_text()
-            check(f"group '{args.group}' detected", args.group.lower() in msg.lower(), msg)
+            check("email shown, group label hidden from reader",
+                  EMAIL in msg and args.group.lower() not in msg.lower(), msg)
 
             # --- 3. read online: watermark in opened page ---
             with ctx.expect_page(timeout=180000) as popup_info:

@@ -53,8 +53,10 @@ keeps using theirs).
 
 - **Does:** keeps the book unreadable without a code (real AES-256-GCM
   encryption, not hidden text); stamps every delivered copy — HTML banner,
-  every PDF page, every EPUB chapter — with the reader's email and group, so a
-  leaked copy identifies its source; logs who unlocked what, when.
+  every PDF page, every EPUB chapter — with the reader's email, so a leaked
+  copy identifies its source; logs who unlocked what, when. The group label
+  is internal only: readers never see it, but it is recorded in the access
+  log so you know which code circle a reader came from.
 - **Does not:** stop a determined reader from copying text out of a copy they
   legitimately unlocked, or from manually removing watermarks. That is true of
   every DRM-free system (and effectively of DRM too). The protection model is
