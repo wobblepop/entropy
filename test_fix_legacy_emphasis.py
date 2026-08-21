@@ -30,6 +30,9 @@ CASES = [
     ('***good triple***', '***good triple***', 'valid triple untouched'),
     ('escaped \\* star * real ital *', 'escaped \\* star *real ital*',
      'escaped star skipped'),
+    ('so *NBSP flanked.\xa0* here', 'so *NBSP flanked.* here',
+     'NBSP-flanked pair hugged'),
+    ('a *\xa0nb open* b', 'a *nb open* b', 'NBSP after opener hugged'),
 ]
 
 fails = 0

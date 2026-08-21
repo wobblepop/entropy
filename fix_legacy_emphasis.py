@@ -71,7 +71,11 @@ def tokenize_markers(line, bullet_pos):
 
 
 SENTINEL = '\x00'
-SENTINEL_RUN = re.compile(r'[ \t\x00]*\x00[ \t\x00]*')
+# NBSP (\xa0) counts as whitespace here: the renderers' (?!\s) flanking
+# checks treat it as \s, so NBSP-flanked emphasis is broken the same way
+# space-flanked emphasis is.
+WS_CHARS = ' \t\xa0\x00'
+SENTINEL_RUN = re.compile(r'[ \t\xa0\x00]*\x00[ \t\xa0\x00]*')
 
 
 def fix_line(line, stats, log, where):
@@ -110,12 +114,12 @@ def fix_line(line, stats, log, where):
             (s1, m1), (s2, m2) = of_kind[p], of_kind[p + 1]
             used.add(idx_of_kind[p]); used.add(idx_of_kind[p + 1])
             inner = line[s1 + len(m1):s2]
-            if inner.strip(' \t\x00') == '':
+            if inner.strip(WS_CHARS) == '':
                 # orphan pair: delete markers and inner whitespace
                 edits.append((s1, s2 + len(m2), SENTINEL))
                 stats['orphans'] += 1
             else:
-                stripped = inner.strip(' \t\x00')
+                stripped = inner.strip(WS_CHARS)
                 if stripped != inner:
                     if stripped[0] == m1[0] or stripped[-1] == m1[0]:
                         # hugging would merge markers into a longer run
@@ -127,8 +131,8 @@ def fix_line(line, stats, log, where):
                                    f'...{ctx}...')
                         stats['leftover'] += 1
                     else:
-                        lead = SENTINEL if inner[0] in ' \t\x00' else ''
-                        trail = SENTINEL if inner[-1] in ' \t\x00' else ''
+                        lead = SENTINEL if inner[0] in WS_CHARS else ''
+                        trail = SENTINEL if inner[-1] in WS_CHARS else ''
                         edits.append((s1, s2 + len(m2),
                                       lead + m1 + stripped + m2 + trail))
                         stats['hugged'] += 1
