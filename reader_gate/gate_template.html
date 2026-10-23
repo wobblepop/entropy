@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Private early-reader access page. Enter your invitation code to read the book online or download it.">
 <title>Early Reader Copy</title>
 <!--
   READER GATE · access page for private early-reader book distribution.
@@ -19,7 +20,7 @@
   --color-background-secondary:#22223a;  /* raised surfaces, cards, code   */
   --color-text-primary:#e8e8ed;          /* Linear "Text" — near-white     */
   --color-text-secondary:#d0d0da;        /* secondary prose                */
-  --color-text-tertiary:#8888a0;         /* muted / captions (4.9:1, AA)   */
+  --color-text-tertiary:#8c8ca4;         /* muted / captions (4.7:1 on cards, AA) */
   --color-accent-primary:#5e6ad2;        /* Linear violet — accents only   */
   --color-accent-secondary:#26b5ce;      /* Linear cyan — links (~7:1)     */
   --color-border-tertiary:#2a2a42;       /* Linear "Border" (default)      */
@@ -108,6 +109,7 @@ form{ margin:1.5rem 0; }
 .field input[aria-invalid="true"]{ border-color:var(--color-danger-edge); }
 .field-error{ display:none; color:var(--color-danger-text); font-size:13.5px; margin-top:.3rem; }
 .field-error.show{ display:block; }
+.field-note{ color:var(--color-text-tertiary); font-size:13.5px; margin:.3rem 0 0; }
 .check-field{ display:flex; gap:.6rem; align-items:flex-start; margin:1.25rem 0; }
 .check-field input{ width:1.15rem; height:1.15rem; margin-top:.3rem; flex:0 0 auto;
   accent-color:var(--color-accent-primary); }
@@ -137,9 +139,10 @@ button.secondary{ background:var(--color-background-secondary);
 .cards{ display:grid; grid-template-columns:1fr; gap:1rem; margin:1.25rem 0; }
 .card{ background:var(--color-background-secondary); border:1px solid var(--color-border-tertiary);
   border-radius:var(--border-radius-lg); padding:1.1rem 1.2rem; }
-.card h3{ font-size:16px; font-weight:600; margin:0 0 .35rem; color:var(--color-text-primary);
+.card h2{ font-size:16px; font-weight:600; line-height:1.35; margin:0 0 .35rem;
+  color:var(--color-text-primary); border-bottom:none; padding-bottom:0;
   display:flex; align-items:center; gap:.5rem; }
-.card h3::before{ content:""; width:3px; height:1em; flex:0 0 auto;
+.card h2::before{ content:""; width:3px; height:1em; flex:0 0 auto;
   background:var(--color-accent-primary); }
 .card p{ font-size:14px; color:var(--color-text-tertiary); margin:0 0 .85rem; }
 .card .status-line{ margin-top:.6rem; min-height:1.3em; font-size:13.5px; }
@@ -192,8 +195,9 @@ footer.doc-footer{ margin-top:3rem; padding-top:1rem;
         <div class="field">
           <label for="email">Your email</label>
           <input type="email" id="email" name="email" autocomplete="email" required
-                 aria-describedby="email-error">
+                 aria-describedby="email-error email-note">
           <p class="field-error" id="email-error" role="alert"></p>
+          <p class="field-note" id="email-note">The email address entered here is recorded to track access to the book, like downloads. If you don't like that, you could probably just put in something like "youllnevercatchme@frauddyscotty.com" and it would just let you. Just saying.</p>
         </div>
 
         <div class="check-field">
@@ -215,7 +219,7 @@ footer.doc-footer{ margin-top:3rem; padding-top:1rem;
 
       <div class="cards">
         <div class="card" id="card-read">
-          <h3>Read in your browser</h3>
+          <h2>Read in your browser</h2>
           <p>Opens the book in a new tab — nothing to install.</p>
           <button type="button" id="btn-read">Read online</button>
           <p class="status-line" id="status-read" aria-live="polite"></p>
@@ -223,14 +227,14 @@ footer.doc-footer{ margin-top:3rem; padding-top:1rem;
         </div>
 
         <div class="card" id="card-pdf">
-          <h3>Download PDF</h3>
+          <h2>Download PDF</h2>
           <p>A print-faithful copy for your tablet, e-reader, or actual paper.</p>
           <button type="button" id="btn-pdf">Download PDF</button>
           <p class="status-line" id="status-pdf" aria-live="polite"></p>
         </div>
 
         <div class="card" id="card-epub">
-          <h3>Download EPUB</h3>
+          <h2>Download EPUB</h2>
           <p>Reflows to fit your screen. Opens directly in Apple Books, Kobo, and most reading apps; for Kindle, send it via Amazon's free Send to Kindle.</p>
           <button type="button" id="btn-epub">Download EPUB</button>
           <p class="status-line" id="status-epub" aria-live="polite"></p>
@@ -241,7 +245,8 @@ footer.doc-footer{ margin-top:3rem; padding-top:1rem;
   </main>
 
   <footer class="doc-footer">
-    Private early-reader edition · not for distribution
+    Private early-reader edition · not for distribution<br>
+    Webpage made as a personal project by Scott DuHadway using a bunch of Chickens named Opus and Haiku in Claude Code
   </footer>
 </div>
 

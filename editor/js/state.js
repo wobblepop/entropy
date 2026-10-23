@@ -48,14 +48,15 @@ const EditorState = (() => {
     }
 
     function newFile() {
+        const now = new Date().toISOString();
         data = {
             meta: {
                 title: 'New Textbook',
                 subtitle: '',
                 author: '',
                 version: '1.0.0',
-                created: new Date().toISOString(),
-                modified: new Date().toISOString(),
+                created: now,
+                modified: now,
                 description: '',
                 tags: []
             },
@@ -70,7 +71,9 @@ const EditorState = (() => {
                     connections: [],
                     media: [],
                     tags: [],
-                    order: 1
+                    order: 1,
+                    created: now,
+                    modified: now
                 }
             },
             themes: {
@@ -87,11 +90,38 @@ const EditorState = (() => {
         emit('node-selected', selectedNodeId);
     }
 
+    // Pick the node with the newest edit stamp so opening a file lands on the page
+    // the author last worked on. Falls back to created-stamp, then null when no node
+    // carries a usable timestamp (e.g. files predating per-node stamps).
+    function mostRecentlyModifiedNodeId(d) {
+        if (!d || !d.nodes || typeof d.nodes !== 'object') return null;
+        let bestId = null;
+        let bestTime = -Infinity;
+        for (const id of Object.keys(d.nodes)) {
+            const node = d.nodes[id];
+            if (!node) continue;
+            const stamp = node.modified || node.created;
+            if (!stamp) continue;
+            const t = Date.parse(stamp);
+            if (Number.isNaN(t)) continue;
+            if (t > bestTime) {
+                bestTime = t;
+                bestId = id;
+            }
+        }
+        return bestId;
+    }
+
     function loadContent(json, name, handle) {
         data = json;
         fileName = name || 'content.entropy.json';
         fileHandle = handle || null;
-        selectedNodeId = json.root;
+        // Land on the most recently edited node; fall back to the root when no node
+        // has a timestamp, and finally to any existing node id.
+        const newest = mostRecentlyModifiedNodeId(json);
+        selectedNodeId = (newest && json.nodes[newest]) ? newest
+            : (json.nodes && json.nodes[json.root]) ? json.root
+            : (json.nodes ? Object.keys(json.nodes)[0] || null : null);
         dirty = false;
         undoStack.length = 0;
         emit('file-loaded', data);
@@ -136,7 +166,9 @@ const EditorState = (() => {
     function updateNode(id, changes) {
         if (!data || !data.nodes[id]) return;
         Object.assign(data.nodes[id], changes);
-        data.meta.modified = new Date().toISOString();
+        const now = new Date().toISOString();
+        data.nodes[id].modified = now;   // per-node last-edited stamp (editor-only)
+        data.meta.modified = now;
         markDirty();
         emit('node-updated', id);
     }
@@ -160,6 +192,7 @@ const EditorState = (() => {
         if (!data) return;
         if (data.nodes[id]) return null;
         pushUndo();
+        const now = new Date().toISOString();
         data.nodes[id] = {
             id: id,
             title: title || 'New Node',
@@ -169,7 +202,9 @@ const EditorState = (() => {
             connections: [],
             media: [],
             tags: [],
-            order: Object.keys(data.nodes).length + 1
+            order: Object.keys(data.nodes).length + 1,
+            created: now,
+            modified: now
         };
         markDirty();
         emit('node-added', id);
@@ -186,9 +221,12 @@ const EditorState = (() => {
             counter++;
         }
         pushUndo();
+        const now = new Date().toISOString();
         data.nodes[newId] = JSON.parse(JSON.stringify(source));
         data.nodes[newId].id = newId;
         data.nodes[newId].title = source.title + ' (copy)';
+        data.nodes[newId].created = now;    // a duplicate is a new node, not a continuation
+        data.nodes[newId].modified = now;
         markDirty();
         emit('node-added', newId);
         return newId;

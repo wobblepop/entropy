@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entropy Diff — JSON line comparison</title>
+<!--
+  Entropy Diff — compare two .entropy.json files line by line.
+  Built from the QuarantineZone base template (Dracula dark theme).
+  Self-contained: no external fonts, scripts, or network access. All
+  processing happens locally in the browser; files never leave the machine.
+-->
+<style>
+:root{
+  /* Dracula palette [src: Visual Design References/base-template.html] */
+  --color-background-tertiary:#21222c;
+  --color-background-primary:#282a36;
+  --color-background-secondary:#44475a;
+  --color-text-primary:#f8f8f2;
+  --color-text-secondary:#e8e8e2;
+  --color-text-tertiary:#939dc4;
+  --color-accent-primary:#bd93f9;
+  --color-accent-secondary:#8be9fd;
+  --color-border-tertiary:#44475a;
+  --color-border-secondary:rgba(248,248,242,.22);
+  --color-warning:#ffb86c;
+  --color-danger:#ff5555;
+  --color-success:#50fa7b;
+
+  /* diff surfaces (translucent over --color-background-primary) */
+  --diff-del-bg:rgba(255,85,85,.14);
+  --diff-add-bg:rgba(80,250,123,.10);
+  --diff-del-hl:rgba(255,85,85,.38);
+  --diff-add-hl:rgba(80,250,123,.30);
+
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --border-radius-md:8px;
+}
+
+*{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  margin:0;
+  background:var(--color-background-tertiary);
+  color:var(--color-text-primary);
+  font-family:var(--font-sans);
+  font-size:16px;
+  line-height:1.6;
+}
+
+/* accessibility helpers [src: base-template.html] */
+.skip-link{
+  position:absolute; left:-9999px; top:0; z-index:10;
+  background:var(--color-accent-primary); color:#282a36;
+  padding:.5rem .75rem; border-radius:var(--border-radius-md);
+}
+.skip-link:focus{ left:.5rem; top:.5rem; }
+.visually-hidden{
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
+}
+:focus-visible{ outline:2px solid var(--color-accent-secondary); outline-offset:2px; border-radius:2px; }
+
+.page{ max-width:96rem; margin:0 auto; padding:2rem 1.25rem 4rem; }
+
+h1{ font-size:22px; font-weight:500; line-height:1.3; margin:0 0 .5rem;
+    border-bottom:3px solid var(--color-accent-primary); padding-bottom:.5rem; }
+.doc-meta{ color:var(--color-text-tertiary); font-size:14px; margin:0 0 1.5rem; }
+p{ margin:0 0 1rem; color:var(--color-text-secondary); }
+code{ font-family:var(--font-mono); font-size:.9em;
+  background:var(--color-background-secondary); color:var(--color-text-primary);
+  padding:.12em .4em; border-radius:4px; }
+
+p.warn::before,p.danger::before{ content:"!"; font-weight:700; margin-right:.6em; }
+p.warn::before{ color:var(--color-warning); content:"!" / "Warning:"; }
+p.danger::before{ color:var(--color-danger); content:"!" / "Danger:"; }
+p.warn,p.danger{ margin:.5rem 0; }
+
+/* ── File slots ────────────────────────────────────────────────────── */
+.slots{ display:grid; grid-template-columns:1fr auto 1fr; gap:.75rem; align-items:stretch; margin-bottom:1rem; }
+@media (max-width:720px){ .slots{ grid-template-columns:1fr; } .swap-wrap{ justify-content:center; } }
+.dropzone{
+  border:2px dashed var(--color-border-secondary);
+  border-radius:var(--border-radius-md);
+  background:var(--color-background-primary);
+  padding:1rem; text-align:center; cursor:pointer;
+  transition:border-color .15s, background .15s;
+}
+.dropzone:hover,.dropzone.dragover{ border-color:var(--color-accent-secondary); background:#2b3040; }
+.dropzone .zone-title{ font-weight:600; color:var(--color-text-primary); margin:0 0 .25rem; }
+.dropzone .zone-hint{ color:var(--color-text-tertiary); font-size:13px; margin:0; }
+.dropzone .file-info{ font-family:var(--font-mono); font-size:13px; color:var(--color-accent-secondary);
+  margin:.4rem 0 0; word-break:break-all; }
+.dropzone .file-detail{ color:var(--color-text-tertiary); font-size:12px; margin:.15rem 0 0; }
+.dropzone input[type=file]{ display:none; }
+.swap-wrap{ display:flex; align-items:center; }
+button{
+  font:inherit; font-size:14px; color:var(--color-text-primary);
+  background:var(--color-background-secondary);
+  border:1px solid var(--color-border-secondary);
+  border-radius:var(--border-radius-md);
+  padding:.4rem .9rem; cursor:pointer;
+}
+button:hover{ border-color:var(--color-accent-secondary); }
+
+/* ── Options bar ───────────────────────────────────────────────────── */
+.options{
+  display:flex; flex-wrap:wrap; gap:1rem 1.75rem; align-items:center;
+  background:var(--color-background-primary);
+  border:1px solid var(--color-border-tertiary);
+  border-radius:var(--border-radius-md);
+  padding:.75rem 1rem; margin-bottom:1rem; font-size:14px;
+}
+.options label{ display:flex; align-items:center; gap:.45rem; color:var(--color-text-secondary); cursor:pointer; }
+.options label.disabled{ opacity:.45; cursor:default; }
+.options select{
+  font:inherit; font-size:14px; color:var(--color-text-primary);
+  background:var(--color-background-secondary);
+  border:1px solid var(--color-border-secondary); border-radius:6px; padding:.2rem .4rem;
+}
+.options input[type=checkbox],.options input[type=radio]{ accent-color:var(--color-accent-primary); width:15px; height:15px; }
+.opt-group{ display:flex; gap:.9rem; align-items:center; }
+.opt-group-label{ color:var(--color-text-tertiary); }
+
+/* ── Stats bar ─────────────────────────────────────────────────────── */
+.stats{ display:flex; flex-wrap:wrap; gap:1.5rem; align-items:baseline; margin:0 0 .75rem; font-size:14px; }
+.stats .num{ font-size:22px; font-weight:600; font-family:var(--font-mono); }
+.stats .lbl{ color:var(--color-text-tertiary); margin-left:.35rem; }
+.stats .n-chg .num{ color:var(--color-warning); }
+.stats .n-del .num{ color:var(--color-danger); }
+.stats .n-add .num{ color:var(--color-success); }
+.stats .n-same .num{ color:var(--color-text-tertiary); }
+.identical{ color:var(--color-success); font-weight:600; }
+
+/* ── Diff table ────────────────────────────────────────────────────── */
+.diffwrap{
+  background:var(--color-background-primary);
+  border:1px solid var(--color-border-tertiary);
+  border-radius:var(--border-radius-md);
+  overflow:hidden;
+}
+.difftable{ width:100%; border-collapse:collapse; font-family:var(--font-mono); font-size:12.5px; line-height:1.5; }
+.difftable td{ padding:0 .5rem; vertical-align:top; border:0; }
+.difftable td.num{
+  width:1%; min-width:3.2em; text-align:right; color:var(--color-text-tertiary);
+  user-select:none; border-right:1px solid var(--color-border-tertiary);
+  background:#242631; white-space:nowrap;
+}
+.difftable td.txt{ white-space:pre-wrap; overflow-wrap:anywhere; width:50%; color:var(--color-text-secondary); }
+.difftable.unified td.txt{ width:auto; }
+.difftable td.txt.del{ background:var(--diff-del-bg); }
+.difftable td.txt.add{ background:var(--diff-add-bg); }
+.difftable td.txt .hl-del{ background:var(--diff-del-hl); border-radius:2px; }
+.difftable td.txt .hl-add{ background:var(--diff-add-hl); border-radius:2px; }
+.difftable td.txt.empty{ background:repeating-linear-gradient(45deg,transparent,transparent 6px,rgba(248,248,242,.03) 6px,rgba(248,248,242,.03) 12px); }
+.difftable .sign{ user-select:none; display:inline-block; width:1.1em; color:var(--color-text-tertiary); }
+.difftable td.txt.del .sign{ color:var(--color-danger); }
+.difftable td.txt.add .sign{ color:var(--color-success); }
+.fold td{
+  text-align:center; color:var(--color-accent-secondary); background:#242631;
+  cursor:pointer; padding:.15rem .5rem; font-size:12px;
+  border-top:1px solid var(--color-border-tertiary); border-bottom:1px solid var(--color-border-tertiary);
+}
+.fold td:hover{ text-decoration:underline; }
+tr.hidden-ctx{ display:none; }
+.colhead td{
+  font-family:var(--font-sans); font-size:13px; font-weight:600; color:var(--color-text-primary);
+  background:#242631; padding:.4rem .5rem; border-bottom:2px solid var(--color-border-secondary);
+  word-break:break-all;
+}
+#status{ min-height:1.2em; }
+.placeholder{ color:var(--color-text-tertiary); }
+
+footer.doc-footer{ margin-top:3rem; padding-top:1rem;
+  border-top:1px solid var(--color-border-tertiary);
+  color:var(--color-text-tertiary); font-size:13px; }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<p class="visually-hidden">Summary: a local tool that compares two JSON files line by line and highlights added, removed, and changed lines.</p>
+
+<div class="page">
+  <header class="doc-header">
+    <h1>Entropy Diff</h1>
+    <p class="doc-meta">Line-by-line comparison for <code>.entropy.json</code> files (or any text) · runs entirely in this browser — files are never uploaded anywhere</p>
+  </header>
+
+  <main id="main">
+
+    <div class="slots">
+      <div class="dropzone" id="zoneA" tabindex="0" role="button" aria-label="Choose or drop file A (old version)">
+        <p class="zone-title">File A — old version</p>
+        <p class="zone-hint">Click to choose, or drag &amp; drop a .json file here</p>
+        <p class="file-info" id="infoA"></p>
+        <p class="file-detail" id="detailA"></p>
+        <input type="file" id="fileA" accept=".json,.entropy.json,application/json,text/plain">
+      </div>
+      <div class="swap-wrap">
+        <button type="button" id="swapBtn" title="Swap A and B">&#8646; Swap</button>
+      </div>
+      <div class="dropzone" id="zoneB" tabindex="0" role="button" aria-label="Choose or drop file B (new version)">
+        <p class="zone-title">File B — new version</p>
+        <p class="zone-hint">Click to choose, or drag &amp; drop a .json file here</p>
+        <p class="file-info" id="infoB"></p>
+        <p class="file-detail" id="detailB"></p>
+        <input type="file" id="fileB" accept=".json,.entropy.json,application/json,text/plain">
+      </div>
+    </div>
+
+    <div class="options">
+      <label><input type="checkbox" id="optNormalize" checked>
+        Normalize JSON formatting <span class="opt-group-label">(re-indent both files identically before diffing)</span></label>
+      <label id="lblSortKeys"><input type="checkbox" id="optSortKeys">
+        Sort object keys <span class="opt-group-label">(ignore key-order differences)</span></label>
+      <span class="opt-group" role="radiogroup" aria-label="View mode">
+        <span class="opt-group-label">View:</span>
+        <label><input type="radio" name="view" value="side" checked> Side by side</label>
+        <label><input type="radio" name="view" value="unified"> Unified</label>
+      </span>
+      <label><span class="opt-group-label">Context:</span>
+        <select id="optContext">
+          <option value="3">3 lines</option>
+          <option value="10">10 lines</option>
+          <option value="all" selected>Show all lines</option>
+        </select>
+      </label>
+    </div>
+
+    <div id="status" aria-live="polite"></div>
+    <div id="stats" class="stats"></div>
+    <div id="result">
+      <p class="placeholder">Load both files to see the comparison.</p>
+    </div>
+
+  </main>
+
+  <footer class="doc-footer">
+    Entropy Diff · built from the QuarantineZone base template · Dracula dark theme · self-contained, offline-safe.
+  </footer>
+</div>
+
+<script>
+'use strict';
+
+/* ═════════════════════ Diff engine ══════════════════════════════════
+   Patience diff on lines: trim common prefix/suffix, anchor on lines
+   unique to both sides (longest increasing subsequence of anchor
+   pairs), recurse between anchors. Regions with no unique anchors
+   fall back to exact LCS when small, or to whole-block replace when
+   the DP table would exceed ~2M cells (reported to the user, never
+   silent). Ops: {t:0 same, t:-1 delete from A, t:1 add from B}.     */
+
+function computeDiff(a, b){
+  const ops = [];
+  let coarse = false;
+
+  function pushSame(ai, bi){ ops.push({t:0, ai:ai, bi:bi}); }
+  function pushDel(ai){ ops.push({t:-1, ai:ai}); }
+  function pushAdd(bi){ ops.push({t:1, bi:bi}); }
+
+  function uniqueAnchors(aLo, aHi, bLo, bHi){
+    const counts = new Map();
+    for(let i=aLo;i<aHi;i++){
+      let e = counts.get(a[i]);
+      if(!e){ e = {ac:0, bc:0, ai:-1, bi:-1}; counts.set(a[i], e); }
+      e.ac++; e.ai = i;
+    }
+    for(let i=bLo;i<bHi;i++){
+      let e = counts.get(b[i]);
+      if(!e){ e = {ac:0, bc:0, ai:-1, bi:-1}; counts.set(b[i], e); }
+      e.bc++; e.bi = i;
+    }
+    const pairs = [];
+    counts.forEach(function(e){ if(e.ac===1 && e.bc===1) pairs.push([e.ai, e.bi]); });
+    pairs.sort(function(x,y){ return x[0]-y[0]; });
+    /* longest increasing subsequence over bi (patience sort w/ backpointers) */
+    const tails = [], prev = new Array(pairs.length).fill(-1);
+    for(let i=0;i<pairs.length;i++){
+      const bi = pairs[i][1];
+      let lo=0, hi=tails.length;
+      while(lo<hi){ const mid=(lo+hi)>>1; if(pairs[tails[mid]][1] < bi) lo=mid+1; else hi=mid; }
+      if(lo>0) prev[i] = tails[lo-1];
+      tails[lo] = i;
+    }
+    const res = [];
+    let i = tails.length ? tails[tails.length-1] : -1;
+    while(i>=0){ res.push(pairs[i]); i = prev[i]; }
+    return res.reverse();
+  }
+
+  function lcsWalk(aLo, aHi, bLo, bHi){
+    const n=aHi-aLo, m=bHi-bLo, W=m+1;
+    const dp = new Uint32Array((n+1)*W);
+    for(let i=1;i<=n;i++){
+      const ai = a[aLo+i-1];
+      for(let j=1;j<=m;j++){
+        dp[i*W+j] = ai===b[bLo+j-1]
+          ? dp[(i-1)*W+j-1]+1
+          : Math.max(dp[(i-1)*W+j], dp[i*W+j-1]);
+      }
+    }
+    const rev = [];
+    let i=n, j=m;
+    while(i>0 && j>0){
+      if(a[aLo+i-1]===b[bLo+j-1]){ rev.push({t:0, ai:aLo+i-1, bi:bLo+j-1}); i--; j--; }
+      else if(dp[(i-1)*W+j] >= dp[i*W+j-1]){ rev.push({t:-1, ai:aLo+i-1}); i--; }
+      else { rev.push({t:1, bi:bLo+j-1}); j--; }
+    }
+    while(i>0){ rev.push({t:-1, ai:aLo+i-1}); i--; }
+    while(j>0){ rev.push({t:1, bi:bLo+j-1}); j--; }
+    for(let k=rev.length-1;k>=0;k--) ops.push(rev[k]);
+  }
+
+  function walk(aLo, aHi, bLo, bHi){
+    while(aLo<aHi && bLo<bHi && a[aLo]===b[bLo]){ pushSame(aLo,bLo); aLo++; bLo++; }
+    let suf = 0;
+    while(aHi>aLo && bHi>bLo && a[aHi-1]===b[bHi-1]){ aHi--; bHi--; suf++; }
+    if(aLo<aHi || bLo<bHi){
+      if(aLo===aHi){ for(let bi=bLo;bi<bHi;bi++) pushAdd(bi); }
+      else if(bLo===bHi){ for(let ai=aLo;ai<aHi;ai++) pushDel(ai); }
+      else {
+        const anchors = uniqueAnchors(aLo,aHi,bLo,bHi);
+        if(anchors.length){
+          let pa=aLo, pb=bLo;
+          for(let k=0;k<anchors.length;k++){
+            walk(pa, anchors[k][0], pb, anchors[k][1]);
+            pushSame(anchors[k][0], anchors[k][1]);
+            pa = anchors[k][0]+1; pb = anchors[k][1]+1;
+          }
+          walk(pa, aHi, pb, bHi);
+        } else if((aHi-aLo)*(bHi-bLo) <= 2000000){
+          lcsWalk(aLo,aHi,bLo,bHi);
+        } else {
+          coarse = true;
+          for(let ai=aLo;ai<aHi;ai++) pushDel(ai);
+          for(let bi=bLo;bi<bHi;bi++) pushAdd(bi);
+        }
+      }
+    }
+    for(let k=0;k<suf;k++) pushSame(aHi+k, bHi+k);
+  }
+
+  if(!Array.isArray(a) || !Array.isArray(b)) throw new Error('computeDiff expects two arrays of lines');
+  walk(0, a.length, 0, b.length);
+  return {ops:ops, coarse:coarse};
+}
+
+/* Pair delete-runs with add-runs into changed rows for display. */
+function buildRows(ops){
+  const rows = [];
+  let dels = [], adds = [];
+  function flush(){
+    const n = Math.max(dels.length, adds.length);
+    for(let k=0;k<n;k++){
+      const d = k<dels.length ? dels[k] : null;
+      const ad = k<adds.length ? adds[k] : null;
+      if(d!==null && ad!==null) rows.push({type:'chg', ai:d, bi:ad});
+      else if(d!==null) rows.push({type:'del', ai:d});
+      else rows.push({type:'add', bi:ad});
+    }
+    dels = []; adds = [];
+  }
+  for(let i=0;i<ops.length;i++){
+    const op = ops[i];
+    if(op.t===0){ flush(); rows.push({type:'same', ai:op.ai, bi:op.bi}); }
+    else if(op.t===-1) dels.push(op.ai);
+    else adds.push(op.bi);
+  }
+  flush();
+  return rows;
+}
+
+/* Character-level highlight for a changed line pair: common prefix and
+   suffix stay plain; the differing middle gets a highlight span. */
+function charHighlight(oldS, newS){
+  if(typeof oldS !== 'string' || typeof newS !== 'string') return null;
+  let p = 0;
+  const maxP = Math.min(oldS.length, newS.length);
+  while(p<maxP && oldS.charCodeAt(p)===newS.charCodeAt(p)) p++;
+  let s = 0;
+  while(s<maxP-p && oldS.charCodeAt(oldS.length-1-s)===newS.charCodeAt(newS.length-1-s)) s++;
+  function wrap(str, cls){
+    const mid = str.slice(p, str.length-s);
+    return esc(str.slice(0,p))
+      + (mid ? '<span class="'+cls+'">'+esc(mid)+'</span>' : '')
+      + esc(str.slice(str.length-s));
+  }
+  return {oldHtml: wrap(oldS,'hl-del'), newHtml: wrap(newS,'hl-add')};
+}
+
+/* ═════════════════════ JSON normalization ═══════════════════════════ */
+
+function sortKeysDeep(v){
+  if(Array.isArray(v)) return v.map(sortKeysDeep);
+  if(v !== null && typeof v === 'object'){
+    const out = {};
+    const keys = Object.keys(v).sort();
+    for(let i=0;i<keys.length;i++) out[keys[i]] = sortKeysDeep(v[keys[i]]);
+    return out;
+  }
+  return v;
+}
+
+/* Returns {lines, note}. note is set when normalization was requested
+   but the text is not valid JSON (falls back to raw text). */
+function prepareLines(text, normalize, sortKeys){
+  if(typeof text !== 'string') return {lines:[], note:'No text loaded.'};
+  let note = null;
+  if(normalize){
+    try{
+      const parsed = JSON.parse(text);
+      text = JSON.stringify(sortKeys ? sortKeysDeep(parsed) : parsed, null, 2);
+    }catch(e){
+      note = 'Not valid JSON ('+ e.message +') — comparing raw text instead.';
+    }
+  }
+  const lines = text.split(/\r\n|\r|\n/);
+  if(lines.length && lines[lines.length-1]==='') lines.pop();  /* trailing newline */
+  return {lines:lines, note:note};
+}
+
+/* ═════════════════════ UI ═══════════════════════════════════════════ */
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtBytes(n){
+  if(typeof n !== 'number' || !isFinite(n) || n < 0) return '?';
+  if(n < 1024) return n + ' B';
+  if(n < 1048576) return (n/1024).toFixed(1) + ' KB';
+  return (n/1048576).toFixed(2) + ' MB';
+}
+
+const state = {A:null, B:null};   /* each: {name, size, text} */
+const MAX_BYTES = 50*1048576;     /* refuse >50 MB to keep the page responsive */
+
+function setSlotInfo(slot, msg, detail, isError){
+  const info = $('info'+slot), det = $('detail'+slot);
+  info.textContent = msg || '';
+  info.style.color = isError ? 'var(--color-danger)' : '';
+  det.textContent = detail || '';
+}
+
+function loadInto(slot, file){
+  if(!file){ return; }
+  if(file.size > MAX_BYTES){
+    setSlotInfo(slot, file.name, 'File is '+fmtBytes(file.size)+' — over the 50 MB limit.', true);
+    state[slot] = null; run();
+    return;
+  }
+  const reader = new FileReader();
+  reader.onerror = function(){
+    setSlotInfo(slot, file.name, 'Could not read this file.', true);
+    state[slot] = null; run();
+  };
+  reader.onload = function(){
+    state[slot] = {name:file.name, size:file.size, text:String(reader.result)};
+    renderSlotInfo(slot);
+    run();
+  };
+  reader.readAsText(file);
+}
+
+function renderSlotInfo(slot){
+  const f = state[slot];
+  if(!f){ setSlotInfo(slot, '', ''); return; }
+  const lineCount = f.text.split(/\r\n|\r|\n/).length;
+  setSlotInfo(slot, f.name, fmtBytes(f.size)+' · '+lineCount+' raw lines');
+}
+
+function wireZone(slot){
+  const zone = $('zone'+slot), input = $('file'+slot);
+  zone.addEventListener('click', function(){ input.click(); });
+  zone.addEventListener('keydown', function(e){
+    if(e.key==='Enter' || e.key===' '){ e.preventDefault(); input.click(); }
+  });
+  input.addEventListener('change', function(){
+    if(input.files && input.files.length) loadInto(slot, input.files[0]);
+    input.value = '';   /* allow re-selecting the same file after edits */
+  });
+  zone.addEventListener('dragover', function(e){ e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', function(){ zone.classList.remove('dragover'); });
+  zone.addEventListener('drop', function(e){
+    e.preventDefault(); zone.classList.remove('dragover');
+    if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length)
+      loadInto(slot, e.dataTransfer.files[0]);
+  });
+}
+
+function getOptions(){
+  const normalize = $('optNormalize').checked;
+  const sortKeys = normalize && $('optSortKeys').checked;
+  const viewEl = document.querySelector('input[name=view]:checked');
+  const ctxRaw = $('optContext').value;
+  return {
+    normalize: normalize,
+    sortKeys: sortKeys,
+    view: viewEl ? viewEl.value : 'side',
+    context: ctxRaw==='all' ? Infinity : parseInt(ctxRaw,10)
+  };
+}
+
+function run(){
+  const status = $('status'), statsEl = $('stats'), result = $('result');
+  status.innerHTML = ''; statsEl.innerHTML = '';
+  $('lblSortKeys').classList.toggle('disabled', !$('optNormalize').checked);
+  $('optSortKeys').disabled = !$('optNormalize').checked;
+
+  if(!state.A || !state.B){
+    result.innerHTML = '<p class="placeholder">Load both files to see the comparison.</p>';
+    return;
+  }
+
+  const opts = getOptions();
+  const prepA = prepareLines(state.A.text, opts.normalize, opts.sortKeys);
+  const prepB = prepareLines(state.B.text, opts.normalize, opts.sortKeys);
+
+  const notes = [];
+  if(prepA.note) notes.push('<p class="warn">File A: '+esc(prepA.note)+'</p>');
+  if(prepB.note) notes.push('<p class="warn">File B: '+esc(prepB.note)+'</p>');
+
+  let diff;
+  try{
+    diff = computeDiff(prepA.lines, prepB.lines);
+  }catch(e){
+    status.innerHTML = notes.join('') + '<p class="danger">Diff failed: '+esc(e.message)+'</p>';
+    result.innerHTML = '';
+    return;
+  }
+  if(diff.coarse) notes.push('<p class="warn">One or more large regions had no lines in common and were compared as whole-block replacements rather than line-matched.</p>');
+
+  const rows = buildRows(diff.ops);
+  const counts = {same:0, chg:0, del:0, add:0};
+  for(let i=0;i<rows.length;i++) counts[rows[i].type]++;
+
+  /* stats */
+  if(counts.chg===0 && counts.del===0 && counts.add===0){
+    let msg = 'Files are identical — '+counts.same+' lines match.';
+    if(opts.normalize && state.A.text !== state.B.text)
+      msg = 'No content differences after normalization ('+counts.same+' lines) — the raw files differ only in formatting'+(opts.sortKeys?' or key order':'')+'.';
+    statsEl.innerHTML = '<span class="identical">'+esc(msg)+'</span>';
+    if(state.A.text === state.B.text && !opts.normalize)
+      statsEl.innerHTML = '<span class="identical">Files are byte-for-byte identical ('+counts.same+' lines).</span>';
+    result.innerHTML = '';
+    status.innerHTML = notes.join('');
+    return;
+  }
+  statsEl.innerHTML =
+    '<span class="n-chg"><span class="num">'+counts.chg+'</span><span class="lbl">changed</span></span>' +
+    '<span class="n-del"><span class="num">'+counts.del+'</span><span class="lbl">removed</span></span>' +
+    '<span class="n-add"><span class="num">'+counts.add+'</span><span class="lbl">added</span></span>' +
+    '<span class="n-same"><span class="num">'+counts.same+'</span><span class="lbl">unchanged</span></span>';
+  status.innerHTML = notes.join('');
+
+  result.innerHTML = opts.view==='side'
+    ? renderSideBySide(rows, prepA.lines, prepB.lines, opts.context)
+    : renderUnified(rows, prepA.lines, prepB.lines, opts.context);
+  wireFolds();
+}
+
+/* Mark unchanged runs longer than 2*ctx+1 as folded (hidden until clicked). */
+function foldPlan(rows, ctx){
+  const hide = new Array(rows.length).fill(false);
+  if(!isFinite(ctx)) return hide;
+  let i = 0;
+  while(i < rows.length){
+    if(rows[i].type !== 'same'){ i++; continue; }
+    let j = i;
+    while(j < rows.length && rows[j].type === 'same') j++;
+    const runLen = j - i;
+    const keepStart = (i===0) ? 0 : ctx;                 /* no context needed at file start */
+    const keepEnd = (j===rows.length) ? 0 : ctx;         /* ...or at file end */
+    if(runLen > keepStart + keepEnd + 1){
+      for(let k=i+keepStart; k<j-keepEnd; k++) hide[k] = true;
+    }
+    i = j;
+  }
+  return hide;
+}
+
+function numCell(n){ return '<td class="num">'+(n===null?'':(n+1))+'</td>'; }
+
+function renderSideBySide(rows, aLines, bLines, ctx){
+  const hide = foldPlan(rows, ctx);
+  const out = ['<div class="diffwrap"><table class="difftable">',
+    '<tr class="colhead"><td colspan="2">A: '+esc(state.A.name)+'</td><td colspan="2">B: '+esc(state.B.name)+'</td></tr>'];
+  let i = 0, foldId = 0;
+  while(i < rows.length){
+    if(hide[i]){
+      let j = i;
+      while(j<rows.length && hide[j]) j++;
+      const fid = 'fold'+(foldId++);
+      out.push('<tr class="fold" data-fold="'+fid+'"><td colspan="4">&#8943; '+(j-i)+' unchanged lines &#8943; (click to show)</td></tr>');
+      for(let k=i;k<j;k++) out.push(rowSide(rows[k], aLines, bLines, ' class="hidden-ctx" data-in-fold="'+fid+'"'));
+      i = j;
+    } else {
+      out.push(rowSide(rows[i], aLines, bLines, ''));
+      i++;
+    }
+  }
+  out.push('</table></div>');
+  return out.join('');
+}
+
+function rowSide(r, aLines, bLines, trAttrs){
+  if(r.type==='same'){
+    const t = esc(aLines[r.ai]);
+    return '<tr'+trAttrs+'>'+numCell(r.ai)+'<td class="txt"><span class="sign">&nbsp;</span>'+t+'</td>'+numCell(r.bi)+'<td class="txt"><span class="sign">&nbsp;</span>'+t+'</td></tr>';
+  }
+  if(r.type==='chg'){
+    const h = charHighlight(aLines[r.ai], bLines[r.bi]);
+    return '<tr'+trAttrs+'>'+numCell(r.ai)+'<td class="txt del"><span class="sign">-</span>'+h.oldHtml+'</td>'
+      +numCell(r.bi)+'<td class="txt add"><span class="sign">+</span>'+h.newHtml+'</td></tr>';
+  }
+  if(r.type==='del'){
+    return '<tr'+trAttrs+'>'+numCell(r.ai)+'<td class="txt del"><span class="sign">-</span>'+esc(aLines[r.ai])+'</td>'+numCell(null)+'<td class="txt empty"></td></tr>';
+  }
+  return '<tr'+trAttrs+'>'+numCell(null)+'<td class="txt empty"></td>'+numCell(r.bi)+'<td class="txt add"><span class="sign">+</span>'+esc(bLines[r.bi])+'</td></tr>';
+}
+
+function renderUnified(rows, aLines, bLines, ctx){
+  const hide = foldPlan(rows, ctx);
+  const out = ['<div class="diffwrap"><table class="difftable unified">',
+    '<tr class="colhead"><td colspan="3">A: '+esc(state.A.name)+' &nbsp;&#8594;&nbsp; B: '+esc(state.B.name)+'</td></tr>'];
+  let i = 0, foldId = 0;
+  while(i < rows.length){
+    if(hide[i]){
+      let j = i;
+      while(j<rows.length && hide[j]) j++;
+      const fid = 'ufold'+(foldId++);
+      out.push('<tr class="fold" data-fold="'+fid+'"><td colspan="3">&#8943; '+(j-i)+' unchanged lines &#8943; (click to show)</td></tr>');
+      for(let k=i;k<j;k++) pushUnifiedRow(out, rows[k], aLines, bLines, ' class="hidden-ctx" data-in-fold="'+fid+'"');
+      i = j;
+    } else {
+      pushUnifiedRow(out, rows[i], aLines, bLines, '');
+      i++;
+    }
+  }
+  out.push('</table></div>');
+  return out.join('');
+}
+
+function pushUnifiedRow(out, r, aLines, bLines, trAttrs){
+  if(r.type==='same'){
+    out.push('<tr'+trAttrs+'>'+numCell(r.ai)+numCell(r.bi)+'<td class="txt"><span class="sign">&nbsp;</span>'+esc(aLines[r.ai])+'</td></tr>');
+    return;
+  }
+  if(r.type==='chg'){
+    const h = charHighlight(aLines[r.ai], bLines[r.bi]);
+    out.push('<tr'+trAttrs+'>'+numCell(r.ai)+numCell(null)+'<td class="txt del"><span class="sign">-</span>'+h.oldHtml+'</td></tr>');
+    out.push('<tr'+trAttrs+'>'+numCell(null)+numCell(r.bi)+'<td class="txt add"><span class="sign">+</span>'+h.newHtml+'</td></tr>');
+    return;
+  }
+  if(r.type==='del'){
+    out.push('<tr'+trAttrs+'>'+numCell(r.ai)+numCell(null)+'<td class="txt del"><span class="sign">-</span>'+esc(aLines[r.ai])+'</td></tr>');
+    return;
+  }
+  out.push('<tr'+trAttrs+'>'+numCell(null)+numCell(r.bi)+'<td class="txt add"><span class="sign">+</span>'+esc(bLines[r.bi])+'</td></tr>');
+}
+
+function wireFolds(){
+  const folds = document.querySelectorAll('tr.fold');
+  for(let i=0;i<folds.length;i++){
+    folds[i].addEventListener('click', function(){
+      const fid = this.getAttribute('data-fold');
+      const hidden = document.querySelectorAll('tr[data-in-fold="'+fid+'"]');
+      for(let k=0;k<hidden.length;k++) hidden[k].classList.remove('hidden-ctx');
+      this.parentNode.removeChild(this);
+    });
+  }
+}
+
+/* ── wiring ── */
+wireZone('A');
+wireZone('B');
+$('swapBtn').addEventListener('click', function(){
+  const tmp = state.A; state.A = state.B; state.B = tmp;
+  renderSlotInfo('A'); renderSlotInfo('B');
+  run();
+});
+$('optNormalize').addEventListener('change', run);
+$('optSortKeys').addEventListener('change', run);
+$('optContext').addEventListener('change', run);
+const viewRadios = document.querySelectorAll('input[name=view]');
+for(let i=0;i<viewRadios.length;i++) viewRadios[i].addEventListener('change', run);
+run();
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "entropy-editor-tests",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Tests for the EntropyEditor markdown <-> HTML conversion and per-node timestamps.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}

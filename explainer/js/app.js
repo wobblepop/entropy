@@ -8,6 +8,7 @@ const App = (() => {
         Navigation.init();
         Renderer.init();
         ReadingMode.init();
+        PrintChapter.init();
         Themes.init();
         Accessibility.init();
         ExplainerGraph.init();

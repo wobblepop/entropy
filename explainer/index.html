@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/accessibility.css">
     <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/pdf-export.css">
 </head>
 <body class="theme-clean" role="application" aria-label="EntropyExplainer Textbook Reader">
     <!-- Skip Navigation -->
@@ -59,6 +60,13 @@
                     <path d="M11 3l-2 14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
                 </svg>
             </button>
+            <button id="pdf-btn" class="icon-btn" aria-label="Save a section as PDF" title="Save a section as PDF">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="M5 2.5h7l3 3v12H5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+                    <path d="M12 2.5v3h3" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+                    <path d="M10 8v6M7.5 11.5L10 14l2.5-2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
             <button id="progress-btn" class="icon-btn" aria-label="Reading progress" title="View progress">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                     <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
@@ -99,6 +107,21 @@
                 <span id="content-width-display">700px</span>
             </div>
             <button class="modal-close" aria-label="Close">Close</button>
+        </div>
+    </div>
+
+    <!-- Save as PDF Modal (section picker) -->
+    <div id="pdf-modal" class="modal" role="dialog" aria-label="Save a section as PDF" aria-hidden="true">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content pdf-modal-content">
+            <h2>Save as PDF</h2>
+            <p class="pdf-hint">Choose a section. Your browser's print dialog opens next — pick <strong>Save as PDF</strong> as the destination.</p>
+            <div class="pdf-tree" id="pdf-tree" role="radiogroup" aria-label="Sections"></div>
+            <label class="pdf-option"><input type="checkbox" id="pdf-include-children" checked> Include sub-sections</label>
+            <div class="pdf-actions">
+                <button class="modal-close" aria-label="Cancel">Cancel</button>
+                <button id="pdf-save-btn" class="pdf-save-btn">Save as PDF…</button>
+            </div>
         </div>
     </div>
 
@@ -200,6 +223,9 @@
         </main>
     </div>
 
+    <!-- Print-only container for "Save as PDF" (filled by js/print-chapter.js; must be a direct child of body) -->
+    <div id="print-chapter" class="print-chapter" aria-hidden="true"></div>
+
     <!-- Scripts (modular) -->
     <script src="js/markdown.js"></script>
     <script src="js/state.js"></script>
@@ -213,6 +239,7 @@
     <script src="js/viewer-template.js"></script>
     <script src="js/standalone.js"></script>
     <script src="js/reading-mode.js"></script>
+    <script src="js/print-chapter.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

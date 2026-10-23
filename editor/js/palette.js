@@ -14,6 +14,10 @@ const Palette = (() => {
         { type: 'cmd', label: 'Save File', action: () => saveFile(), hint: 'Ctrl+S' },
         { type: 'cmd', label: 'Add New Node', action: () => showNewNodeModal(), hint: 'Ctrl+Shift+N' },
         { type: 'cmd', label: 'Open in Viewer', action: () => openPreview(), hint: 'Ctrl+P' },
+        { type: 'cmd', label: 'Generate PDF…', action: () => PdfExport.open() },
+        { type: 'cmd', label: 'Toggle Suggesting Mode', action: () => NodeEditor.toggleSuggestMode(), hint: 'Ctrl+Shift+M' },
+        { type: 'cmd', label: 'Review Suggested Changes', action: () => NodeEditor.enterReview() },
+        { type: 'cmd', label: 'Insert Footnote', action: () => NodeEditor.applyFormat('footnote'), hint: 'Ctrl+Shift+F' },
         { type: 'cmd', label: 'Show Preview Panel', action: () => switchTab('preview') },
         { type: 'cmd', label: 'Show Graph View', action: () => switchTab('graph') },
         { type: 'cmd', label: 'Show Book Metadata', action: () => switchTab('meta') },
@@ -144,7 +148,10 @@ async function saveFile(silent) {
             if (!silent) NodeEditor.toast('Saved', 'success');
             return;
         } catch (err) {
-            // Fall through to download if write fails
+            NodeEditor.toast('Save to ' + EditorState.getFileName() + ' failed: ' + err.message, 'error');
+            // Autosave has no user gesture, so the picker/download fallbacks
+            // below would fail or drop a stray copy in Downloads — stop here.
+            if (silent) return;
         }
     }
 
@@ -236,7 +243,7 @@ function createNewNode() {
     NodeEditor.toast(`"${title}" created`, 'success');
 }
 
-function openPreview() {
+function openPreview(opts) {
     NodeEditor.flushContent();
     const data = EditorState.getExportData();
     if (!data) {
@@ -247,14 +254,22 @@ function openPreview() {
         NodeEditor.toast('Viewer not built — run: py build_editor.py', 'error');
         return;
     }
+    // Optional deep link into the viewer's "Save as PDF" picker (#pdf=<nodeId>).
+    // Type-guard everything: the header View button passes a MouseEvent as `opts`.
+    const wantPdf = !!(opts && typeof opts === 'object' && opts.pdf === true);
+    const pdfNodeId = wantPdf && typeof opts.pdfNodeId === 'string' && data.nodes && data.nodes[opts.pdfNodeId]
+        ? opts.pdfNodeId : null;
     // Inject the current content into the embedded full reader, open it in a new tab.
     const jsonStr = JSON.stringify(data).replace(/<\//g, '<\\/');
     const html = VIEWER_TEMPLATE.replace('__ENTROPY_PREVIEW_DATA__', () => jsonStr);
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
-    const win = window.open(url, '_blank');
+    const target = wantPdf ? url + '#pdf' + (pdfNodeId ? '=' + encodeURIComponent(pdfNodeId) : '') : url;
+    const win = window.open(target, '_blank');
     if (!win) {
         NodeEditor.toast('Pop-up blocked — allow pop-ups to open the viewer', 'error');
+    } else if (wantPdf) {
+        NodeEditor.toast('Opened in the viewer — pick the section, then choose Save as PDF in the print dialog', 'success');
     } else {
         NodeEditor.toast('Opened in the viewer', 'success');
     }

@@ -17,16 +17,70 @@ const Markdown = (() => {
     let footnotes = null;
     let fnPrefix = '';
 
+    // Authored footnotes ([^id] markers + [^id]: definitions). Kept separate from
+    // the link-reference apparatus above: markers render as bracketed [n] feeding a
+    // "Notes" list, links keep bare superscripts feeding "References".
+    let notes = null;        // ordered list of {n, id} as markers first appear
+    let notesSeen = null;    // id -> assigned display number (repeated markers reuse it)
+    let notesDefs = null;    // id -> definition text harvested from the body
+
     function sanitizeId(s) {
         return String(s == null ? '' : s).replace(/[^A-Za-z0-9_-]/g, '-') || 'fn';
+    }
+
+    // Pull `[^id]: text` definition lines out of the markdown (skipping fenced
+    // code so code samples are never altered). Returns the body without those
+    // lines plus a map of id -> text. The first definition for an id wins.
+    function harvestFootnoteDefs(md) {
+        const defs = {};
+        if (!md) return { bodyMd: md || '', defs };
+        const lines = md.split('\n');
+        const body = [];
+        let inCode = false;
+        const defRe = /^\[\^([A-Za-z0-9_-]+)\]:\s?(.*)$/;
+        for (const line of lines) {
+            if (/^```/.test(line)) { inCode = !inCode; body.push(line); continue; }
+            if (!inCode) {
+                const m = line.match(defRe);
+                if (m) {
+                    const id = m[1];
+                    if (Object.prototype.hasOwnProperty.call(defs, id)) {
+                        if (typeof console !== 'undefined' && console.warn) {
+                            console.warn('Footnote: duplicate definition for [^' + id + '] ignored.');
+                        }
+                    } else {
+                        defs[id] = m[2];
+                    }
+                    continue;  // strip the definition line from the rendered body
+                }
+            }
+            body.push(line);
+        }
+        return { bodyMd: body.join('\n'), defs };
     }
 
     function parseInline(text) {
         let t = text
             .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="md-image">')
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            // Emphasis requires non-space flanking (opener not followed by whitespace,
+            // closer not preceded by whitespace) so space-flanked asterisks like "3 * 4 * 5"
+            // stay literal — matching the editor's serializer and keeping output idempotent.
+            // The bold-italic (***) rule runs first (as in the editor and the Python
+            // exporters); without it ***x*** rendered as mis-nested <strong><em>x</strong></em>.
+            .replace(/\*\*\*(?!\s)(.+?)(?<!\s)\*\*\*/g, '<strong><em>$1</em></strong>')
+            .replace(/\*\*(?!\s)(.+?)(?<!\s)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(?!\s)(.+?)(?<!\s)\*/g, '<em>$1</em>')
             .replace(/`(.+?)`/g, '<code>$1</code>');
+        // Authored footnote markers — before links so [^id] isn't mistaken for a
+        // link label. Only active when a notes collector is live (renderWithFootnotes).
+        if (notes) {
+            t = t.replace(/\[\^([A-Za-z0-9_-]+)\]/g, (m, id) => {
+                let n = notesSeen[id];
+                if (n === undefined) { n = notes.length + 1; notesSeen[id] = n; notes.push({ n, id }); }
+                return `<sup class="fn-marker" id="fnref-${fnPrefix}-note-${n}">` +
+                    `<a href="#fn-${fnPrefix}-note-${n}">[${n}]</a></sup>`;
+            });
+        }
         if (footnotes) {
             t = t.replace(/\[(.+?)\]\((.+?)\)/g, (m, label, url) => {
                 const n = footnotes.length + 1;
@@ -40,7 +94,7 @@ const Markdown = (() => {
         } else {
             t = t.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
         }
-        return t.replace(/~~(.+?)~~/g, '<del>$1</del>');
+        return t.replace(/~~(?!\s)(.+?)(?<!\s)~~/g, '<del>$1</del>');
     }
 
     // Parse a full node's markdown, turning each inline link into a numbered
@@ -50,21 +104,68 @@ const Markdown = (() => {
     // HTML unchanged when the node has no links.
     function renderWithFootnotes(markdown, idPrefix) {
         const prefix = sanitizeId(idPrefix);
-        const prevFootnotes = footnotes;
-        const prevPrefix = fnPrefix;
+        const harvested = harvestFootnoteDefs(markdown);
+        const prevFootnotes = footnotes, prevPrefix = fnPrefix;
+        const prevNotes = notes, prevSeen = notesSeen, prevDefs = notesDefs;
         footnotes = [];
+        notes = [];
+        notesSeen = {};
+        notesDefs = harvested.defs;
         fnPrefix = prefix;
-        let body;
-        let collected;
+        let body, collectedLinks, collectedNotes, defs;
         try {
-            body = parse(markdown);
+            body = parse(harvested.bodyMd);
         } finally {
-            collected = footnotes;
+            collectedLinks = footnotes;
+            collectedNotes = notes;
+            defs = notesDefs;
             footnotes = prevFootnotes;
             fnPrefix = prevPrefix;
+            notes = prevNotes; notesSeen = prevSeen; notesDefs = prevDefs;
         }
-        if (!collected || collected.length === 0) return body;
+        // Order: body, then authored Notes, then link References.
+        return body + buildNotesSection(collectedNotes, defs, prefix) +
+            buildReferencesSection(collectedLinks, prefix);
+    }
 
+    // Authored-footnote "Notes" list. Missing definitions and unreferenced
+    // definitions are surfaced (warned + rendered), never silently dropped.
+    function buildNotesSection(used, defs, prefix) {
+        used = used || [];
+        defs = defs || {};
+        const referenced = {};
+        used.forEach(u => { referenced[u.id] = true; });
+        const orphans = Object.keys(defs).filter(id => !referenced[id]);
+        if (used.length === 0 && orphans.length === 0) return '';
+
+        let html = '<section class="fn-notes" aria-label="Notes">' +
+            '<h2 class="fn-notes-title">Notes</h2><ol class="fn-notes-list">';
+        for (const u of used) {
+            const has = Object.prototype.hasOwnProperty.call(defs, u.id);
+            if (!has && typeof console !== 'undefined' && console.warn) {
+                console.warn('Footnote [^' + u.id + '] is referenced but has no definition.');
+            }
+            const inner = has ? parseInline(defs[u.id])
+                : '<span class="fn-error">[missing footnote text: ' + escapeHtml(u.id) + ']</span>';
+            html += `<li id="fn-${prefix}-note-${u.n}" class="fn-note-item${has ? '' : ' fn-error'}">` +
+                `<span class="fn-note-text">${inner}</span> ` +
+                `<a class="fn-note-backref" href="#fnref-${prefix}-note-${u.n}" ` +
+                `aria-label="Back to note ${u.n}">↩</a></li>`;
+        }
+        for (const id of orphans) {
+            if (typeof console !== 'undefined' && console.warn) {
+                console.warn('Footnote definition [^' + id + '] is never referenced.');
+            }
+            html += `<li class="fn-note-item fn-orphan"><span class="fn-note-text">${parseInline(defs[id])}</span> ` +
+                `<span class="fn-orphan-tag">(unreferenced: ${escapeHtml(id)})</span></li>`;
+        }
+        html += '</ol></section>';
+        return html;
+    }
+
+    // Existing link-reference apparatus, unchanged in form.
+    function buildReferencesSection(collected, prefix) {
+        if (!collected || collected.length === 0) return '';
         let refs = '<section class="footnotes" aria-label="References">' +
             '<h2 class="footnotes-title">References</h2>' +
             '<ol class="footnotes-list">';
@@ -77,7 +178,7 @@ const Markdown = (() => {
                 `aria-label="Back to reference ${f.n} in the text">↩</a></li>`;
         }
         refs += '</ol></section>';
-        return body + refs;
+        return refs;
     }
 
     function parse(markdown) {

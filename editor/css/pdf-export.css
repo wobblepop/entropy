@@ -1,0 +1,148 @@
+/* ============================================
+   PDF EXPORT — "Generate PDF" picker (editor)
+
+   The PDF itself comes from the local PDF service (pdf_service.py, which
+   runs entropy_to_pdf_v2.py); this file only styles the section picker and
+   its service-status line.
+   ============================================ */
+
+.pdf-modal-content {
+    max-width: 560px;
+}
+
+.pdf-hint {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+.pdf-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+.pdf-link-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 11px;
+    cursor: pointer;
+    padding: 2px 5px;
+    border-radius: var(--radius);
+    transition: background var(--transition), color var(--transition);
+}
+
+.pdf-link-btn:hover {
+    background: var(--bg-hover);
+    color: var(--accent-hover);
+}
+
+.pdf-link-btn:focus-visible {
+    outline: 1px solid var(--border-focus);
+}
+
+.pdf-tree {
+    max-height: 50vh;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+    background: var(--bg-input);
+}
+
+.pdf-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.pdf-item:hover {
+    background: var(--bg-hover);
+    color: var(--text);
+}
+
+.pdf-item.selected {
+    background: var(--accent-dim);
+    color: var(--text);
+}
+
+.pdf-item input {
+    margin: 0;
+    flex-shrink: 0;
+    accent-color: var(--accent);
+}
+
+.pdf-item-indent {
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.pdf-item-num {
+    flex-shrink: 0;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-faint);
+}
+
+.pdf-item.selected .pdf-item-num {
+    color: var(--accent);
+}
+
+.pdf-item-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pdf-summary {
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--text-dim);
+    min-height: 1.4em;
+}
+
+.modal-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.modal-btn.primary:disabled:hover {
+    background: var(--accent-dim);
+    color: var(--accent);
+}
+
+.pdf-hint code {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    background: var(--bg-elevated);
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+/* Service status line: neutral while checking, green when reachable, amber when not. */
+.pdf-service {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.5;
+}
+
+.pdf-service.ok {
+    color: var(--success);
+}
+
+.pdf-service.down {
+    color: var(--warning);
+}

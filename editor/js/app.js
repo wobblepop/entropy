@@ -9,6 +9,7 @@ const App = (() => {
         NodeEditor.init();
         Palette.init();
         Graph.init();
+        PdfExport.init();
         setupFileIO();
         setupKeyboard();
         setupTabs();
@@ -187,6 +188,11 @@ const App = (() => {
                 e.preventDefault();
                 showNewNodeModal();
             }
+            if (e.ctrlKey && e.shiftKey && (e.key === 'M' || e.key === 'm')) {
+                e.preventDefault();
+                NodeEditor.toggleSuggestMode();
+                return;
+            }
             if (e.ctrlKey && e.key === 'p') {
                 e.preventDefault();
                 openPreview();
@@ -233,20 +239,34 @@ const App = (() => {
     }
 
     function setupResize() {
-        setupResizeHandle('resize-left', 'panel-left', 160, 350, false);
-        setupResizeHandle('resize-right', 'panel-right', 200, 400, true);
+        setupResizeHandle('resize-left', 'panel-left', 160, 350, false, 'collapse-left', 'Nodes');
+        setupResizeHandle('resize-right', 'panel-right', 200, 400, true, 'collapse-right', 'properties');
     }
 
-    function setupResizeHandle(handleId, panelId, min, max, reverse) {
+    function savePanelCollapsed(panelId, collapsed) {
+        try { localStorage.setItem('entropy-editor-collapsed-' + panelId, collapsed ? '1' : '0'); } catch (e) { /* storage blocked — collapse still works for this session */ }
+    }
+
+    function loadPanelCollapsed(panelId) {
+        try { return localStorage.getItem('entropy-editor-collapsed-' + panelId) === '1'; } catch (e) { return false; }
+    }
+
+    function setupResizeHandle(handleId, panelId, min, max, reverse, btnId, label) {
         const handle = document.getElementById(handleId);
         const panel = document.getElementById(panelId);
+        const btn = btnId ? document.getElementById(btnId) : null;
+        if (!handle || !panel) return;
         let startX, startWidth;
+        // Width (px) to return to when the panel is expanded; updated on every resize.
+        let restoreWidth = panel.offsetWidth;
 
         handle.addEventListener('mousedown', e => {
+            if (panel.classList.contains('collapsed')) return; // nothing to drag while collapsed
             e.preventDefault();
             startX = e.clientX;
             startWidth = panel.offsetWidth;
             handle.classList.add('active');
+            panel.classList.add('resizing');
             document.body.style.cursor = 'col-resize';
             document.body.style.userSelect = 'none';
             document.addEventListener('mousemove', onMove);
@@ -261,11 +281,60 @@ const App = (() => {
 
         function onUp() {
             handle.classList.remove('active');
+            panel.classList.remove('resizing');
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
+            restoreWidth = panel.offsetWidth;
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup', onUp);
         }
+
+        function setCollapsed(collapsed) {
+            const already = panel.classList.contains('collapsed');
+            if (collapsed) {
+                if (!already && panel.offsetWidth > 0) restoreWidth = panel.offsetWidth;
+                panel.classList.add('collapsed');
+                handle.classList.add('is-collapsed');
+            } else {
+                panel.classList.remove('collapsed');
+                handle.classList.remove('is-collapsed');
+                if (restoreWidth > 0) panel.style.width = restoreWidth + 'px';
+                else panel.style.removeProperty('width'); // fall back to the CSS default
+            }
+            updateBtn(collapsed);
+            savePanelCollapsed(panelId, collapsed);
+        }
+
+        function updateBtn(collapsed) {
+            if (!btn) return;
+            // Chevron points the direction the edge will move when clicked.
+            const expandChar = reverse ? '‹' : '›';   // ‹ / ›
+            const collapseChar = reverse ? '›' : '‹'; // › / ‹
+            btn.textContent = collapsed ? expandChar : collapseChar;
+            const verb = collapsed ? 'Expand' : 'Collapse';
+            btn.title = verb + ' panel (or double-click the bar)';
+            btn.setAttribute('aria-label', verb + ' ' + label + ' panel');
+            btn.setAttribute('aria-expanded', String(!collapsed));
+        }
+
+        function toggle() { setCollapsed(!panel.classList.contains('collapsed')); }
+
+        // Double-clicking the bar (but not the button itself) toggles collapse.
+        handle.addEventListener('dblclick', e => {
+            if (btn && (e.target === btn || btn.contains(e.target))) return;
+            toggle();
+        });
+
+        if (btn) {
+            // Button clicks must not start a drag or re-trigger the handle's dblclick.
+            btn.addEventListener('mousedown', e => e.stopPropagation());
+            btn.addEventListener('dblclick', e => e.stopPropagation());
+            btn.addEventListener('click', e => { e.stopPropagation(); toggle(); });
+        }
+
+        // Restore persisted collapse state (collapsed minimizes survive a reload).
+        if (loadPanelCollapsed(panelId)) setCollapsed(true);
+        else updateBtn(false);
     }
 
     function setupDirtyIndicator() {
@@ -348,6 +417,7 @@ const App = (() => {
                 <div>Words: <strong>${words.toLocaleString()}</strong></div>
                 <div>Child links: <strong>${children}</strong></div>
                 <div>Cross-links: <strong>${conns}</strong></div>
+                <div>Created: ${data.meta.created ? new Date(data.meta.created).toLocaleString() : '—'}</div>
                 <div>Last modified: ${data.meta.modified ? new Date(data.meta.modified).toLocaleString() : '—'}</div>
             `;
         }

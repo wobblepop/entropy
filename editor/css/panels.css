@@ -15,6 +15,7 @@
     max-width: 350px;
     background: var(--bg-surface);
     border-right: 1px solid var(--border);
+    transition: width var(--transition);
 }
 
 .panel-center {
@@ -31,10 +32,28 @@
     max-width: 400px;
     background: var(--bg-surface);
     border-left: 1px solid var(--border);
+    transition: width var(--transition);
+}
+
+/* Collapsed (minimized) panel — width animates to 0, content + border hidden.
+   overflow:hidden on .panel already clips the content during the transition. */
+.panel-left.collapsed,
+.panel-right.collapsed {
+    width: 0 !important;
+    min-width: 0;
+    border-width: 0;
+}
+
+/* While dragging the handle, suppress the width transition so resizing tracks the
+   cursor instead of easing behind it. */
+.panel-left.resizing,
+.panel-right.resizing {
+    transition: none;
 }
 
 /* Resize handles */
 .resize-handle {
+    position: relative;
     width: 4px;
     cursor: col-resize;
     background: transparent;
@@ -45,6 +64,42 @@
 .resize-handle:hover,
 .resize-handle.active {
     background: var(--accent);
+}
+
+/* Collapse / expand toggle riding on each resize handle. Hidden until the handle is
+   hovered, but always visible while the panel is collapsed so it can be reopened. */
+.panel-collapse-btn {
+    position: absolute;
+    top: 10px;
+    width: 16px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 13px;
+    line-height: 1;
+    color: var(--text-dim);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--transition), color var(--transition), border-color var(--transition);
+    z-index: 5;
+}
+
+#resize-left .panel-collapse-btn { left: 2px; }
+#resize-right .panel-collapse-btn { right: 2px; }
+
+.resize-handle:hover .panel-collapse-btn,
+.resize-handle.is-collapsed .panel-collapse-btn {
+    opacity: 1;
+}
+
+.panel-collapse-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
 }
 
 /* Panel header */
@@ -250,6 +305,12 @@
 .preview-pane strong {
     color: var(--accent-hover);
 }
+
+/* Emphasis inside a heading takes the heading's color, so a bold word in a heading doesn't
+   switch color (mirrors the editing surface). */
+.preview-pane h1 :is(strong, b, em, i, del, s, strike),
+.preview-pane h2 :is(strong, b, em, i, del, s, strike),
+.preview-pane h3 :is(strong, b, em, i, del, s, strike) { color: inherit; }
 
 .preview-pane code {
     font-family: var(--font-mono);

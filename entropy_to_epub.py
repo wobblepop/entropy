@@ -54,6 +54,7 @@ if str(_HERE) not in sys.path:
 
 from entropy_to_html import (  # noqa: E402  (path setup must precede import)
     markdown_to_html,
+    _sanitize_id,
     structured_items,
     tree_order,
     esc,
@@ -151,6 +152,20 @@ figcaption{font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.78em;
   font-size:0.85em; color:#555555; border:1px solid #e5e5e5; border-radius:6px;
   padding:0.6em 0.8em; margin:1em 0;}
 .media-link .mtype{color:#2563eb; font-weight:bold; margin-right:6px;}
+
+/* ---- authored footnotes (Notes) ---- */
+.fn-marker{font-size:0.72em; font-weight:bold; vertical-align:super; line-height:0;}
+.fn-marker a{color:#2563eb; text-decoration:none;}
+.fn-notes{margin-top:1.6em; padding-top:0.8em; border-top:1px solid #e5e5e5;}
+.fn-notes-title{font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.72em;
+  font-weight:bold; letter-spacing:0.06em; text-transform:uppercase; color:#555555;
+  margin:0 0 0.5em;}
+.fn-notes-list{margin:0; padding-left:1.4em;}
+.fn-note-item{font-size:0.9em; color:#333333; line-height:1.5; margin:0.3em 0;}
+.fn-note-backref{color:#888888; text-decoration:none; margin-left:0.3em;}
+.fn-error{color:#c0392b;}
+.fn-orphan{color:#777777; font-style:italic;}
+.fn-orphan-tag{font-size:0.78em; color:#777777;}
 
 /* ---- :::example blocks ---- */
 .example-block{background-color:#eff6ff; border-left:3px solid #2563eb;
@@ -478,8 +493,7 @@ def _titlepage_doc(meta):
     stamp = []
     if meta.get("author"):
         stamp.append(esc(meta["author"]))
-    if meta.get("version"):
-        stamp.append("v" + esc(meta["version"]))
+    # version number intentionally not rendered (internal tracking only)
     if meta.get("modified"):
         stamp.append(esc(str(meta["modified"])[:10]))
     if stamp:
@@ -518,7 +532,7 @@ def _node_doc(node, nid, nodes, base_dir, eyebrow_html, registry, stats,
     if node.get("summary"):
         out.append(f'<p class="node-summary">{esc(node["summary"])}</p>')
     out.append('<hr class="title-rule" />')
-    body_html = markdown_to_html(node.get("content", ""), base_dir)
+    body_html = markdown_to_html(node.get("content", ""), base_dir, fn_prefix=_sanitize_id(str(nid)))
     out.append(f'<div class="node-body">{body_html}</div>')
     out.append(_media_html(node, base_dir))
     out.append(_relations_html(node, nodes))

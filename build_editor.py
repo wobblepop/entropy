@@ -33,16 +33,17 @@ OUT = ROOT / "editor.html"
 
 # Editor bundle: CSS cascade order, then JS dependency/init order.
 # viewer-template.js (generated below) must load before palette.js, which uses it.
-CSS_FILES = ["css/base.css", "css/panels.css", "css/editor.css"]
-JS_FILES = ["js/state.js", "js/tree.js", "js/editor.js",
-            "js/viewer-template.js", "js/palette.js", "js/graph.js", "js/app.js"]
+CSS_FILES = ["css/base.css", "css/panels.css", "css/editor.css", "css/pdf-export.css"]
+JS_FILES = ["js/state.js", "js/tree.js", "js/suggest-diff.js", "js/editor.js",
+            "js/viewer-template.js", "js/pdf-export.js", "js/palette.js", "js/graph.js",
+            "js/app.js"]
 
 # Explainer (the real reader) — same load order as explainer/index.html.
 EX_CSS = ["css/base.css", "css/themes.css", "css/components.css",
-          "css/accessibility.css", "css/responsive.css"]
+          "css/accessibility.css", "css/responsive.css", "css/pdf-export.css"]
 EX_JS = ["js/markdown.js", "js/state.js", "js/navigation.js", "js/renderer.js",
          "js/themes.js", "js/accessibility.js", "js/media.js", "js/graph.js",
-         "js/standalone.js", "js/reading-mode.js", "js/app.js"]
+         "js/standalone.js", "js/reading-mode.js", "js/print-chapter.js", "js/app.js"]
 
 DATA_TOKEN = "__ENTROPY_PREVIEW_DATA__"
 

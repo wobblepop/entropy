@@ -35,6 +35,8 @@
           "content": { "type": "string", "description": "Markdown content" },
           "summary": { "type": "string", "description": "Brief summary shown before expanding" },
           "notes": { "type": "string", "description": "Private author notes for writing/editing. Never shown to readers or in exported PDFs." },
+          "created": { "type": "string", "format": "date-time", "description": "When the node was first created. Editor-only; never rendered to readers or exports." },
+          "modified": { "type": "string", "format": "date-time", "description": "When the node's own data was last edited. Editor-only; never rendered to readers or exports." },
           "children": {
             "type": "array",
             "items": { "type": "string" },
@@ -70,7 +72,24 @@
           "tags": { "type": "array", "items": { "type": "string" } },
           "difficulty": { "type": "string", "enum": ["intro", "intermediate", "advanced", "expert"] },
           "estimatedTime": { "type": "string", "description": "e.g. '5 min', '20 min'" },
-          "order": { "type": "number", "description": "Sort order among siblings" }
+          "order": { "type": "number", "description": "Sort order among siblings" },
+          "suggestions": {
+            "type": "array",
+            "description": "Editor-only pending track-changes hunks against `content`. Never rendered in the reader or exports. Cleared (field removed) once all suggestions are accepted or rejected.",
+            "items": {
+              "type": "object",
+              "required": ["id", "type", "anchor", "before", "after"],
+              "properties": {
+                "id": { "type": "string" },
+                "type": { "type": "string", "enum": ["insert", "delete", "replace"] },
+                "anchor": { "type": "number", "description": "Character offset into clean content where the hunk applies" },
+                "before": { "type": "string", "description": "Original substring ('' for a pure insert)" },
+                "after": { "type": "string", "description": "Suggested replacement ('' for a pure delete)" },
+                "ctxBefore": { "type": "string", "description": "Context preceding the anchor, for drift recovery" },
+                "ctxAfter": { "type": "string", "description": "Context following the original text, for drift recovery" }
+              }
+            }
+          }
         }
       }
     },

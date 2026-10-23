@@ -1,0 +1,343 @@
+/* ============================================
+   PDF EXPORT — "Save as PDF" for one section (+ its sub-sections)
+
+   Screen: the header button and the section picker modal.
+   Print:  while <html class="printing-chapter"> is set, everything except
+           #print-chapter is hidden, so the browser's Save-as-PDF destination
+           captures only the chosen section(s). A plain Ctrl+P (no class) is
+           unaffected and still prints the page as before.
+   ============================================ */
+
+/* ---- picker modal (screen) ---- */
+.pdf-modal-content {
+    width: min(540px, 92vw);
+}
+
+.pdf-hint {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+.pdf-tree {
+    max-height: 50vh;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 6px;
+    background: var(--bg);
+}
+
+.pdf-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.pdf-item:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.pdf-item.selected {
+    background: var(--accent-light);
+    color: var(--accent);
+    font-weight: 500;
+}
+
+.pdf-item input {
+    margin: 0;
+    flex-shrink: 0;
+    accent-color: var(--accent);
+}
+
+.pdf-item-indent {
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.pdf-item-num {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+}
+
+.pdf-item-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pdf-item-count {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+}
+
+.pdf-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.pdf-option input {
+    margin: 0;
+    accent-color: var(--accent);
+}
+
+.pdf-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.pdf-actions .modal-close {
+    margin-top: 0;
+}
+
+.pdf-save-btn {
+    padding: 8px 16px;
+    background: var(--accent);
+    color: #ffffff;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+}
+
+.pdf-save-btn:hover {
+    opacity: 0.9;
+}
+
+/* ---- print container: never on screen; in print media only during a chapter print ---- */
+@media screen {
+    .print-chapter {
+        display: none !important;
+    }
+}
+
+html:not(.printing-chapter) .print-chapter {
+    display: none !important;
+}
+
+/* ---- chapter print ---- */
+@media print {
+    html.printing-chapter {
+        font-size: 11.5pt;
+    }
+
+    /* Hide the whole reader UI; only the print container remains. */
+    html.printing-chapter body > :not(.print-chapter) {
+        display: none !important;
+    }
+
+    /* Force a light, ink-friendly palette regardless of the on-screen theme. */
+    html.printing-chapter body {
+        min-height: 0;
+        background: #ffffff;
+        color: #000000;
+        --bg: #ffffff;
+        --bg-surface: #ffffff;
+        --bg-subtle: #f4f4f4;
+        --bg-code: #f2f2f2;
+        --bg-tag: #eeeeee;
+        --text-primary: #000000;
+        --text-secondary: #333333;
+        --text-tertiary: #555555;
+        --border: #bbbbbb;
+        --accent: #1d4ed8;
+        --accent-light: #eef2ff;
+        --line-height: 1.5;
+    }
+
+    /* A named page keeps these margins scoped to chapter prints; a plain Ctrl+P
+       keeps the browser's default margins. */
+    html.printing-chapter .print-chapter {
+        display: block;
+        width: 100%;
+        max-width: none;
+        page: entropy-chapter;
+    }
+
+    @page entropy-chapter {
+        margin: 20mm 18mm;
+    }
+
+    .print-book-line {
+        font-size: 0.75rem;
+        color: var(--text-tertiary);
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 18px;
+    }
+
+    .print-node {
+        padding: 0;
+    }
+
+    /* Every section starts on a fresh page. */
+    .print-node + .print-node {
+        break-before: page;
+    }
+
+    /* Contents page (rendered only when more than one section prints). */
+    .print-toc {
+        break-after: page;
+        margin-top: 8px;
+    }
+
+    .print-toc-title {
+        font-size: 1.6rem;
+        line-height: 1.2;
+        margin: 0 0 14px;
+        color: var(--text-primary);
+    }
+
+    .print-toc-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .print-toc-list li {
+        margin: 0 0 6px;
+    }
+    .print-toc-list li.depth-1 { padding-left: 18px; }
+    .print-toc-list li.depth-2 { padding-left: 36px; }
+    .print-toc-list li.depth-3 { padding-left: 54px; }
+    .print-toc-list li.depth-4 { padding-left: 72px; }
+    .print-toc-list li.depth-5 { padding-left: 90px; }
+
+    .print-toc-list a {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .print-toc-num {
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-right: 8px;
+    }
+
+    .print-chapter-num {
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin: 0 0 4px;
+    }
+
+    .print-node-title {
+        font-size: 1.9rem;
+        line-height: 1.2;
+        margin: 0 0 8px;
+        color: var(--text-primary);
+        break-after: avoid;
+    }
+    .print-node.depth-1 .print-node-title { font-size: 1.5rem; }
+    .print-node.depth-2 .print-node-title { font-size: 1.3rem; }
+    .print-node.depth-3 .print-node-title,
+    .print-node.depth-4 .print-node-title,
+    .print-node.depth-5 .print-node-title { font-size: 1.15rem; }
+
+    .print-node .node-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 0.72rem;
+        color: var(--text-tertiary);
+        margin-bottom: 6px;
+    }
+
+    .print-node .node-summary {
+        font-style: italic;
+        color: var(--text-secondary);
+        margin-bottom: 14px;
+    }
+
+    .print-chapter h1,
+    .print-chapter h2,
+    .print-chapter h3,
+    .print-chapter h4 {
+        break-after: avoid;
+    }
+
+    /* Content headings authored as #/## have no screen margins of their own in
+       the reader; on paper they need to sit clearly below the section title. */
+    .print-chapter .node-body h1 {
+        font-size: 1.45rem;
+        margin: 1.3em 0 0.5em;
+    }
+    .print-chapter .node-body h2 {
+        font-size: 1.3rem;
+        margin: 1.3em 0 0.5em;
+    }
+
+    .print-chapter p,
+    .print-chapter li {
+        orphans: 3;
+        widows: 3;
+    }
+
+    .print-chapter figure,
+    .print-chapter pre,
+    .print-chapter blockquote,
+    .print-chapter table,
+    .print-chapter .example-block,
+    .print-chapter img {
+        break-inside: avoid;
+    }
+
+    .print-chapter img {
+        max-height: 80vh;
+    }
+
+    .print-chapter pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    /* Links print as plain text; the numbered References list carries the URLs. */
+    .print-chapter a {
+        color: inherit;
+        text-decoration: none;
+    }
+    .print-chapter .footnote-url {
+        color: var(--accent);
+    }
+    .print-chapter .footnote-backref,
+    .print-chapter .fn-note-backref {
+        display: none;
+    }
+
+    .print-media-link {
+        font-size: 0.85rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 8px 10px;
+        margin: 12px 0;
+        color: var(--text-secondary);
+    }
+    .print-media-link .mtype {
+        color: var(--accent);
+        font-weight: 500;
+        margin-right: 6px;
+    }
+}

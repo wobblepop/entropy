@@ -341,3 +341,59 @@ sup.footnote-ref:target a {
     font-size: 0.95em;
 }
 .footnote-backref:hover { color: var(--accent); }
+
+/* ---- authored footnotes (Notes) — distinct from link References above ---- */
+.fn-marker {
+    font-size: 0.72em;
+    line-height: 0;
+    vertical-align: super;
+    font-weight: 600;
+    margin-left: 1px;
+    white-space: nowrap;
+}
+.fn-marker a { color: var(--accent); text-decoration: none; padding: 0 1px; }
+.fn-marker a:hover { text-decoration: underline; }
+sup.fn-marker:target a {
+    background: var(--accent-light);
+    border-radius: 3px;
+    outline: 2px solid var(--accent);
+}
+.fn-notes {
+    margin-top: 2.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+}
+.fn-notes-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-tertiary);
+    margin: 0 0 0.85rem;
+}
+.fn-notes-list {
+    margin: 0;
+    padding-left: 1.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.fn-notes-list .fn-note-item {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+.fn-notes-list .fn-note-item:target { background: var(--accent-light); }
+.fn-note-text { color: var(--text-secondary); }
+.fn-note-backref {
+    color: var(--text-tertiary);
+    text-decoration: none;
+    margin-left: 0.3rem;
+    font-size: 0.95em;
+}
+.fn-note-backref:hover { color: var(--accent); }
+.fn-error { color: #c0392b; }
+.fn-orphan { font-style: italic; color: var(--text-tertiary); }
+.fn-orphan-tag { font-size: 0.78em; color: var(--text-tertiary); }

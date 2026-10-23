@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/panels.css">
     <link rel="stylesheet" href="css/editor.css">
+    <link rel="stylesheet" href="css/pdf-export.css">
 </head>
 <body>
     <!-- Command Palette (Ctrl+K) -->
@@ -43,6 +44,7 @@
             <span class="header-sep"></span>
             <button class="header-btn" id="btn-add-node" title="Add node (Ctrl+Shift+N)">+ Node</button>
             <button class="header-btn" id="btn-preview" title="Open your book in the full Viewer, new tab (Ctrl+P)">View</button>
+            <button class="header-btn" id="btn-pdf" title="Generate a PDF of chosen sections (needs the local PDF service)">PDF</button>
         </div>
         <div class="header-right">
             <span class="header-word-count" id="word-count" title="Words in this section · whole book"></span>
@@ -62,7 +64,10 @@
         </aside>
 
         <!-- Resize handle -->
-        <div class="resize-handle" id="resize-left" aria-hidden="true"></div>
+        <div class="resize-handle" id="resize-left" title="Drag to resize · double-click to collapse">
+            <button class="panel-collapse-btn" id="collapse-left" type="button"
+                aria-label="Collapse Nodes panel" title="Collapse panel (or double-click the bar)">&lsaquo;</button>
+        </div>
 
         <!-- Center: Editor -->
         <main class="panel panel-center" id="panel-center">
@@ -98,6 +103,14 @@
                         <label for="edit-order">Order</label>
                         <input type="number" id="edit-order" class="meta-input" style="width:60px">
                     </div>
+                    <div class="meta-field meta-field-stamp meta-field-created">
+                        <label>Created</label>
+                        <span id="edit-created" class="meta-stamp">—</span>
+                    </div>
+                    <div class="meta-field meta-field-stamp">
+                        <label>Edited</label>
+                        <span id="edit-modified" class="meta-stamp">—</span>
+                    </div>
                 </div>
 
                 <!-- Title -->
@@ -111,21 +124,65 @@
                     <div class="editor-toolbar">
                         <button class="toolbar-btn" data-action="bold" title="Bold (Ctrl+B)"><strong>B</strong></button>
                         <button class="toolbar-btn" data-action="italic" title="Italic (Ctrl+I)"><em>I</em></button>
+                        <button class="toolbar-btn" data-action="underline" title="Underline (Ctrl+U)"><u>U</u></button>
                         <button class="toolbar-btn" data-action="strikethrough" title="Strikethrough (Ctrl+Shift+S)"><s>S</s></button>
                         <span class="toolbar-sep"></span>
                         <button class="toolbar-btn" data-action="h2" title="Heading (Ctrl+2)">H2</button>
                         <button class="toolbar-btn" data-action="h3" title="Sub-heading (Ctrl+3)">H3</button>
                         <span class="toolbar-sep"></span>
-                        <button class="toolbar-btn" data-action="ul" title="Bullet list (Ctrl+U)">&#8226; List</button>
+                        <button class="toolbar-btn" data-action="ul" title="Bullet list (Ctrl+Shift+8)">&#8226; List</button>
                         <button class="toolbar-btn" data-action="ol" title="Numbered list">1. List</button>
                         <button class="toolbar-btn" data-action="quote" title="Blockquote (Ctrl+Q)"> &#8221;</button>
                         <button class="toolbar-btn" data-action="example" title="Example block (Ctrl+E)">Ex</button>
                         <span class="toolbar-sep"></span>
                         <button class="toolbar-btn" data-action="link" title="Insert link (Ctrl+L)">Link</button>
+                        <button class="toolbar-btn" data-action="footnote" title="Insert footnote (Ctrl+Shift+F)">Fn</button>
                         <button class="toolbar-btn" data-action="code" title="Inline code">Code</button>
                         <span class="toolbar-sep"></span>
                         <button class="toolbar-btn" data-action="paragraph" title="Normal text (Ctrl+0)">Text</button>
                         <button class="toolbar-btn" data-action="hr" title="Horizontal rule">―</button>
+                        <span class="toolbar-sep"></span>
+                        <!-- More text formatting: size, super/subscript, colour, highlight, flip, clear -->
+                        <div class="toolbar-menu" id="format-menu">
+                            <button class="toolbar-btn" id="btn-format-more" type="button"
+                                aria-haspopup="true" aria-expanded="false" title="More text formatting">A±<span class="caret">▾</span></button>
+                            <div class="toolbar-dropdown" id="format-dropdown" role="menu" hidden>
+                                <button class="dropdown-item" data-action="font-increase" role="menuitem"><span>Increase font size</span><span class="dd-demo" style="font-size:1.3em">A</span></button>
+                                <button class="dropdown-item" data-action="font-decrease" role="menuitem"><span>Decrease font size</span><span class="dd-demo" style="font-size:0.75em">A</span></button>
+                                <div class="dropdown-sep"></div>
+                                <button class="dropdown-item" data-action="superscript" role="menuitem"><span>Superscript</span><span class="dd-demo">x<sup>2</sup></span></button>
+                                <button class="dropdown-item" data-action="subscript" role="menuitem"><span>Subscript</span><span class="dd-demo">x<sub>2</sub></span></button>
+                                <div class="dropdown-sep"></div>
+                                <div class="dropdown-label">Text colour</div>
+                                <div class="swatch-row">
+                                    <button class="swatch" type="button" data-action="fore-color" data-value="#d64545" style="background:#d64545" title="Red" aria-label="Red text"></button>
+                                    <button class="swatch" type="button" data-action="fore-color" data-value="#d98324" style="background:#d98324" title="Orange" aria-label="Orange text"></button>
+                                    <button class="swatch" type="button" data-action="fore-color" data-value="#2e9e5b" style="background:#2e9e5b" title="Green" aria-label="Green text"></button>
+                                    <button class="swatch" type="button" data-action="fore-color" data-value="#2f6fdb" style="background:#2f6fdb" title="Blue" aria-label="Blue text"></button>
+                                    <button class="swatch" type="button" data-action="fore-color" data-value="#8a4fdb" style="background:#8a4fdb" title="Purple" aria-label="Purple text"></button>
+                                    <label class="swatch swatch-custom" title="Custom text colour">
+                                        <input type="color" data-action="fore-color" value="#d64545" aria-label="Custom text colour">
+                                    </label>
+                                </div>
+                                <div class="dropdown-label">Highlight</div>
+                                <div class="swatch-row">
+                                    <button class="swatch" type="button" data-action="hilite-color" data-value="#fff59d" style="background:#fff59d" title="Yellow" aria-label="Yellow highlight"></button>
+                                    <button class="swatch" type="button" data-action="hilite-color" data-value="#c5f7c5" style="background:#c5f7c5" title="Green" aria-label="Green highlight"></button>
+                                    <button class="swatch" type="button" data-action="hilite-color" data-value="#c5e3ff" style="background:#c5e3ff" title="Blue" aria-label="Blue highlight"></button>
+                                    <button class="swatch" type="button" data-action="hilite-color" data-value="#ffc9de" style="background:#ffc9de" title="Pink" aria-label="Pink highlight"></button>
+                                    <button class="swatch" type="button" data-action="hilite-color" data-value="#ffd9a8" style="background:#ffd9a8" title="Orange" aria-label="Orange highlight"></button>
+                                    <label class="swatch swatch-custom" title="Custom highlight colour">
+                                        <input type="color" data-action="hilite-color" value="#fff59d" aria-label="Custom highlight colour">
+                                    </label>
+                                </div>
+                                <div class="dropdown-sep"></div>
+                                <button class="dropdown-item" data-action="upside-down" role="menuitem"><span>Upside-down text</span><span class="dd-demo">¡oן</span></button>
+                                <button class="dropdown-item" data-action="clear" role="menuitem"><span>Clear formatting</span><span class="dd-demo">⌫</span></button>
+                            </div>
+                        </div>
+                        <span class="toolbar-sep"></span>
+                        <button class="toolbar-btn" id="btn-suggest-mode" data-action="suggest-toggle" title="Suggesting mode — track changes (Ctrl+Shift+M)">Suggest</button>
+                        <button class="toolbar-btn" id="btn-review" data-action="review" title="Review suggested changes">Review</button>
                     </div>
                     <!-- Link input form (shown when inserting a link) -->
                     <div id="link-input-form" class="inline-add-form" hidden>
@@ -135,6 +192,8 @@
                         <button class="inline-cancel" id="link-cancel">Cancel</button>
                     </div>
                     <div id="edit-content" class="editor-content" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Node content" data-placeholder="Start writing your content here..."></div>
+                    <!-- Read-only track-changes review surface (shown instead of #edit-content during review) -->
+                    <div id="review-content" class="editor-content review-content" hidden aria-label="Suggested changes review"></div>
                 </div>
 
                 <!-- Private author notes (never shown to readers or in the PDF) -->
@@ -222,7 +281,10 @@
         </main>
 
         <!-- Resize handle -->
-        <div class="resize-handle" id="resize-right" aria-hidden="true"></div>
+        <div class="resize-handle" id="resize-right" title="Drag to resize · double-click to collapse">
+            <button class="panel-collapse-btn" id="collapse-right" type="button"
+                aria-label="Collapse properties panel" title="Collapse panel (or double-click the bar)">&rsaquo;</button>
+        </div>
 
         <!-- Right Panel: Properties/Preview -->
         <aside class="panel panel-right" id="panel-right">
@@ -343,6 +405,8 @@
                     <div class="shortcut"><kbd>Ctrl+Z</kbd> Undo</div>
                     <div class="shortcut"><kbd>Ctrl+0</kbd> Normal paragraph</div>
                     <div class="shortcut"><kbd>Ctrl+L</kbd> Insert link</div>
+                    <div class="shortcut"><kbd>Ctrl+Shift+M</kbd> Suggesting mode</div>
+                    <div class="shortcut"><kbd>Ctrl+Shift+F</kbd> Insert footnote</div>
                     <div class="shortcut"><kbd>?</kbd> This help</div>
                     <div class="shortcut"><kbd>Esc</kbd> Close modal/palette</div>
                 </div>
@@ -365,14 +429,38 @@
         </div>
     </div>
 
+    <!-- Generate PDF modal (js/pdf-export.js) -->
+    <div id="pdf-modal" class="modal" role="dialog" aria-label="Generate a PDF of chosen sections" hidden>
+        <div class="modal-backdrop"></div>
+        <div class="modal-content pdf-modal-content">
+            <h2>Generate PDF</h2>
+            <p class="pdf-hint">Tick the sections to include. Ticking a section also ticks its sub-sections; untick any you don't want, including the heading itself. <strong>Generate PDF</strong> sends the book to the local PDF service and saves a real PDF: cover, contents page with page numbers, one section per page — the same output as <code>entropy_to_pdf_v2.py</code>.</p>
+            <div class="pdf-toolbar">
+                <span>Tick:</span>
+                <button type="button" class="pdf-link-btn" id="pdf-select-all">All</button>
+                <button type="button" class="pdf-link-btn" id="pdf-select-none">None</button>
+                <button type="button" class="pdf-link-btn" id="pdf-select-current">Current section</button>
+            </div>
+            <div class="pdf-tree" id="pdf-tree" role="group" aria-label="Sections"></div>
+            <div class="pdf-summary" id="pdf-summary" aria-live="polite"></div>
+            <div class="pdf-service" id="pdf-service-status" aria-live="polite"><span id="pdf-service-text"></span> <button type="button" class="pdf-link-btn" id="pdf-service-retry" hidden>Retry</button></div>
+            <div class="modal-actions">
+                <button class="modal-btn primary" id="pdf-save-btn">Generate PDF</button>
+                <button class="modal-btn" id="pdf-cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Hidden file input -->
     <input type="file" id="file-open-input" accept=".json,.entropy.json" hidden>
 
     <!-- Scripts -->
     <script src="js/state.js"></script>
     <script src="js/tree.js"></script>
+    <script src="js/suggest-diff.js"></script>
     <script src="js/editor.js"></script>
     <script src="js/viewer-template.js"></script>
+    <script src="js/pdf-export.js"></script>
     <script src="js/palette.js"></script>
     <script src="js/graph.js"></script>
     <script src="js/app.js"></script>
