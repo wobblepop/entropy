@@ -19,13 +19,15 @@ skip with a message instead of failing; the timestamp tests need no DOM and alwa
 
 - `convert.test.js` — emphasis **flanking** (`3 * 4 * 5` stays literal; `**bold**` works),
   empty-tag cleanup (no `****` leakage), block-nesting backstops (no `> ## x`), span-style
-  emphasis, flat + nested lists, link/footnote/code/table/blockquote round-trips, and a
+  emphasis, font-family spans (canonical form, unsafe values dropped), flat + nested lists,
+  link/footnote/code/table/blockquote round-trips, and a
   **corpus idempotency** check: every node in any book JSON present at the repo root must
   reach a fixed point and never gain asterisks on a save.
 - `timestamps.test.js` — `created`/`modified` are set on create/duplicate, `modified` is
   bumped on edit while `created` is preserved, legacy nodes degrade gracefully, and reads
   never mutate timestamps.
-- `reader.test.js` — the reader's `parseInline` shares the editor's emphasis dialect.
+- `reader.test.js` — the reader's `parseInline` shares the editor's emphasis dialect and
+  passes the editor's whitelisted font-family spans through intact.
 - `print-chapter.test.js` — the reader's "Save as PDF" helpers (`explainer/js/print-chapter.js`):
   subtree/reading order, `meta.structure` chapter labels, suggested file names (single
   section, first-to-last range, whole book), the `#pdf` deep link, print rendering, and
@@ -56,3 +58,6 @@ Needs `playwright` (with `py -m playwright install chromium`) and `pypdf`.
 `../../test_inline_flanking.py` checks that the Python exporters
 (`entropy_to_html.py`, `entropy_to_pdf_v2.py`) apply the same flanking rule, so the editor,
 reader, and exports agree. Run it with `py test_inline_flanking.py` from the repo root.
+`../../test_inline_style.py` does the same for the whitelisted inline `<span style>`
+(colour, highlight, size, font family): the exporters must keep exactly what the editor
+keeps and drop exactly what it drops. Run it with `py test_inline_style.py`.

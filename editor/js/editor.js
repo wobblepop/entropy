@@ -164,11 +164,28 @@ const NodeEditor = (() => {
     }
 
     // Whitelist filter for inline style attributes that we persist as raw HTML in the
-    // markdown (text color, highlight, relative font size). Only these three properties
-    // are honored and each value is constrained to a safe character set, so a hand-edited
-    // or pasted style string can never inject script/url()/arbitrary CSS. Returns the
-    // canonicalized "prop: value; ..." string, or '' when nothing is allowed.
-    const SAFE_STYLE_PROPS = { 'color': 1, 'background-color': 1, 'font-size': 1 };
+    // markdown (text color, highlight, relative font size, font family). Only these
+    // properties are honored and each value is constrained to a safe character set, so a
+    // hand-edited or pasted style string can never inject script/url()/arbitrary CSS.
+    // Returns the canonicalized "prop: value; ..." string, or '' when nothing is allowed.
+    const SAFE_STYLE_PROPS = { 'color': 1, 'background-color': 1, 'font-size': 1, 'font-family': 1 };
+    // A font-family value is a comma-separated list of family names. Each name must be a
+    // plain word sequence (letters, digits, spaces, hyphens, underscores; first character a
+    // letter) so it is valid CSS unquoted. Quotes are stripped and never re-emitted: the
+    // persisted form <span style="..."> is delimited by double quotes, and the editor, the
+    // reader and the HTML/PDF/EPUB exporters all read it with this same whitelist. Returns
+    // the canonical "Name, Other Name" list, or '' when any name is invalid.
+    const FONT_NAME_RE = /^[A-Za-z][A-Za-z0-9_-]*(?: [A-Za-z0-9][A-Za-z0-9_-]*)*$/;
+    function sanitizeFontFamily(val) {
+        if (typeof val !== 'string' || !val || val.length > 64) return '';
+        const names = [];
+        for (let name of val.split(',')) {
+            name = name.trim().replace(/^["']|["']$/g, '').trim().replace(/\s+/g, ' ');
+            if (!name || name.length > 40 || !FONT_NAME_RE.test(name)) return '';
+            names.push(name);
+        }
+        return names.join(', ');
+    }
     function sanitizeInlineStyle(style) {
         if (typeof style !== 'string' || !style || style.length > 200) return '';
         const out = [];
@@ -179,6 +196,11 @@ const NodeEditor = (() => {
             const val = decl.slice(idx + 1).trim();
             if (!SAFE_STYLE_PROPS[prop]) continue;
             if (!val || val.length > 64) continue;
+            if (prop === 'font-family') {
+                const fam = sanitizeFontFamily(val);
+                if (fam) out.push(prop + ': ' + fam);
+                continue;
+            }
             if (!/^[#a-z0-9.,%()\s-]+$/i.test(val)) continue;     // safe chars only
             if (/url|expression|javascript|@import/i.test(val)) continue;
             out.push(prop + ': ' + val);
@@ -194,7 +216,7 @@ const NodeEditor = (() => {
         // escaped literal text). Emphasis inside them is still processed by the rules below.
         //   <u>            underline
         //   <sup>/<sub>    super-/subscript
-        //   <span style>   text color / highlight / relative font size (style is whitelisted)
+        //   <span style>   text color / highlight / relative font size / font family (whitelisted)
         // escHtmlText escapes only & < > (not quotes), so attribute quotes survive verbatim.
         t = t.replace(/&lt;(\/?)u&gt;/g, '<$1u>');
         t = t.replace(/&lt;(\/?)(sup|sub)&gt;/g, '<$1$2>');
@@ -543,7 +565,7 @@ const NodeEditor = (() => {
                         const strike = /line-through/.test(deco);
                         const underline = /underline/.test(deco);
                         // Visual styles with no markdown equivalent (color / highlight / relative
-                        // font size) are persisted as a raw <span style="..."> wrapper, mirroring
+                        // font size / font family) are persisted as a raw <span style="..."> wrapper, mirroring
                         // how <u> is kept. The attribute is whitelist-filtered so only safe
                         // declarations round-trip.
                         const styleStr = sanitizeInlineStyle(child.getAttribute('style'));
@@ -1036,6 +1058,12 @@ const NodeEditor = (() => {
             case 'font-decrease':
                 wrapSelectionStyle('font-size', 'smaller');
                 break;
+            case 'font-family':
+                applyFontFamily(value);
+                break;
+            case 'font-reset':
+                removeFontFamily();
+                break;
             case 'superscript':
                 // styleWithCSS is off, so this emits a semantic <sup> that round-trips.
                 document.execCommand('superscript', false);
@@ -1152,6 +1180,77 @@ const NodeEditor = (() => {
         sel.addRange(nr);
     }
 
+    // Font family for the selection. When the selection is exactly the text of a styled
+    // span it already sits in, the font is set on that span (so re-picking swaps the face
+    // instead of nesting another span); otherwise the selection is wrapped in a new
+    // <span style="font-family: ...">. The name is validated by the same whitelist that
+    // governs what is persisted, so nothing that cannot round-trip is ever applied.
+    function applyFontFamily(value) {
+        const fam = sanitizeFontFamily(value);
+        if (!fam) {
+            toast('Font names may use letters, digits, spaces and hyphens only (e.g. Algerian, Times New Roman)', 'error');
+            return;
+        }
+        restoreFmtSelection();                       // the font text field may hold focus
+        const sel = window.getSelection();
+        if (!sel.rangeCount || sel.isCollapsed) { toast('Select some text first', 'info'); return; }
+        const range = sel.getRangeAt(0);
+        if (!contentEl.contains(range.commonAncestorContainer)) return;
+        const host = styledSpanCovering(range);
+        if (host) {
+            host.style.setProperty('font-family', fam);
+            const nr = document.createRange();
+            nr.selectNodeContents(host);
+            sel.removeAllRanges();
+            sel.addRange(nr);
+        } else {
+            wrapSelectionStyle('font-family', fam);
+        }
+        contentDirty = true;
+    }
+
+    // The nearest styled <span> ancestor whose text is exactly the selection, else null.
+    function styledSpanCovering(range) {
+        let el = range.commonAncestorContainer;
+        if (el && el.nodeType === Node.TEXT_NODE) el = el.parentElement;
+        while (el && el !== contentEl) {
+            if (el.tagName === 'SPAN' && el.hasAttribute('style') &&
+                !(el.classList && el.classList.contains('example-label'))) {
+                return el.textContent === range.toString() ? el : null;
+            }
+            el = el.parentElement;
+        }
+        return null;
+    }
+
+    // "Default font": drop font-family from every styled span the selection touches
+    // (including a span wrapping the whole selection). A span left with no other
+    // declarations is unwrapped so no empty <span style=""> lingers in the markup.
+    function removeFontFamily() {
+        restoreFmtSelection();
+        const sel = window.getSelection();
+        if (!sel.rangeCount || sel.isCollapsed) { toast('Select some text first', 'info'); return; }
+        const range = sel.getRangeAt(0);
+        if (!contentEl.contains(range.commonAncestorContainer)) return;
+        const hit = [];
+        contentEl.querySelectorAll('span[style]').forEach(el => {
+            if (el.classList.contains('example-label') || el.closest('pre')) return;
+            if (el.style.getPropertyValue('font-family') && range.intersectsNode(el)) hit.push(el);
+        });
+        if (!hit.length) { toast('No font is set on the selection', 'info'); return; }
+        hit.reverse().forEach(el => {                 // innermost first
+            el.style.removeProperty('font-family');
+            if (el.style.length) return;             // colour/size/etc. remain: keep the span
+            const parent = el.parentNode;
+            if (!parent) return;
+            while (el.firstChild) parent.insertBefore(el.firstChild, el);
+            parent.removeChild(el);
+        });
+        contentEl.normalize();
+        contentDirty = true;
+        toast('Font cleared', 'success');
+    }
+
     // Text colour / highlight via execCommand with CSS styling ON, so it emits
     // <span style="color|background-color:..."> (which round-trips) rather than a
     // deprecated <font> tag. styleWithCSS is restored to OFF so other commands keep
@@ -1234,6 +1333,7 @@ const NodeEditor = (() => {
         function close() {
             dropdown.hidden = true;
             trigger.setAttribute('aria-expanded', 'false');
+            fmtSavedRange = null;        // never restore a stale selection later
         }
         function open() {
             saveFmtSelection();          // capture selection before focus can move
@@ -1247,9 +1347,11 @@ const NodeEditor = (() => {
             dropdown.hidden ? open() : close();
         });
 
-        // Keep the contenteditable selection while clicking inside the menu.
+        // Keep the contenteditable selection while clicking inside the menu. Colour and
+        // text inputs must take focus to work; the selection is restored from fmtSavedRange
+        // when their value is applied.
         dropdown.addEventListener('mousedown', e => {
-            if (e.target.type !== 'color') e.preventDefault();
+            if (e.target.type !== 'color' && e.target.type !== 'text') e.preventDefault();
         });
 
         // Action buttons / swatches (anything carrying data-action).
@@ -1272,6 +1374,29 @@ const NodeEditor = (() => {
             });
             input.addEventListener('change', () => close());
         });
+
+        // Any other font: a typed name, applied with the button or Enter. Validated here
+        // first so an unusable name keeps the menu open with the field focused.
+        const fontInput = document.getElementById('font-custom-input');
+        const fontApply = document.getElementById('font-custom-apply');
+        if (fontInput && fontApply) {
+            const applyCustomFont = () => {
+                const name = fontInput.value.trim();
+                if (!name) { toast('Type a font name first', 'info'); fontInput.focus(); return; }
+                if (!sanitizeFontFamily(name)) {
+                    toast('Font names may use letters, digits, spaces and hyphens only (e.g. Algerian, Times New Roman)', 'error');
+                    fontInput.focus();
+                    return;
+                }
+                applyFormat('font-family', name);
+                fontInput.value = '';            // applied: clear for the next use
+                close();
+            };
+            fontApply.addEventListener('click', e => { e.preventDefault(); applyCustomFont(); });
+            fontInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter') { e.preventDefault(); applyCustomFont(); }
+            });
+        }
 
         // Dismiss on outside click or Escape.
         document.addEventListener('mousedown', e => {

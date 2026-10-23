@@ -74,15 +74,34 @@ def esc(text):
     return html.escape(str(text), quote=True)
 
 
-_SAFE_STYLE_PROPS = ("color", "background-color", "font-size")
+_SAFE_STYLE_PROPS = ("color", "background-color", "font-size", "font-family")
 _SAFE_STYLE_VALUE = re.compile(r"^[#a-z0-9.,%()\s-]+$", re.I)
+# One font family name: a plain word sequence (letters, digits, spaces, hyphens,
+# underscores; first character a letter), valid in CSS without quotes.
+_FONT_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*(?: [A-Za-z0-9][A-Za-z0-9_-]*)*$")
+
+
+def _sanitize_font_family(val):
+    """Canonical unquoted "Name, Other Name" list for a font-family value, or "" when any
+    name is invalid. Mirrors the editor's sanitizeFontFamily: quotes are stripped and never
+    re-emitted, because the persisted <span style="..."> is delimited by double quotes and
+    every consumer (editor, reader, HTML/PDF/EPUB) must read it the same way."""
+    if not isinstance(val, str) or not val or len(val) > 64:
+        return ""
+    names = []
+    for name in val.split(","):
+        name = re.sub(r"\s+", " ", re.sub(r"^[\"']|[\"']$", "", name.strip()).strip())
+        if not name or len(name) > 40 or not _FONT_NAME.match(name):
+            return ""
+        names.append(name)
+    return ", ".join(names)
 
 
 def _sanitize_style(style):
     """Whitelist filter for inline style attributes that the editor persists as raw HTML
-    in the markdown (text colour, highlight, relative font size). Mirrors the editor's
-    sanitizeInlineStyle: only these three properties are honored and each value is held to
-    a safe character set, so a hand-edited or pasted style cannot inject script/url() or
+    in the markdown (text colour, highlight, relative font size, font family). Mirrors the
+    editor's sanitizeInlineStyle: only these properties are honored and each value is held
+    to a safe character set, so a hand-edited or pasted style cannot inject script/url() or
     arbitrary CSS. Returns the canonical "prop: value; ..." string, or "" when nothing is
     allowed."""
     if not isinstance(style, str) or not style or len(style) > 200:
@@ -97,6 +116,11 @@ def _sanitize_style(style):
         if prop not in _SAFE_STYLE_PROPS:
             continue
         if not val or len(val) > 64:
+            continue
+        if prop == "font-family":
+            fam = _sanitize_font_family(val)
+            if fam:
+                out.append(f"{prop}: {fam}")
             continue
         if not _SAFE_STYLE_VALUE.match(val):
             continue
@@ -238,7 +262,7 @@ def _inline(text, base_dir, fn_ctx=None):
     # forms the editor emits (everything else stays escaped literal text):
     #   <u>            underline
     #   <sup>/<sub>    super-/subscript
-    #   <span style>   text colour / highlight / relative font size (style is whitelisted)
+    #   <span style>   text colour / highlight / relative font size / font family (whitelisted)
     text = re.sub(r"&lt;(/?)u&gt;", r"<\1u>", text)
     text = re.sub(r"&lt;(/?)(sup|sub)&gt;", r"<\1\2>", text)
 

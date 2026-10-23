@@ -26,3 +26,8 @@ test('reader: mixed emphasis in one line nests correctly', () => {
 test('reader: <u> underline passes through as a real tag', () => {
     assert.equal(MD.parseInline('a <u>under</u> b'), 'a <u>under</u> b');
 });
+test('reader: the editor\'s whitelisted font-family span passes through intact', () => {
+    const md = 'a <span style="font-family: Algerian">fancy</span> b';
+    assert.equal(MD.parseInline(md), md);
+    assert.match(MD.parse(md), /<span style="font-family: Algerian">fancy<\/span>/);
+});

@@ -142,13 +142,50 @@
                         <button class="toolbar-btn" data-action="paragraph" title="Normal text (Ctrl+0)">Text</button>
                         <button class="toolbar-btn" data-action="hr" title="Horizontal rule">―</button>
                         <span class="toolbar-sep"></span>
-                        <!-- More text formatting: size, super/subscript, colour, highlight, flip, clear -->
+                        <!-- More text formatting: size, font, super/subscript, colour, highlight, flip, clear -->
                         <div class="toolbar-menu" id="format-menu">
                             <button class="toolbar-btn" id="btn-format-more" type="button"
                                 aria-haspopup="true" aria-expanded="false" title="More text formatting">A±<span class="caret">▾</span></button>
                             <div class="toolbar-dropdown" id="format-dropdown" role="menu" hidden>
                                 <button class="dropdown-item" data-action="font-increase" role="menuitem"><span>Increase font size</span><span class="dd-demo" style="font-size:1.3em">A</span></button>
                                 <button class="dropdown-item" data-action="font-decrease" role="menuitem"><span>Decrease font size</span><span class="dd-demo" style="font-size:0.75em">A</span></button>
+                                <div class="dropdown-sep"></div>
+                                <!-- Font family. Each entry is drawn in its own face (a fallback face shows when that
+                                     font is not installed on this machine). Names must pass the editor's font
+                                     whitelist: letters, digits, spaces, hyphens. "Other font name" takes any
+                                     installed font. -->
+                                <div class="dropdown-label">Font</div>
+                                <div class="font-list" role="group" aria-label="Font">
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Algerian" role="menuitem" style="font-family: Algerian"><span>Algerian</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Old English Text MT" role="menuitem" style="font-family: Old English Text MT"><span>Old English Text MT</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Castellar" role="menuitem" style="font-family: Castellar"><span>Castellar</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Broadway" role="menuitem" style="font-family: Broadway"><span>Broadway</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Stencil" role="menuitem" style="font-family: Stencil"><span>Stencil</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Impact" role="menuitem" style="font-family: Impact"><span>Impact</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Copperplate Gothic Bold" role="menuitem" style="font-family: Copperplate Gothic Bold"><span>Copperplate Gothic Bold</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Papyrus" role="menuitem" style="font-family: Papyrus"><span>Papyrus</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Chiller" role="menuitem" style="font-family: Chiller"><span>Chiller</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Jokerman" role="menuitem" style="font-family: Jokerman"><span>Jokerman</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Brush Script MT" role="menuitem" style="font-family: Brush Script MT"><span>Brush Script MT</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Segoe Print" role="menuitem" style="font-family: Segoe Print"><span>Segoe Print</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Monotype Corsiva" role="menuitem" style="font-family: Monotype Corsiva"><span>Monotype Corsiva</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Garamond" role="menuitem" style="font-family: Garamond"><span>Garamond</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Georgia" role="menuitem" style="font-family: Georgia"><span>Georgia</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Book Antiqua" role="menuitem" style="font-family: Book Antiqua"><span>Book Antiqua</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Times New Roman" role="menuitem" style="font-family: Times New Roman"><span>Times New Roman</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Arial" role="menuitem" style="font-family: Arial"><span>Arial</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Calibri" role="menuitem" style="font-family: Calibri"><span>Calibri</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Verdana" role="menuitem" style="font-family: Verdana"><span>Verdana</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Century Gothic" role="menuitem" style="font-family: Century Gothic"><span>Century Gothic</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Comic Sans MS" role="menuitem" style="font-family: Comic Sans MS"><span>Comic Sans MS</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Courier New" role="menuitem" style="font-family: Courier New"><span>Courier New</span></button>
+                                    <button class="dropdown-item font-item" data-action="font-family" data-value="Consolas" role="menuitem" style="font-family: Consolas"><span>Consolas</span></button>
+                                </div>
+                                <div class="font-custom-row">
+                                    <input type="text" id="font-custom-input" class="inline-input" placeholder="Other font name" aria-label="Other font name" autocomplete="off" maxlength="64">
+                                    <button type="button" id="font-custom-apply" class="inline-confirm">Apply</button>
+                                </div>
+                                <button class="dropdown-item" data-action="font-reset" role="menuitem"><span>Default font</span><span class="dd-demo">A</span></button>
                                 <div class="dropdown-sep"></div>
                                 <button class="dropdown-item" data-action="superscript" role="menuitem"><span>Superscript</span><span class="dd-demo">x<sup>2</sup></span></button>
                                 <button class="dropdown-item" data-action="subscript" role="menuitem"><span>Subscript</span><span class="dd-demo">x<sub>2</sub></span></button>

@@ -78,6 +78,7 @@ Schema: `shared/schema.json`
 - Undo/redo (Ctrl+Z — 30-state deep snapshot stack)
 - Inline link insertion form (URL + text fields)
 - Markdown toolbar with keyboard shortcuts
+- Text formatting menu (the A± button): font size, font family, super/subscript, text colour, highlight, upside-down text, clear formatting. Font family offers a picker of common installed faces (Algerian, Old English Text MT, Garamond, ...) and a field for any other font name; the choice is stored in the markdown as a whitelisted `<span style="font-family: ...">` that the editor, reader, HTML, PDF and EPUB exporters all honour. Fonts are referenced by name, not embedded: the PDF renderer embeds whatever face is installed on the machine that runs it, while HTML/EPUB readers fall back to their default face when the named font is missing
 - Tag management (enter to add, backspace/click to remove)
 - Children/connections/media management with inline forms (toggle, Enter-to-submit)
 - Quick-create child node button

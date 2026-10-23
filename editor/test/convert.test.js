@@ -154,3 +154,35 @@ test('corpus: all book nodes reach a fixed point, none gains asterisks', { skip 
     assert.equal(never, 0, 'some nodes never reach a fixed point');
     assert.equal(grew, 0, 'some nodes gain asterisks on a single save');
 });
+
+// --- Font family: persisted as a whitelisted <span style="font-family: ..."> ---
+test('font-family spans round-trip unchanged and render in the edit surface', { skip }, () => {
+    const md = 'a <span style="font-family: Algerian">fancy</span> b';
+    assert.equal(INT.roundTrip(md), md);
+    assert.match(INT.markdownToHtml(md), /<span style="font-family: Algerian">fancy<\/span>/);
+});
+test('font-family serializes canonically: quotes stripped, names kept unquoted, order kept', { skip }, () => {
+    assert.equal(INT.htmlToMarkdown('<p><span style="font-family: Algerian;">x</span> y</p>'),
+        '<span style="font-family: Algerian">x</span> y');
+    // Chrome serializes multi-word families with quotes; they must not reach the markdown.
+    assert.equal(INT.htmlToMarkdown('<p><span style=\'font-family: "Times New Roman", serif\'>x</span> y</p>'),
+        '<span style="font-family: Times New Roman, serif">x</span> y');
+    assert.equal(INT.htmlToMarkdown('<p><span style="color: #d64545; font-family: Garamond">x</span> y</p>'),
+        '<span style="color: #d64545; font-family: Garamond">x</span> y');
+});
+test('font-family combines with emphasis and round-trips', { skip }, () => {
+    const md = 'a <span style="font-family: Algerian">**bold** and *it*</span> b';
+    assert.equal(INT.roundTrip(md), md);
+    assert.match(INT.markdownToHtml(md),
+        /<span style="font-family: Algerian"><strong>bold<\/strong> and <em>it<\/em><\/span>/);
+});
+test('unsafe or malformed font-family values are dropped and the text kept', { skip }, () => {
+    for (const bad of ['url(x)', 'expression(alert(1))', 'Algerian, "', '"', '1abc', 'Alg$rian', 'a'.repeat(70)]) {
+        const attr = bad.replace(/"/g, '&quot;');
+        assert.equal(INT.htmlToMarkdown(`<p><span style="font-family: ${attr}">t</span> y</p>`), 't y',
+            `should drop font-family ${JSON.stringify(bad)}`);
+    }
+    // hand-edited markdown with a rejected value stays literal text, never a live span
+    assert.doesNotMatch(INT.markdownToHtml('<span style="font-family: url(x)">t</span>'), /<span style/);
+    assert.match(INT.markdownToHtml('<span style="font-family: url(x)">t</span>'), /&lt;span style/);
+});
