@@ -922,6 +922,48 @@
 }
 .fn-popup-remove:hover { color: var(--danger); border-color: var(--danger); }
 
+/* Equations (LaTeX, rendered by KaTeX): atomic on the editing surface, click to edit */
+#edit-content .math-pill {
+    display: inline-block;
+    padding: 0 3px;
+    border-radius: 3px;
+    cursor: pointer;
+    user-select: none;
+}
+#edit-content .math-block {
+    display: block;
+    margin: 10px 0;
+    padding: 4px 8px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    user-select: none;
+    overflow-x: auto;
+}
+#edit-content .math-pill:hover,
+#edit-content .math-block:hover { background: var(--accent-dim); }
+#edit-content .math-empty .math-placeholder { color: var(--accent); font-style: italic; font-size: 0.9em; }
+.math-src { font-family: var(--font-mono); font-size: 0.85em; color: #e8b4b8; }
+.preview-pane .math-display { margin: 1em 0; overflow-x: auto; }
+
+/* Equation popup: TeX source, live preview, parser message */
+.eq-popup { width: 420px; }
+.eq-popup .hunk-popup-text { font-family: var(--font-mono); font-size: 12.5px; }
+.eq-popup-preview {
+    min-height: 36px;
+    padding: 8px;
+    margin-bottom: 8px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    overflow-x: auto;
+    text-align: center;
+}
+.eq-popup-empty { color: var(--text-faint); font-size: 11px; }
+.eq-popup-error { color: var(--danger); font-size: 11px; margin-bottom: 8px; white-space: pre-wrap; }
+.eq-popup-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); margin-bottom: 9px; }
+.eq-popup-hint { color: var(--text-faint); font-size: 11px; margin-top: 8px; }
+
 .link-popup {
     position: fixed;
     z-index: 2000;

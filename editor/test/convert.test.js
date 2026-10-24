@@ -224,3 +224,64 @@ test('footnote text with line breaks stays inside the note', { skip }, () => {
     // trailing whitespace of a note is dropped; a single-line note is unchanged
     assert.equal(INT.appendFootnoteDefsEd('a[^1]', { 1: 'note  \n\n' }), 'a[^1]\n\n[^1]: note');
 });
+
+// --- Equations: $...$ and $$ blocks, TeX kept verbatim, dollars-as-text escaped ---------
+test('inline equation renders with KaTeX on the surface and round-trips', { skip }, () => {
+    const md = 'where $RP_{fu}$ is modeled on $[0,1]$.';
+    const html = INT.markdownToHtml(md);
+    assert.match(html, /<span class="math-pill" contenteditable="false" data-tex="RP_\{fu\}">/);
+    assert.match(html, /class="katex"/);
+    assert.equal(INT.roundTrip(md), md);
+});
+test('display equation ($$ block) renders as a block and round-trips', { skip }, () => {
+    const md = 'Approximated by:\n\n$$\nf(Problem_u) = \\frac{RelationalProximity_{fu}}{spacetime^2}\n$$\n\nwhere spacetime is';
+    const html = INT.markdownToHtml(md);
+    assert.match(html, /<div class="math-block" contenteditable="false" data-tex="f\(Problem_u\) = \\frac\{RelationalProximity_\{fu\}\}\{spacetime\^2\}">/);
+    assert.match(html, /katex-display/);
+    assert.equal(INT.roundTrip(md), md);
+    // one-line form normalizes to the block form, then stays put
+    const one = 'a\n\n$$x^2$$\n\nb';
+    const fp = INT.fixedPoint(one);
+    assert.equal(fp.value, 'a\n\n$$\nx^2\n$$\n\nb');
+    assert.ok(fp.iterations <= 1);
+    // an unclosed $$ is ordinary text
+    assert.doesNotMatch(INT.markdownToHtml('$$\nnever closed'), /math-block/);
+});
+test('dollar amounts and spaced dollars are not equations', { skip }, () => {
+    for (const md of ['$5 and $10', 'costs $5 or $ more', 'between $ 3 and 4 $', 'a $$ b']) {
+        assert.doesNotMatch(INT.markdownToHtml(md), /math-pill/, md);
+        assert.equal(INT.roundTrip(md), md);
+    }
+});
+test('TeX inside an equation is never touched by emphasis or escaping', { skip }, () => {
+    const html = INT.markdownToHtml('$a*b*c$ and $x_1 < y_2$ then *it*');
+    assert.doesNotMatch(html, /data-tex="[^"]*<em>/);
+    assert.match(html, /data-tex="a\*b\*c"/);
+    assert.match(html, /data-tex="x_1 &lt; y_2"/);
+    assert.match(html, /<em>it<\/em>/);
+    assert.equal(INT.roundTrip('$a*b*c$ and $x_1 < y_2$ then *it*'), '$a*b*c$ and $x_1 < y_2$ then *it*');
+});
+test('literal $x$ typed as text stays text (escaped), and \\$ reads as a dollar', { skip }, () => {
+    assert.equal(INT.htmlToMarkdown('<p>price is $x$ here</p>'), 'price is \\$x\\$ here');
+    assert.doesNotMatch(INT.markdownToHtml('price is \\$x\\$ here'), /math-pill/);
+    assert.match(INT.markdownToHtml('price is \\$x\\$ here'), /price is \$x\$ here/);
+    assert.equal(INT.roundTrip('price is \\$x\\$ here'), 'price is \\$x\\$ here');
+    // inside inline code nothing is scanned or escaped
+    assert.equal(INT.htmlToMarkdown('<p><code>$x$</code></p>'), '`$x$`');
+    assert.doesNotMatch(INT.markdownToHtml('use `$x$` literally'), /math-pill/);
+});
+test('equations serialize from data-tex, never from the rendered markup', { skip }, () => {
+    assert.equal(INT.htmlToMarkdown('<p>x <span class="math-pill" contenteditable="false" data-tex="a&lt;b">rendered junk</span> y</p>'), 'x $a<b$ y');
+    assert.equal(INT.htmlToMarkdown('<p>p</p><div class="math-block" contenteditable="false" data-tex="\\frac{a}{b}">junk</div><p>q</p>'), 'p\n\n$$\n\\frac{a}{b}\n$$\n\nq');
+});
+test('without KaTeX the TeX source shows in a code span and still round-trips', { skip }, () => {
+    const saved = global.window.katex;
+    global.window.katex = undefined;
+    try {
+        const html = INT.markdownToHtml('see $x^2$');
+        assert.match(html, /<span class="math-pill" contenteditable="false" data-tex="x\^2"><code class="math-src">\$x\^2\$<\/code><\/span>/);
+        assert.equal(INT.roundTrip('see $x^2$'), 'see $x^2$');
+    } finally {
+        global.window.katex = saved;
+    }
+});

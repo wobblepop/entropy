@@ -397,3 +397,8 @@ sup.fn-marker:target a {
 .fn-error { color: #c0392b; }
 .fn-orphan { font-style: italic; color: var(--text-tertiary); }
 .fn-orphan-tag { font-size: 0.78em; color: var(--text-tertiary); }
+
+/* Equations (LaTeX rendered by KaTeX; the source is kept in data-tex). Without KaTeX the
+   source shows in a code span. */
+.math-display { margin: 1em 0; overflow-x: auto; }
+.math-src { font-family: ui-monospace, Consolas, "Courier New", monospace; font-size: 0.9em; }

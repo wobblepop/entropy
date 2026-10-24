@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/panels.css">
     <link rel="stylesheet" href="css/editor.css">
     <link rel="stylesheet" href="css/pdf-export.css">
+    <link rel="stylesheet" href="../shared/vendor/katex/katex.min.css">
 </head>
 <body>
     <!-- Command Palette (Ctrl+K) -->
@@ -137,6 +138,7 @@
                         <span class="toolbar-sep"></span>
                         <button class="toolbar-btn" data-action="link" title="Insert link (Ctrl+L)">Link</button>
                         <button class="toolbar-btn" data-action="footnote" title="Insert footnote (Ctrl+Shift+F)">Fn</button>
+                        <button class="toolbar-btn" data-action="equation" title="Insert equation, LaTeX (Ctrl+Shift+E)">&sum;</button>
                         <button class="toolbar-btn" data-action="code" title="Inline code">Code</button>
                         <span class="toolbar-sep"></span>
                         <button class="toolbar-btn" data-action="paragraph" title="Normal text (Ctrl+0)">Text</button>
@@ -444,6 +446,7 @@
                     <div class="shortcut"><kbd>Ctrl+L</kbd> Insert link</div>
                     <div class="shortcut"><kbd>Ctrl+Shift+M</kbd> Suggesting mode</div>
                     <div class="shortcut"><kbd>Ctrl+Shift+F</kbd> Insert footnote</div>
+                    <div class="shortcut"><kbd>Ctrl+Shift+E</kbd> Insert equation</div>
                     <div class="shortcut"><kbd>?</kbd> This help</div>
                     <div class="shortcut"><kbd>Esc</kbd> Close modal/palette</div>
                 </div>
@@ -492,6 +495,7 @@
     <input type="file" id="file-open-input" accept=".json,.entropy.json" hidden>
 
     <!-- Scripts -->
+    <script src="../shared/vendor/katex/katex.min.js"></script>
     <script src="js/state.js"></script>
     <script src="js/tree.js"></script>
     <script src="js/suggest-diff.js"></script>

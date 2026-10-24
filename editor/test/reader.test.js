@@ -37,3 +37,15 @@ test('reader: multi-line footnote text (indented continuation) renders inside th
     assert.match(html, /fn-note-text">first line<br>second line</);
     assert.doesNotMatch(html, /<p>second line/);   // nothing leaked into the body
 });
+test('reader: inline and display equations render with KaTeX; dollars stay text', () => {
+    const inline = MD.parseInline('where $RP_{fu}$ is');
+    assert.match(inline, /<span class="math-inline" data-tex="RP_\{fu\}">.*class="katex"/);
+    const block = MD.parse('a\n\n$$\nx^2\n$$\n\nb');
+    assert.match(block, /<div class="math-display" data-tex="x\^2">.*katex-display/);
+    assert.match(block, /<p>a<\/p>/);
+    assert.match(block, /<p>b<\/p>/);
+    assert.doesNotMatch(MD.parseInline('$5 and $10'), /math-inline/);
+    assert.equal(MD.parseInline('pay \\$5'), 'pay $5');
+    assert.doesNotMatch(MD.parseInline('`$x$` code'), /math-inline/);
+    assert.doesNotMatch(MD.parseInline('$a*b*c$'), /<em>/);
+});

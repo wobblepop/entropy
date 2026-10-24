@@ -18,6 +18,7 @@ const Palette = (() => {
         { type: 'cmd', label: 'Toggle Suggesting Mode', action: () => NodeEditor.toggleSuggestMode(), hint: 'Ctrl+Shift+M' },
         { type: 'cmd', label: 'Review Suggested Changes', action: () => NodeEditor.enterReview() },
         { type: 'cmd', label: 'Insert Footnote', action: () => NodeEditor.applyFormat('footnote'), hint: 'Ctrl+Shift+F' },
+        { type: 'cmd', label: 'Insert Equation', action: () => NodeEditor.applyFormat('equation'), hint: 'Ctrl+Shift+E' },
         { type: 'cmd', label: 'Show Preview Panel', action: () => switchTab('preview') },
         { type: 'cmd', label: 'Show Graph View', action: () => switchTab('graph') },
         { type: 'cmd', label: 'Show Book Metadata', action: () => switchTab('meta') },

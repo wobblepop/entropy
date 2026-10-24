@@ -16,6 +16,7 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
 const EDITOR_JS = path.resolve(__dirname, '..', '..', 'js', 'editor.js');
 const STATE_JS = path.resolve(__dirname, '..', '..', 'js', 'state.js');
 const READER_MD_JS = path.resolve(REPO_ROOT, 'explainer', 'js', 'markdown.js');
+const KATEX_JS = path.resolve(REPO_ROOT, 'shared', 'vendor', 'katex', 'katex.min.js');
 
 function setupDom() {
     const dom = new JSDOM('<!doctype html><html><body></body></html>');
@@ -23,6 +24,8 @@ function setupDom() {
     global.document = dom.window.document;
     global.Node = dom.window.Node;
     global.CSS = dom.window.CSS;
+    // The vendored KaTeX renders equations; editor.js reads window.katex.
+    try { dom.window.katex = require(KATEX_JS); } catch (e) { /* no-KaTeX fallback is then exercised */ }
     // editor.js references these only inside functions we don't call here.
     global.EditorState = { on() {}, getNode() { return null; } };
     global.SuggestDiff = {};
@@ -71,6 +74,8 @@ function loadEditorState() {
 // pure string functions, so no DOM is needed.
 function loadReaderMarkdown() {
     const src = fs.readFileSync(READER_MD_JS, 'utf8');
+    // The reader finds KaTeX as a global (`katex`) when no window exists.
+    try { global.katex = require(KATEX_JS); } catch (e) { /* fallback path */ }
     return new Function(src + '\n;return Markdown;')();
 }
 

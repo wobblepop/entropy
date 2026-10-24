@@ -45,6 +45,7 @@ const NodeEditor = (() => {
         setupContentEditor();
         setupLinkPopup();
         setupFootnotePopup();
+        setupEquationPopup();
         setupSuggestUI();
         setupTags();
         setupChildren();
@@ -236,9 +237,61 @@ const NodeEditor = (() => {
         return out.join('; ');
     }
 
+    // --- Equations (LaTeX) ---------------------------------------------------------------
+    // Inline math is $...$: the opener is not followed by whitespace or another $, the
+    // closer is not preceded by whitespace and not followed by a digit, so "$5 and $10"
+    // stays text. A literal dollar next to another is written \$. Inline code (`...`) is
+    // never scanned. Display math is a $$ line, TeX lines, a $$ line, or one line $$...$$.
+    // KaTeX renders when loaded; otherwise the source shows in <code>. The TeX always lives
+    // in data-tex, so serialization never depends on the rendered markup.
+    const MATH_SCAN_RE = /(`[^`\n]*`)|(?<!\\)\$(?![\s$])((?:\\[\s\S]|[^$\\])+?)(?<![\s\\])\$(?!\d)/g;
+    const MATH_INLINE_RE = /(?<!\\)\$(?![\s$])((?:\\[\s\S]|[^$\\])+?)(?<![\s\\])\$(?!\d)/g;
+    const MATH_PH_RE = /\uE000(\d+)\uE001/g;
+    function escAttr(s) {
+        return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function katexLib() {
+        return (typeof window !== 'undefined' && window.katex && window.katex.renderToString) ? window.katex : null;
+    }
+    function renderTex(tex, display) {
+        const k = katexLib();
+        if (k) {
+            try { return k.renderToString(tex, { displayMode: !!display, throwOnError: false, trust: false }); }
+            catch (e) { /* fall through to the source form */ }
+        }
+        const d = display ? '$$' : '$';
+        return '<code class="math-src">' + d + escHtmlText(tex) + d + '</code>';
+    }
+    // On the editing surface an equation is an atomic pill (contenteditable=false); in the
+    // preview (_fnEd is set while it renders) it is a plain span / div.
+    function mathInlineHtml(tex) {
+        return (_fnEd ? '<span class="math-inline"' : '<span class="math-pill" contenteditable="false"') +
+            ' data-tex="' + escAttr(tex) + '">' + renderTex(tex, false) + '</span>';
+    }
+    function mathBlockHtml(tex) {
+        return (_fnEd ? '<div class="math-display"' : '<div class="math-block" contenteditable="false"') +
+            ' data-tex="' + escAttr(tex) + '">' + renderTex(tex, true) + '</div>';
+    }
+    // Plain text that happens to look like $math$ must stay plain text after a reload:
+    // escape the dollars of any span the inline-math rule would otherwise claim.
+    function escapeMathDollars(s) {
+        if (!s || s.indexOf('$') < 0) return s;
+        return s.replace(MATH_INLINE_RE, m => m.replace(/\$/g, '\\$'));
+    }
+
     // Inline markdown -> HTML. Escapes first so <, >, & can never corrupt markup.
     function inlineFormat(text) {
-        let t = escHtmlText(text);
+        // Equations first: lift $...$ out as placeholders so escaping and the emphasis
+        // rules below never touch TeX (which uses *, _, ~, <, & freely).
+        const maths = [];
+        let t = String(text == null ? '' : text).replace(MATH_SCAN_RE, (m, code, tex) => {
+            if (code !== undefined) return code;
+            maths.push(tex);
+            return '\uE000' + (maths.length - 1) + '\uE001';
+        });
+        t = escHtmlText(t);
+        t = t.replace(/\\\$/g, '$');            // \$ is a literal dollar sign
         // A small set of inline HTML tags have no markdown marker, so we honor them by
         // restoring the specific escaped forms our serializer emits (everything else stays
         // escaped literal text). Emphasis inside them is still processed by the rules below.
@@ -288,6 +341,7 @@ const NodeEditor = (() => {
             }
             return `<a href="${url.replace(/"/g, '&quot;')}" class="link-pill" contenteditable="false">${txt}</a>`;
         });
+        t = t.replace(MATH_PH_RE, (m, i) => mathInlineHtml(maths[+i]));
         return t;
     }
 
@@ -363,6 +417,28 @@ const NodeEditor = (() => {
                 continue;
             }
 
+            // display equation: a $$ line, TeX lines, a $$ line -- or one line $$...$$
+            const dm = line.match(/^\s*\$\$(.*)$/);
+            if (dm) {
+                const rest = dm[1];
+                let tex = null, skipTo = i;
+                if (/\$\$\s*$/.test(rest) && rest.trim().length > 2) {
+                    tex = rest.replace(/\$\$\s*$/, '').trim();
+                } else if (!rest.trim()) {
+                    let j = i + 1;
+                    const buf = [];
+                    while (j < lines.length && !/^\s*\$\$\s*$/.test(lines[j])) { buf.push(lines[j]); j++; }
+                    if (j < lines.length) { tex = buf.join('\n').trim(); skipTo = j; }
+                }
+                if (tex !== null) {
+                    flushPara();
+                    result.push(mathBlockHtml(tex));
+                    i = skipTo;
+                    continue;
+                }
+                // an unclosed $$ is ordinary text
+            }
+
             const trimmed = line.trim();
 
             // blank line ends a paragraph
@@ -425,6 +501,11 @@ const NodeEditor = (() => {
         }
 
         flushPara();
+        // A display equation is not editable, so give the caret somewhere to go after it
+        // when it ends the content (an empty paragraph serializes to nothing).
+        if (!_fnEd && result.length && /^<div class="math-block"/.test(result[result.length - 1])) {
+            result.push('<p><br></p>');
+        }
         return result.join('\n');
     }
 
@@ -513,12 +594,24 @@ const NodeEditor = (() => {
         let md = '';
         for (const child of node.childNodes) {
             if (child.nodeType === Node.TEXT_NODE) {
-                md += child.textContent;
+                // Text inside inline code is literal already; elsewhere a run that looks
+                // like $math$ is escaped so it stays the text the author sees.
+                const inCode = child.parentElement && child.parentElement.closest && child.parentElement.closest('code');
+                md += inCode ? child.textContent : escapeMathDollars(child.textContent);
             } else if (child.nodeType === Node.ELEMENT_NODE) {
                 const tag = child.tagName.toLowerCase();
                 // Atomic footnote pill serializes back to its [^id] marker.
                 if (child.classList && child.classList.contains('fn-pill')) {
                     md += '[^' + (child.getAttribute('data-fnid') || '') + ']';
+                    continue;
+                }
+                // Equations serialize from their TeX source, never from the rendered markup.
+                if (child.classList && (child.classList.contains('math-pill') || child.classList.contains('math-inline'))) {
+                    md += '$' + (child.getAttribute('data-tex') || '') + '$';
+                    continue;
+                }
+                if (child.classList && (child.classList.contains('math-block') || child.classList.contains('math-display'))) {
+                    md += '\n$$\n' + (child.getAttribute('data-tex') || '') + '\n$$\n\n';
                     continue;
                 }
                 const inner = nodeToMd(child);
@@ -1160,6 +1253,9 @@ const NodeEditor = (() => {
             case 'footnote':
                 insertFootnoteAtCursor();
                 break;
+            case 'equation':
+                insertEquationAtCursor();
+                break;
             case 'hr':
                 document.execCommand('insertHorizontalRule', false);
                 break;
@@ -1508,6 +1604,7 @@ const NodeEditor = (() => {
         contentEl.querySelectorAll(INLINE).forEach(el => {
             if (el.classList && el.classList.contains('example-label')) return;
             if (el.closest('pre')) return;            // leave code blocks intact
+            if (el.closest('.math-pill, .math-block')) return;   // equations are atomic
             if (range.intersectsNode(el)) toUnwrap.push(el);
         });
         if (!toUnwrap.length) {
@@ -1998,6 +2095,209 @@ const NodeEditor = (() => {
         ta.focus();
     }
 
+    // --- Equations: insert + edit (LaTeX, rendered by KaTeX) -----------------------------
+
+    let _eqPopupEl = null;
+    let _eqPopupTarget = null;      // the .math-pill / .math-block being edited
+    let _eqPopupIsNew = false;
+
+    function insertEquationAtCursor() {
+        if (reviewMode) return;
+        contentEl.focus();
+        const sel = window.getSelection();
+        if (!sel.rangeCount) return;
+        const range = sel.getRangeAt(0);
+        if (!contentEl.contains(range.commonAncestorContainer)) return;
+        // Caret on an existing equation: edit it instead of inserting another.
+        let host = range.commonAncestorContainer;
+        if (host.nodeType === Node.TEXT_NODE) host = host.parentElement;
+        const existing = host && host.closest ? host.closest('.math-pill, .math-block') : null;
+        if (existing && contentEl.contains(existing)) { openEquationEditor(existing, false); return; }
+        // Selected text becomes the initial TeX source (surrounding $ or $$ dropped).
+        const initial = sel.isCollapsed ? '' : sel.toString().trim().replace(/^\$\$?|\$\$?$/g, '').trim();
+        range.deleteContents();
+        const pill = document.createElement('span');
+        pill.className = 'math-pill' + (initial ? '' : ' math-empty');
+        pill.setAttribute('contenteditable', 'false');
+        pill.setAttribute('data-tex', initial);
+        pill.innerHTML = initial ? renderTex(initial, false) : '<span class="math-placeholder">equation</span>';
+        range.insertNode(pill);
+        const after = document.createRange();
+        after.setStartAfter(pill);
+        after.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(after);
+        contentDirty = true;
+        contentEl.dispatchEvent(new Event('input'));
+        openEquationEditor(pill, true);
+    }
+
+    // Inline <-> display. A display equation is a block, so it sits beside the paragraph
+    // that held the pill (the paragraph is dropped if nothing else was in it); an inline
+    // one goes back into a paragraph of its own.
+    function convertEquationKind(target, toBlock) {
+        const tex = target.getAttribute('data-tex') || '';
+        if (toBlock) {
+            const div = document.createElement('div');
+            div.className = 'math-block';
+            div.setAttribute('contenteditable', 'false');
+            div.setAttribute('data-tex', tex);
+            let block = target;
+            while (block.parentElement && block.parentElement !== contentEl) block = block.parentElement;
+            if (block === target) {
+                target.replaceWith(div);
+            } else {
+                block.after(div);
+                target.remove();
+                if (!block.textContent.trim() && !block.querySelector('img, .math-pill, .fn-pill, .link-pill, .math-block')) block.remove();
+            }
+            if (!div.nextSibling) { const p = document.createElement('p'); p.innerHTML = '<br>'; div.after(p); }
+            return div;
+        }
+        const span = document.createElement('span');
+        span.className = 'math-pill';
+        span.setAttribute('contenteditable', 'false');
+        span.setAttribute('data-tex', tex);
+        const p = document.createElement('p');
+        p.appendChild(span);
+        p.appendChild(document.createTextNode(' '));
+        target.replaceWith(p);
+        return span;
+    }
+
+    function setupEquationPopup() {
+        const popup = document.createElement('div');
+        popup.className = 'hunk-popup eq-popup';
+        popup.hidden = true;
+        popup.innerHTML =
+            '<div class="hunk-popup-title">Equation (LaTeX)</div>' +
+            '<textarea class="hunk-popup-text eq-popup-tex" rows="3" spellcheck="false" aria-label="Equation in LaTeX" placeholder="e.g. \\frac{a}{b}, x_{fu}^2, \\alpha"></textarea>' +
+            '<div class="eq-popup-preview" aria-live="polite"></div>' +
+            '<div class="eq-popup-error" hidden></div>' +
+            '<label class="eq-popup-row"><input type="checkbox" class="eq-popup-display"> Display on its own line</label>' +
+            '<div class="hunk-popup-actions">' +
+            '<button type="button" class="hunk-popup-save">Save</button>' +
+            '<button type="button" class="fn-popup-remove eq-popup-unwrap">Convert to text</button>' +
+            '</div>' +
+            '<div class="eq-popup-hint">Ctrl+Enter saves. From Word: show the equation as LaTeX (Equation tab), copy it, paste it here.</div>';
+        document.body.appendChild(popup);
+        _eqPopupEl = popup;
+        const ta = popup.querySelector('.eq-popup-tex');
+        const preview = popup.querySelector('.eq-popup-preview');
+        const errEl = popup.querySelector('.eq-popup-error');
+        const dispCb = popup.querySelector('.eq-popup-display');
+
+        // Live preview plus the parser's own message, so a wrong macro is visible at once.
+        function refreshPreview() {
+            const tex = ta.value.trim();
+            preview.innerHTML = tex ? renderTex(tex, dispCb.checked) : '<span class="eq-popup-empty">Preview</span>';
+            let msg = '';
+            const k = katexLib();
+            if (tex && k) {
+                try { k.renderToString(tex, { displayMode: dispCb.checked, throwOnError: true, trust: false }); }
+                catch (e) { msg = String((e && e.message) || e).replace(/^KaTeX parse error:\s*/, ''); }
+            } else if (tex && !k) {
+                msg = 'KaTeX is not loaded here: the equation will show as its source text.';
+            }
+            errEl.textContent = msg;
+            errEl.hidden = !msg;
+        }
+        popup.refresh = refreshPreview;
+
+        function close() {
+            if (_eqPopupTarget && _eqPopupIsNew && !(_eqPopupTarget.getAttribute('data-tex') || '')) {
+                _eqPopupTarget.remove();              // a brand-new equation left empty
+                contentDirty = true;
+                contentEl.dispatchEvent(new Event('input'));
+            }
+            popup.hidden = true;
+            _eqPopupTarget = null;
+            _eqPopupIsNew = false;
+        }
+        function save() {
+            const target = _eqPopupTarget;
+            if (!target) return;
+            const tex = ta.value.replace(/\r\n?/g, '\n').trim();
+            if (!tex) { toast('Type the equation first (Escape cancels)', 'info'); ta.focus(); return; }
+            const wantBlock = dispCb.checked;
+            let el = target;
+            if (wantBlock !== target.classList.contains('math-block')) el = convertEquationKind(target, wantBlock);
+            el.setAttribute('data-tex', tex);
+            el.classList.remove('math-empty');
+            el.innerHTML = renderTex(tex, wantBlock);
+            _eqPopupIsNew = false;
+            _eqPopupTarget = null;
+            close();
+            contentDirty = true;
+            contentEl.dispatchEvent(new Event('input'));
+            toast('Equation saved', 'success');
+        }
+        // Turn the equation back into plain text ($...$ shown literally) or drop an empty one.
+        function unwrap() {
+            const target = _eqPopupTarget;
+            if (!target) return;
+            const tex = target.getAttribute('data-tex') || '';
+            const isBlock = target.classList.contains('math-block');
+            if (!tex) {
+                target.remove();
+            } else if (isBlock) {
+                const p = document.createElement('p');
+                p.textContent = '$$' + tex + '$$';
+                target.replaceWith(p);
+            } else {
+                target.replaceWith(document.createTextNode('$' + tex + '$'));
+            }
+            _eqPopupIsNew = false;
+            _eqPopupTarget = null;
+            close();
+            contentEl.normalize();
+            contentDirty = true;
+            contentEl.dispatchEvent(new Event('input'));
+            toast(tex ? 'Equation converted to plain text' : 'Equation removed', 'success');
+        }
+
+        popup.querySelector('.hunk-popup-save').addEventListener('click', save);
+        popup.querySelector('.eq-popup-unwrap').addEventListener('click', unwrap);
+        ta.addEventListener('input', refreshPreview);
+        dispCb.addEventListener('change', refreshPreview);
+        ta.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { e.preventDefault(); close(); contentEl.focus(); }
+            else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); }
+        });
+
+        // Click an equation to edit it; click elsewhere closes.
+        contentEl.addEventListener('click', e => {
+            const el = e.target && e.target.closest && e.target.closest('.math-pill, .math-block');
+            if (el && contentEl.contains(el)) { e.preventDefault(); openEquationEditor(el, false); }
+        });
+        document.addEventListener('mousedown', e => {
+            if (popup.hidden) return;
+            if (popup.contains(e.target)) return;
+            if (e.target.closest && e.target.closest('.math-pill, .math-block')) return;
+            close();
+        });
+    }
+
+    function openEquationEditor(el, isNew) {
+        if (!_eqPopupEl || !el) return;
+        _eqPopupTarget = el;
+        _eqPopupIsNew = !!isNew;
+        const ta = _eqPopupEl.querySelector('.eq-popup-tex');
+        _eqPopupEl.querySelector('.eq-popup-display').checked = el.classList.contains('math-block');
+        ta.value = el.getAttribute('data-tex') || '';
+        _eqPopupEl.querySelector('.hunk-popup-title').textContent = isNew ? 'New equation (LaTeX)' : 'Equation (LaTeX)';
+        _eqPopupEl.hidden = false;  // unhide to measure
+        _eqPopupEl.refresh();
+        const r = el.getBoundingClientRect();
+        const pw = _eqPopupEl.offsetWidth, ph = _eqPopupEl.offsetHeight;
+        const left = Math.max(12, Math.min(r.left, window.innerWidth - pw - 12));
+        let top = r.bottom + 6;
+        if (top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 6);
+        _eqPopupEl.style.left = left + 'px';
+        _eqPopupEl.style.top = top + 'px';
+        ta.focus();
+    }
+
     function setupContentEditor() {
         // Make execCommand emit semantic tags (<b>/<i>) instead of styled <span>s, so
         // bold/italic survive serialization. (styleWithCSS=true would produce
@@ -2071,6 +2371,11 @@ const NodeEditor = (() => {
                 if (e.shiftKey && key === 'f') {   // Ctrl+Shift+F = insert footnote
                     e.preventDefault();
                     applyFormat('footnote');
+                    return;
+                }
+                if (e.shiftKey && key === 'e') {   // Ctrl+Shift+E = insert / edit equation
+                    e.preventDefault();
+                    applyFormat('equation');
                     return;
                 }
                 // Ctrl+Shift+8 = bullet list (Shift+8 reports as '*' or via Digit8 code).

@@ -26,6 +26,8 @@ import re
 import sys
 from pathlib import Path
 
+from katex_assets import katex_css_inlined, katex_js   # vendored KaTeX, fonts inlined
+
 ROOT = Path(__file__).resolve().parent
 SRC = ROOT / "editor"
 EX = ROOT / "explainer"
@@ -60,14 +62,16 @@ def build_viewer_template():
     """Self-contained explainer reader with a data placeholder + auto-load bootstrap."""
     html = read(EX, "index.html")
 
-    css = "\n".join(f"/* ===== explainer/{c} ===== */\n{read(EX, c)}" for c in EX_CSS)
+    css = ("/* ===== shared/vendor/katex/katex.min.css (fonts inlined) ===== */\n" + katex_css_inlined() + "\n"
+           + "\n".join(f"/* ===== explainer/{c} ===== */\n{read(EX, c)}" for c in EX_CSS))
     if "</style>" in css:
         print("Error: explainer CSS contains a literal </style>; cannot inline.")
         sys.exit(1)
 
     # </script> inside JS only ever appears in string literals -> escape so it can't
     # close the reader's <script> tag once this template is materialised in a blob.
-    js = "\n".join(f"// ===== explainer/{j} =====\n{read(EX, j)}" for j in EX_JS)
+    js = ("// ===== shared/vendor/katex/katex.min.js =====\n" + katex_js() + "\n"
+          + "\n".join(f"// ===== explainer/{j} =====\n{read(EX, j)}" for j in EX_JS))
     js = js.replace("</script>", "<\\/script>")
 
     # If localStorage is blocked (opaque/blob origin), install an in-memory shim so
@@ -87,9 +91,9 @@ def build_viewer_template():
         "catch(err){console.error('preview load failed',err);}});"
     )
 
-    # Strip the modular link/script tags and inline everything.
-    html = re.sub(r'[ \t]*<link rel="stylesheet" href="css/[^"]+">\n?', "", html)
-    html = re.sub(r'[ \t]*<script src="js/[^"]+"></script>\n?', "", html)
+    # Strip the modular link/script tags (incl. the vendored KaTeX ones) and inline everything.
+    html = re.sub(r'[ \t]*<link rel="stylesheet" href="(?:css|\.\./shared/vendor)/[^"]+">\n?', "", html)
+    html = re.sub(r'[ \t]*<script src="(?:js|\.\./shared/vendor)/[^"]+"></script>\n?', "", html)
     html = html.replace("<title>EntropyExplainer</title>", "<title>Viewer — EntropyExplainer</title>", 1)
     html = html.replace("</head>", f"    <style>\n{css}\n    </style>\n</head>", 1)
     inject = f"    <script>\n{shim}\n{js}\n</script>\n    <script>\n{boot}\n</script>\n"
@@ -115,22 +119,24 @@ def render_editor_html(viewer_js):
     """
     html = read(SRC, "index.html")
 
-    css = "\n".join(f"/* ===== {rel} ===== */\n{read(SRC, rel)}" for rel in CSS_FILES)
+    css = ("/* ===== shared/vendor/katex/katex.min.css (fonts inlined) ===== */\n" + katex_css_inlined() + "\n"
+           + "\n".join(f"/* ===== {rel} ===== */\n{read(SRC, rel)}" for rel in CSS_FILES))
     if "</style>" in css:
         print("Error: editor CSS contains a literal </style>; cannot inline.")
         sys.exit(1)
 
     # Escape </script> (only present inside viewer-template.js's string literal) so
     # it can't close the editor's own inlined <script> block.
-    parts = []
+    parts = ["// ===== shared/vendor/katex/katex.min.js =====\n"
+             + katex_js().replace(chr(60) + '/script>', chr(60) + chr(92) + '/script>')]
     for rel in JS_FILES:
         body = viewer_js if rel == "js/viewer-template.js" else read(SRC, rel)
         body = body.replace(chr(60) + '/script>', chr(60) + chr(92) + '/script>')
         parts.append(f"// ===== {rel} =====\n{body}")
     js = "\n".join(parts)
 
-    html = re.sub(r'[ \t]*<link rel="stylesheet" href="css/[^"]+">\n?', "", html)
-    html = re.sub(r'[ \t]*<script src="js/[^"]+"></script>\n?', "", html)
+    html = re.sub(r'[ \t]*<link rel="stylesheet" href="(?:css|\.\./shared/vendor)/[^"]+">\n?', "", html)
+    html = re.sub(r'[ \t]*<script src="(?:js|\.\./shared/vendor)/[^"]+"></script>\n?', "", html)
     if "</head>" not in html or "</body>" not in html:
         print("Error: editor index.html missing </head> or </body>.")
         sys.exit(1)

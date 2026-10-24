@@ -95,6 +95,65 @@ def esc(text):
     return html.escape(str(text), quote=True)
 
 
+import katex_assets  # noqa: E402  (sibling module; sys.path handled by the caller or cwd)
+
+# Equations (LaTeX), the same dialect as the editor and the reader: inline $...$ (opener
+# not followed by whitespace or $, closer not preceded by whitespace and not followed by a
+# digit, so "$5 and $10" stays text; \$ is a literal dollar; inline code is never scanned)
+# and a display block of a $$ line, TeX lines, a $$ line (or one line $$...$$). The page
+# carries the TeX in data-tex (and as visible text until KaTeX renders it in the browser).
+_MATH_SCAN = re.compile(r"(`[^`\n]*`)|(?<!\\)\$(?![\s$])((?:\\[\s\S]|[^$\\])+?)(?<![\s\\])\$(?!\d)")
+_MATH_PH = re.compile("\ue000(\\d+)\ue001")
+_MATH_BLOCK_TOKEN = re.compile("^\ue002(.*)\ue003$")
+
+
+def _math_inline_html(tex):
+    return f'<span class="math" data-tex="{esc(tex)}">{esc(tex)}</span>'
+
+
+def _math_block_html(tex):
+    return f'<div class="math math-display" data-tex="{esc(tex)}">{esc(tex)}</div>'
+
+
+def _lift_math_blocks(lines):
+    """Collapse each display equation ($$ line, TeX lines, $$ line, or one line $$...$$) into
+    a single token line carrying its TeX (newlines encoded), skipping fenced code, so the
+    line-by-line block loop can emit it in place. An unclosed $$ is left as text."""
+    out = []
+    i = 0
+    in_code = False
+    while i < len(lines):
+        line = lines[i]
+        if line.startswith("```"):
+            in_code = not in_code
+            out.append(line)
+            i += 1
+            continue
+        m = None if in_code else re.match(r"^\s*\$\$(.*)$", line)
+        if m:
+            rest = m.group(1)
+            tex = None
+            skip_to = i
+            if re.search(r"\$\$\s*$", rest) and len(rest.strip()) > 2:
+                tex = re.sub(r"\$\$\s*$", "", rest).strip()
+            elif not rest.strip():
+                j = i + 1
+                buf = []
+                while j < len(lines) and not re.match(r"^\s*\$\$\s*$", lines[j]):
+                    buf.append(lines[j])
+                    j += 1
+                if j < len(lines):
+                    tex = "\n".join(buf).strip()
+                    skip_to = j
+            if tex is not None:
+                out.append("\ue002" + tex.replace("\n", "\ue004") + "\ue003")
+                i = skip_to + 1
+                continue
+        out.append(line)
+        i += 1
+    return out
+
+
 _SAFE_STYLE_PROPS = ("color", "background-color", "font-size", "font-family")
 _SAFE_STYLE_VALUE = re.compile(r"^[#a-z0-9.,%()\s-]+$", re.I)
 # One font family name: a plain word sequence (letters, digits, spaces, hyphens,
@@ -303,7 +362,18 @@ def _inline(text, base_dir, fn_ctx=None):
 
     When fn_ctx is provided, [^id] footnote markers render as bracketed
     superscripts and are collected into fn_ctx for the Notes section."""
+    # Equations first: lift $...$ out as placeholders so escaping and the emphasis rules
+    # below never touch TeX (which uses *, _, ~, <, & freely); inline code is left alone.
+    maths = []
+
+    def _lift(m):
+        if m.group(1) is not None:
+            return m.group(1)
+        maths.append(m.group(2))
+        return f"\ue000{len(maths) - 1}\ue001"
+    text = _MATH_SCAN.sub(_lift, text or "")
     text = esc(text)
+    text = text.replace("\\$", "$")   # \$ is a literal dollar sign
 
     # A few inline HTML tags have no markdown marker, so we restore the specific escaped
     # forms the editor emits (everything else stays escaped literal text). Chromium renders
@@ -363,6 +433,7 @@ def _inline(text, base_dir, fn_ctx=None):
     text = re.sub(r"\*(?!\s)(.+?)(?<!\s)\*", r"<em>\1</em>", text)
     text = re.sub(r"`(.+?)`", r"<code>\1</code>", text)
     text = re.sub(r"~~(?!\s)(.+?)(?<!\s)~~", r"<del>\1</del>", text)
+    text = _MATH_PH.sub(lambda m: _math_inline_html(maths[int(m.group(1))]), text)
     return text
 
 
@@ -386,7 +457,7 @@ def markdown_to_html(md, base_dir, fn_prefix=None, _fn_ctx=None):
     if not md:
         return _build_notes_section(fn_ctx, defs) if owns_ctx else ""
 
-    lines = md.split("\n")
+    lines = _lift_math_blocks(md.split("\n"))
     out = []
     in_list = False
     list_type = ""
@@ -448,6 +519,13 @@ def markdown_to_html(md, base_dir, fn_prefix=None, _fn_ctx=None):
             continue
 
         stripped = line.strip()
+
+        # --- display equation (token from _lift_math_blocks) ---
+        bm = _MATH_BLOCK_TOKEN.match(line)
+        if bm:
+            close_list(); close_bq(); close_table()
+            out.append(_math_block_html(bm.group(1).replace("\ue004", "\n")))
+            continue
 
         # --- tables (GitHub pipe style) ---
         if "|" in stripped and stripped.startswith("|"):
@@ -719,6 +797,8 @@ figcaption{font-family:var(--sans);font-size:12px;font-style:italic;color:var(--
 
 /* authored footnotes (end-of-chapter Notes) */
 .fn-marker{font-size:.72em;font-weight:600;line-height:0;vertical-align:super;white-space:nowrap;}
+.math-display{margin:1em 0;text-align:center;}
+.math-src{font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:.9em;}
 .fn-marker a{color:var(--accent);text-decoration:none;}
 .fn-notes{margin-top:1.8em;padding-top:.9em;border-top:0.5px solid var(--border);break-inside:auto;}
 .fn-notes-title{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin:0 0 .6em;}
@@ -1131,6 +1211,10 @@ def build_main_html(data, base_dir, order, page_map=None, selection=None, marks=
 
     if include_index:
         parts.append(_index_html(data, for_pdf=True, marks=marks))
+    # Equations: KaTeX (fonts inlined) renders them in Chromium before the PDF is printed;
+    # identical in both passes, so the page measurement stays valid.
+    if any('class="math' in p for p in parts):
+        parts.append(katex_assets.katex_bundle_html())
     parts.append("</body></html>")
     return "".join(parts)
 
@@ -1143,6 +1227,7 @@ def _render_pdf(playwright, html_str, out_path, with_footer, book_title):
     try:
         page = browser.new_page()
         page.set_content(html_str, wait_until="load")
+        page.evaluate("() => document.fonts.ready.then(() => true)")   # embedded fonts in place
         page.emulate_media(media="print")
         kwargs = dict(
             path=str(out_path),

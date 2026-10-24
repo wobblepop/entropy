@@ -4,6 +4,35 @@
    ============================================ */
 
 const Markdown = (() => {
+    // --- Equations (LaTeX) ---------------------------------------------------------------
+    // Same dialect as the editor and the exporters: inline $...$ (opener not followed by
+    // whitespace or $, closer not preceded by whitespace and not followed by a digit, so
+    // "$5 and $10" stays text; \$ is a literal dollar; inline code is never scanned) and a
+    // display block of a $$ line, TeX lines, a $$ line (or one line $$...$$). KaTeX renders
+    // when loaded; otherwise the source shows in <code>. The TeX is kept in data-tex.
+    const MATH_SCAN_RE = /(`[^`\n]*`)|(?<!\\)\$(?![\s$])((?:\\[\s\S]|[^$\\])+?)(?<![\s\\])\$(?!\d)/g;
+    const MATH_PH_RE = /\uE000(\d+)\uE001/g;
+    function katexLib() {
+        if (typeof window !== 'undefined' && window.katex && window.katex.renderToString) return window.katex;
+        if (typeof katex !== 'undefined' && katex && katex.renderToString) return katex;
+        return null;
+    }
+    function renderTex(tex, display) {
+        const k = katexLib();
+        if (k) {
+            try { return k.renderToString(tex, { displayMode: !!display, throwOnError: false, trust: false }); }
+            catch (e) { /* fall through to the source form */ }
+        }
+        const d = display ? '$$' : '$';
+        return '<code class="math-src">' + d + escapeHtml(tex) + d + '</code>';
+    }
+    function mathInlineHtml(tex) {
+        return '<span class="math-inline" data-tex="' + escapeHtml(tex) + '">' + renderTex(tex, false) + '</span>';
+    }
+    function mathBlockHtml(tex) {
+        return '<div class="math-display" data-tex="' + escapeHtml(tex) + '">' + renderTex(tex, true) + '</div>';
+    }
+
     function escapeHtml(text) {
         const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
         return text.replace(/[&<>"']/g, c => map[c]);
@@ -78,7 +107,15 @@ const Markdown = (() => {
     }
 
     function parseInline(text) {
-        let t = text
+        // Equations first: lift $...$ out as placeholders so the emphasis rules never touch
+        // TeX (which uses *, _ and ~ freely); inline code is left alone.
+        const maths = [];
+        let t = String(text == null ? '' : text).replace(MATH_SCAN_RE, (m, code, tex) => {
+            if (code !== undefined) return code;
+            maths.push(tex);
+            return '\uE000' + (maths.length - 1) + '\uE001';
+        });
+        t = t.replace(/\\\$/g, '$')            // \$ is a literal dollar sign
             .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="md-image">')
             // Emphasis requires non-space flanking (opener not followed by whitespace,
             // closer not preceded by whitespace) so space-flanked asterisks like "3 * 4 * 5"
@@ -112,7 +149,8 @@ const Markdown = (() => {
         } else {
             t = t.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
         }
-        return t.replace(/~~(?!\s)(.+?)(?<!\s)~~/g, '<del>$1</del>');
+        return t.replace(/~~(?!\s)(.+?)(?<!\s)~~/g, '<del>$1</del>')
+            .replace(MATH_PH_RE, (m, i) => mathInlineHtml(maths[+i]));
     }
 
     // Parse a full node's markdown, turning each inline link into a numbered
@@ -251,6 +289,29 @@ const Markdown = (() => {
             if (inCodeBlock) {
                 html += escapeHtml(line) + '\n';
                 continue;
+            }
+
+            // Display equation: a $$ line, TeX lines, a $$ line -- or one line $$...$$.
+            const dm = line.match(/^\s*\$\$(.*)$/);
+            if (dm) {
+                const rest = dm[1];
+                let tex = null, skipTo = i;
+                if (/\$\$\s*$/.test(rest) && rest.trim().length > 2) {
+                    tex = rest.replace(/\$\$\s*$/, '').trim();
+                } else if (!rest.trim()) {
+                    let j = i + 1;
+                    const buf = [];
+                    while (j < lines.length && !/^\s*\$\$\s*$/.test(lines[j])) { buf.push(lines[j]); j++; }
+                    if (j < lines.length) { tex = buf.join('\n').trim(); skipTo = j; }
+                }
+                if (tex !== null) {
+                    if (inList) { html += listType === 'ul' ? '</ul>' : '</ol>'; inList = false; }
+                    if (inBlockquote) { html += '</blockquote>'; inBlockquote = false; }
+                    html += mathBlockHtml(tex);
+                    i = skipTo;
+                    continue;
+                }
+                // an unclosed $$ is ordinary text
             }
 
             // Close lists if needed

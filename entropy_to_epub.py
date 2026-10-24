@@ -52,6 +52,7 @@ _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
+import katex_assets  # noqa: E402  (path setup must precede import)
 from entropy_to_html import (  # noqa: E402  (path setup must precede import)
     markdown_to_html,
     _sanitize_id,
@@ -156,6 +157,8 @@ figcaption{font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.78em;
 /* ---- authored footnotes (Notes) ---- */
 .fn-marker{font-size:0.72em; font-weight:bold; vertical-align:super; line-height:0;}
 .fn-marker a{color:#2563eb; text-decoration:none;}
+.math-display{text-align:center; margin:1em 0;}
+.math-src{font-family:monospace; font-size:0.9em;}
 .fn-notes{margin-top:1.6em; padding-top:0.8em; border-top:1px solid #e5e5e5;}
 .fn-notes-title{font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.72em;
   font-weight:bold; letter-spacing:0.06em; text-transform:uppercase; color:#555555;
@@ -446,6 +449,36 @@ def _rewrite_node_links(html_str, nid_to_file):
 # ---------------------------------------------------------------------------
 # XHTML document wrapper (carries the watermark contract: one literal </body>)
 # ---------------------------------------------------------------------------
+_MATH_EL = re.compile(r'<(span|div) class="math( math-display)?" data-tex="([^"]*)">.*?</\1>', re.S)
+
+
+def _math_to_mathml(html_str):
+    """Replace the HTML renderer's .math elements with MathML (EPUB runs no script), using
+    the same KaTeX build through Node.js. An equation KaTeX cannot parse is kept as its
+    TeX source in a code span and reported on stderr; a missing Node is an error."""
+    if not isinstance(html_str, str):
+        raise TypeError("_math_to_mathml expects str")
+    found = list(_MATH_EL.finditer(html_str))
+    if not found:
+        return html_str
+    items = [(html.unescape(m.group(3)), bool(m.group(2))) for m in found]
+    results = katex_assets.render_mathml(items)
+    it = iter(results)
+
+    def _sub(m):
+        res = next(it)
+        tex = html.unescape(m.group(3))
+        mathml = res.get("mathml") if isinstance(res, dict) else None
+        if mathml:
+            if 'xmlns="http://www.w3.org/1998/Math/MathML"' not in mathml[:80]:
+                mathml = mathml.replace("<math", '<math xmlns="http://www.w3.org/1998/Math/MathML"', 1)
+            return f'<div class="math-display">{mathml}</div>' if m.group(2) else mathml
+        err = res.get("error") if isinstance(res, dict) else "unknown error"
+        sys.stderr.write(f"Equation kept as source (KaTeX: {err}): {tex[:80]}\n")
+        return f'<code class="math-src">{esc(tex)}</code>'
+    return _MATH_EL.sub(_sub, html_str)
+
+
 def _xhtml_doc(title, body_html, css_href="../css/style.css", epub_ns=False):
     """Wrap a sanitized body fragment in a complete XHTML5 document."""
     if not isinstance(body_html, str):
@@ -533,6 +566,7 @@ def _node_doc(node, nid, nodes, base_dir, eyebrow_html, registry, stats,
         out.append(f'<p class="node-summary">{esc(node["summary"])}</p>')
     out.append('<hr class="title-rule" />')
     body_html = markdown_to_html(node.get("content", ""), base_dir, fn_prefix=_sanitize_id(str(nid)))
+    body_html = _math_to_mathml(body_html)
     out.append(f'<div class="node-body">{body_html}</div>')
     out.append(_media_html(node, base_dir))
     out.append(_relations_html(node, nodes))
