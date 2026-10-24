@@ -102,7 +102,10 @@ const NodeEditor = (() => {
         return String(s == null ? '' : s).replace(/[^A-Za-z0-9_-]/g, '-') || 'fn';
     }
 
-    // Pull `[^id]: text` definition lines out of markdown (skipping fenced code).
+    // Pull `[^id]: text` definitions out of markdown (skipping fenced code). A note may
+    // continue on following lines indented by four spaces (or a tab); a blank line inside
+    // the note is kept when an indented line follows it. Anything else ends the note.
+    const FN_CONT_RE = /^(?: {4}|\t)(.*)$/;
     function harvestFootnoteDefsEd(md) {
         const defs = {};
         if (!md) return { bodyMd: md || '', defs };
@@ -110,15 +113,40 @@ const NodeEditor = (() => {
         const body = [];
         let inCode = false;
         const defRe = /^\[\^([A-Za-z0-9_-]+)\]:\s?(.*)$/;
-        for (const line of lines) {
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
             if (/^```/.test(line)) { inCode = !inCode; body.push(line); continue; }
             if (!inCode) {
                 const m = line.match(defRe);
-                if (m) { if (!(m[1] in defs)) defs[m[1]] = m[2]; continue; }
+                if (m) {
+                    const text = [m[2]];
+                    while (i + 1 < lines.length) {
+                        const cont = lines[i + 1].match(FN_CONT_RE);
+                        if (cont) { text.push(cont[1]); i++; continue; }
+                        if (lines[i + 1] === '' && i + 2 < lines.length && FN_CONT_RE.test(lines[i + 2])) {
+                            text.push(''); i++; continue;
+                        }
+                        break;
+                    }
+                    if (!(m[1] in defs)) defs[m[1]] = text.join('\n');
+                    continue;
+                }
             }
             body.push(line);
         }
         return { bodyMd: body.join('\n'), defs };
+    }
+
+    // Note text -> definition text: lines after the first are indented so the harvesters
+    // above fold them back into the note (a line break can never escape into the body).
+    function fnDefToLines(text) {
+        const t = String(text == null ? '' : text).replace(/\r\n?/g, '\n').replace(/\s+$/, '');
+        return t.split('\n').map((l, i) => (i === 0 || l === '') ? l : '    ' + l).join('\n');
+    }
+
+    // Footnote text may hold several lines: render each and join with <br>.
+    function noteInlineEd(text) {
+        return String(text == null ? '' : text).split('\n').map(inlineFormat).join('<br>');
     }
 
     // Reattach `[^id]: text` definitions for every footnote marker present in the
@@ -135,7 +163,7 @@ const NodeEditor = (() => {
         }
         const defLines = ids
             .filter(id => Object.prototype.hasOwnProperty.call(defs, id))
-            .map(id => '[^' + id + ']: ' + (defs[id] == null ? '' : defs[id]));
+            .map(id => '[^' + id + ']: ' + fnDefToLines(defs[id]));
         if (!defLines.length) return body;
         return body.replace(/\s+$/, '') + '\n\n' + defLines.join('\n');
     }
@@ -470,7 +498,12 @@ const NodeEditor = (() => {
     // "**bold **" (space inside) would fail to re-parse and silently drop the formatting
     // on the next load. All-whitespace content is left unwrapped (empty-tag cleanup and
     // the caller already guard those).
+    // A marker pair must also never span a line break: the inline parsers (editor, reader,
+    // exporters) work line by line, so "*line one\nline two*" would re-parse as literal
+    // asterisks and the emphasis would be lost on the next load. Each line is wrapped on
+    // its own instead.
     function wrapEmphasis(inner, marker) {
+        if (inner.indexOf('\n') >= 0) return inner.split('\n').map(l => wrapEmphasis(l, marker)).join('\n');
         const m = inner.match(/^(\s*)([\s\S]*?)(\s*)$/);
         if (!m || !m[2]) return inner;
         return m[1] + marker + m[2] + marker + m[3];
@@ -510,7 +543,7 @@ const NodeEditor = (() => {
                     case 'sub': md += '<sub>' + inner + '</sub>'; break;
                     case 'code':
                         // bare inline code only; code inside <pre> is handled by the 'pre' case
-                        md += child.closest('pre') ? inner : '`' + inner + '`';
+                        md += child.closest('pre') ? inner : wrapEmphasis(inner, '`');
                         break;
                     case 'a': md += '[' + inner + '](' + (child.getAttribute('href') || '') + ')'; break;
                     case 'img': md += '![' + (child.getAttribute('alt') || '') + '](' + (child.getAttribute('src') || '') + ')'; break;
@@ -575,9 +608,9 @@ const NodeEditor = (() => {
                             const m = inner.match(/^(\s*)([\s\S]*?)(\s*)$/);
                             let core = m[2];
                             if (underline) core = '<u>' + core + '</u>';
-                            if (strike) core = '~~' + core + '~~';
-                            if (italic) core = '*' + core + '*';
-                            if (bold) core = '**' + core + '**';
+                            if (strike) core = wrapEmphasis(core, '~~');
+                            if (italic) core = wrapEmphasis(core, '*');
+                            if (bold) core = wrapEmphasis(core, '**');
                             if (styleStr) core = '<span style="' + styleStr + '">' + core + '</span>';
                             md += m[1] + core + m[3];
                         } else {
@@ -2509,14 +2542,14 @@ const NodeEditor = (() => {
             '<h2 class="fn-notes-title">Notes</h2><ol class="fn-notes-list">';
         used.forEach(u => {
             const has = Object.prototype.hasOwnProperty.call(defs, u.id) && defs[u.id] !== '';
-            const inner = has ? inlineFormat(defs[u.id])
+            const inner = has ? noteInlineEd(defs[u.id])
                 : '<span class="fn-error">[no footnote text yet]</span>';
             html += `<li id="fn-${pf}-note-${u.n}" class="fn-note-item${has ? '' : ' fn-error'}">` +
                 `<span class="fn-note-text">${inner}</span> ` +
                 `<a class="fn-note-backref" href="#fnref-${pf}-note-${u.n}" aria-label="Back to note ${u.n}">↩</a></li>`;
         });
         orphans.forEach(id => {
-            html += `<li class="fn-note-item fn-orphan"><span class="fn-note-text">${inlineFormat(defs[id])}</span> ` +
+            html += `<li class="fn-note-item fn-orphan"><span class="fn-note-text">${noteInlineEd(defs[id])}</span> ` +
                 `<span class="fn-orphan-tag">(unreferenced: ${escHtml(id)})</span></li>`;
         });
         html += '</ol></section>';

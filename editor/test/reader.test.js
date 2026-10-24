@@ -31,3 +31,9 @@ test('reader: the editor\'s whitelisted font-family span passes through intact',
     assert.equal(MD.parseInline(md), md);
     assert.match(MD.parse(md), /<span style="font-family: Algerian">fancy<\/span>/);
 });
+test('reader: multi-line footnote text (indented continuation) renders inside the note', () => {
+    const md = 'Claim.[^1]\n\n[^1]: first line\n    second line';
+    const html = MD.renderWithFootnotes(md, 'n');
+    assert.match(html, /fn-note-text">first line<br>second line</);
+    assert.doesNotMatch(html, /<p>second line/);   // nothing leaked into the body
+});

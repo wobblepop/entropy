@@ -38,25 +38,43 @@ const Markdown = (() => {
         const body = [];
         let inCode = false;
         const defRe = /^\[\^([A-Za-z0-9_-]+)\]:\s?(.*)$/;
-        for (const line of lines) {
+        // A note may continue on following lines indented by four spaces (or a tab); a
+        // blank line inside the note is kept when an indented line follows it.
+        const contRe = /^(?: {4}|\t)(.*)$/;
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
             if (/^```/.test(line)) { inCode = !inCode; body.push(line); continue; }
             if (!inCode) {
                 const m = line.match(defRe);
                 if (m) {
                     const id = m[1];
+                    const text = [m[2]];
+                    while (i + 1 < lines.length) {
+                        const cont = lines[i + 1].match(contRe);
+                        if (cont) { text.push(cont[1]); i++; continue; }
+                        if (lines[i + 1] === '' && i + 2 < lines.length && contRe.test(lines[i + 2])) {
+                            text.push(''); i++; continue;
+                        }
+                        break;
+                    }
                     if (Object.prototype.hasOwnProperty.call(defs, id)) {
                         if (typeof console !== 'undefined' && console.warn) {
                             console.warn('Footnote: duplicate definition for [^' + id + '] ignored.');
                         }
                     } else {
-                        defs[id] = m[2];
+                        defs[id] = text.join('\n');
                     }
-                    continue;  // strip the definition line from the rendered body
+                    continue;  // strip the definition lines from the rendered body
                 }
             }
             body.push(line);
         }
         return { bodyMd: body.join('\n'), defs };
+    }
+
+    // Footnote text may hold several lines: render each and join with <br>.
+    function noteInline(text) {
+        return String(text == null ? '' : text).split('\n').map(parseInline).join('<br>');
     }
 
     function parseInline(text) {
@@ -145,7 +163,7 @@ const Markdown = (() => {
             if (!has && typeof console !== 'undefined' && console.warn) {
                 console.warn('Footnote [^' + u.id + '] is referenced but has no definition.');
             }
-            const inner = has ? parseInline(defs[u.id])
+            const inner = has ? noteInline(defs[u.id])
                 : '<span class="fn-error">[missing footnote text: ' + escapeHtml(u.id) + ']</span>';
             html += `<li id="fn-${prefix}-note-${u.n}" class="fn-note-item${has ? '' : ' fn-error'}">` +
                 `<span class="fn-note-text">${inner}</span> ` +
@@ -156,7 +174,7 @@ const Markdown = (() => {
             if (typeof console !== 'undefined' && console.warn) {
                 console.warn('Footnote definition [^' + id + '] is never referenced.');
             }
-            html += `<li class="fn-note-item fn-orphan"><span class="fn-note-text">${parseInline(defs[id])}</span> ` +
+            html += `<li class="fn-note-item fn-orphan"><span class="fn-note-text">${noteInline(defs[id])}</span> ` +
                 `<span class="fn-orphan-tag">(unreferenced: ${escapeHtml(id)})</span></li>`;
         }
         html += '</ol></section>';

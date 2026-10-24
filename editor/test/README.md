@@ -20,7 +20,9 @@ skip with a message instead of failing; the timestamp tests need no DOM and alwa
 - `convert.test.js` — emphasis **flanking** (`3 * 4 * 5` stays literal; `**bold**` works),
   empty-tag cleanup (no `****` leakage), block-nesting backstops (no `> ## x`), span-style
   emphasis, font-family spans (canonical form, unsafe values dropped), flat + nested lists,
-  link/footnote/code/table/blockquote round-trips, and a
+  link/footnote/code/table/blockquote round-trips, emphasis that spans a soft line break
+  (wrapped per line, never `*a\nb*`), multi-line footnote text (indented continuation
+  lines), and a
   **corpus idempotency** check: every node in any book JSON present at the repo root must
   reach a fixed point and never gain asterisks on a save.
 - `timestamps.test.js` — `created`/`modified` are set on create/duplicate, `modified` is
@@ -61,3 +63,7 @@ reader, and exports agree. Run it with `py test_inline_flanking.py` from the rep
 `../../test_inline_style.py` does the same for the whitelisted inline `<span style>`
 (colour, highlight, size, font family): the exporters must keep exactly what the editor
 keeps and drop exactly what it drops. Run it with `py test_inline_style.py`.
+`../../test_footnote_lines.py` checks that both exporters fold indented continuation
+lines back into a footnote and render them with `<br>` (`py test_footnote_lines.py`), and
+`../../test_crossline_fix.py` covers the `fix_crossline_emphasis.py` repair tool
+(`py test_crossline_fix.py`).

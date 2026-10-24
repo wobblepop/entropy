@@ -72,7 +72,8 @@ Schema: `shared/schema.json`
 **Features:**
 - Three-panel layout with resizable dividers
 - Command palette (Ctrl+K) for all actions
-- Rich text WYSIWYG editing (contenteditable with markdown I/O)
+- Rich text WYSIWYG editing (contenteditable with markdown I/O). The serializer never lets an emphasis or code marker span a soft line break (each line is wrapped on its own, so `*a*\n*b*` rather than `*a\nb*`, which every line-based parser would read as literal asterisks); `fix_crossline_emphasis.py <book.json>` reports, and with `--apply` repairs, files saved before that rule existed
+- Footnotes whose text spans several lines are stored as `[^id]: first line` followed by continuation lines indented by four spaces (a blank line inside the note is kept when an indented line follows); the editor, reader and the HTML/PDF/EPUB exporters all fold them back into the note and render the lines with `<br>`
 - Code block support (fenced triple-backtick round-trips cleanly)
 - Auto-saving to state on keystroke (400ms debounce)
 - Undo/redo (Ctrl+Z — 30-state deep snapshot stack)

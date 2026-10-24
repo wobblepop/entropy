@@ -195,22 +195,49 @@ def _harvest_footnote_defs(md):
     body = []
     in_code = False
     def_re = re.compile(r"^\[\^([A-Za-z0-9_-]+)\]:\s?(.*)$")
-    for line in md.split("\n"):
+    # A note may continue on following lines indented by four spaces (or a tab); a blank
+    # line inside the note is kept when an indented line follows it.
+    cont_re = re.compile(r"^(?: {4}|\t)(.*)$")
+    lines = md.split("\n")
+    i = 0
+    while i < len(lines):
+        line = lines[i]
         if line.startswith("```"):
             in_code = not in_code
             body.append(line)
+            i += 1
             continue
         if not in_code:
             m = def_re.match(line)
             if m:
                 fid = m.group(1)
+                text = [m.group(2)]
+                while i + 1 < len(lines):
+                    cont = cont_re.match(lines[i + 1])
+                    if cont:
+                        text.append(cont.group(1))
+                        i += 1
+                        continue
+                    if lines[i + 1] == "" and i + 2 < len(lines) and cont_re.match(lines[i + 2]):
+                        text.append("")
+                        i += 1
+                        continue
+                    break
                 if fid in defs:
                     sys.stderr.write(f"Footnote: duplicate definition for [^{fid}] ignored.\n")
                 else:
-                    defs[fid] = m.group(2)
+                    defs[fid] = "\n".join(text)
+                i += 1
                 continue
         body.append(line)
+        i += 1
     return "\n".join(body), defs
+
+
+def _note_inline(text, base_dir):
+    """Footnote text may hold several lines: render each and join with <br>."""
+    text = "" if text is None else str(text)
+    return "<br>".join(_inline(line, base_dir, None) for line in text.split("\n"))
 
 
 def _build_notes_section(fn_ctx, defs):
@@ -227,7 +254,7 @@ def _build_notes_section(fn_ctx, defs):
              '<h2 class="fn-notes-title">Notes</h2><ol class="fn-notes-list">']
     for n, fid in used:
         if fid in defs:
-            inner = _inline(defs[fid], base_dir, None)
+            inner = _note_inline(defs[fid], base_dir)
             cls = "fn-note-item"
         else:
             sys.stderr.write(f"Footnote [^{fid}] is referenced but has no definition.\n")
@@ -241,7 +268,7 @@ def _build_notes_section(fn_ctx, defs):
         )
     for fid in orphans:
         sys.stderr.write(f"Footnote definition [^{fid}] is never referenced.\n")
-        inner = _inline(defs[fid], base_dir, None)
+        inner = _note_inline(defs[fid], base_dir)
         parts.append(
             f'<li class="fn-note-item fn-orphan"><span class="fn-note-text">{inner}</span> '
             f'<span class="fn-orphan-tag">(unreferenced: {esc(fid)})</span></li>'

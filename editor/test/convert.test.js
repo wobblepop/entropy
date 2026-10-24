@@ -186,3 +186,41 @@ test('unsafe or malformed font-family values are dropped and the text kept', { s
     assert.doesNotMatch(INT.markdownToHtml('<span style="font-family: url(x)">t</span>'), /<span style/);
     assert.match(INT.markdownToHtml('<span style="font-family: url(x)">t</span>'), /&lt;span style/);
 });
+
+// --- Leak fixes: markers never span a line break; footnote text may span lines ---
+test('emphasis across a soft line break is wrapped per line and survives reload', { skip }, () => {
+    // Ctrl+I over two Shift+Enter lines gives <em>a<br>b</em>; "*a\nb*" would re-read as
+    // literal asterisks and the italics would be gone on the next load.
+    assert.equal(INT.htmlToMarkdown('<p><em>line one<br>line two</em> tail</p>'), '*line one*\n*line two* tail');
+    assert.equal(INT.htmlToMarkdown('<p><strong>a<br>b</strong></p>'), '**a**\n**b**');
+    assert.equal(INT.htmlToMarkdown('<p><del>a<br>b</del></p>'), '~~a~~\n~~b~~');
+    assert.equal(INT.htmlToMarkdown('<p><code>x<br>y</code></p>'), '`x`\n`y`');
+    assert.equal(INT.htmlToMarkdown('<p><strong><em>a<br>b</em></strong></p>'), '***a***\n***b***');
+    assert.equal(INT.htmlToMarkdown('<p><span style="font-style:italic">p<br>q</span></p>'), '*p*\n*q*');
+    // blank lines stay blank; edge whitespace stays outside the markers on every line
+    assert.equal(INT.htmlToMarkdown('<p><em>a<br><br>b</em></p>'), '*a*\n\n*b*');
+    assert.equal(INT.htmlToMarkdown('<p><em>a <br>b</em></p>'), '*a*\n*b*');
+    for (const html of ['<p><em>line one<br>line two</em></p>', '<p><strong>a<br>b</strong></p>']) {
+        const md = INT.htmlToMarkdown(html);
+        const back = INT.markdownToHtml(md);
+        assert.doesNotMatch(back, /\*/, 'literal asterisk leaked for ' + html);
+        assert.equal((back.match(/<(em|strong)>/g) || []).length, 2, 'both lines keep emphasis for ' + html);
+        assert.equal(INT.roundTrip(md), md);
+    }
+});
+
+test('footnote text with line breaks stays inside the note', { skip }, () => {
+    const defs = { 1: 'first line\nsecond line\n\nafter a blank', 2: 'single' };
+    const md = INT.appendFootnoteDefsEd('Claim.[^1] More.[^2]', defs);
+    assert.equal(md, 'Claim.[^1] More.[^2]\n\n[^1]: first line\n    second line\n\n    after a blank\n[^2]: single');
+    const h = INT.harvestFootnoteDefsEd(md);
+    assert.deepEqual(h.defs, defs);
+    assert.equal(h.bodyMd.trim(), 'Claim.[^1] More.[^2]');   // nothing leaked into the body
+    assert.equal(INT.roundTrip(md), md);
+    // a tab-indented continuation is accepted too; an unindented line ends the note
+    const h2 = INT.harvestFootnoteDefsEd('x[^1]\n\n[^1]: a\n\tb\nnot part');
+    assert.deepEqual(h2.defs, { 1: 'a\nb' });
+    assert.equal(h2.bodyMd, 'x[^1]\n\nnot part');
+    // trailing whitespace of a note is dropped; a single-line note is unchanged
+    assert.equal(INT.appendFootnoteDefsEd('a[^1]', { 1: 'note  \n\n' }), 'a[^1]\n\n[^1]: note');
+});
