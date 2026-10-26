@@ -570,8 +570,9 @@ const NodeEditor = (() => {
             }
         });
         let md = nodeToMd(div);
-        // normalize: strip trailing spaces, collapse 3+ blank lines to one, trim
-        md = md.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+        // normalize: strip trailing spaces (incl. the non-breaking space Chrome puts after
+        // a space typed at the end of a line), collapse 3+ blank lines to one, trim
+        md = md.replace(/[ \t\u00a0]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
         return md;
     }
 
@@ -2345,6 +2346,63 @@ const NodeEditor = (() => {
         ta.focus();
     }
 
+    // The atomic pill (footnote, equation, link) directly before or after a collapsed
+    // caret, skipping empty text nodes; null when the caret is not right beside one.
+    function pillBesideCaret(range, dir) {
+        const isPill = n => n && n.nodeType === Node.ELEMENT_NODE && n.matches('.fn-pill, .math-pill, .link-pill');
+        const step = n => (dir === 'before' ? n.previousSibling : n.nextSibling);
+        const node = range.startContainer;
+        const off = range.startOffset;
+        let n;
+        if (node.nodeType === Node.TEXT_NODE) {
+            if (dir === 'before' ? off > 0 : off < node.data.length) return null;   // text comes first
+            n = step(node);
+        } else {
+            n = dir === 'before' ? node.childNodes[off - 1] : node.childNodes[off];
+        }
+        while (n && n.nodeType === Node.TEXT_NODE && n.data === '') n = step(n);
+        return isPill(n) && contentEl.contains(n) ? n : null;
+    }
+
+    // Remove a pill by DOM and join the text on either side verbatim (no whitespace
+    // rebalancing), leaving the caret at the join. A footnote pill also drops its note when
+    // no other pill shares the id, as the popup's Remove does.
+    function removePillAtCaret(pill) {
+        const parent = pill.parentNode;
+        if (!parent) return;
+        const marker = document.createTextNode('');
+        pill.replaceWith(marker);
+        let text = '';
+        let offset = 0;
+        const before = marker.previousSibling;
+        const after = marker.nextSibling;
+        if (before && before.nodeType === Node.TEXT_NODE) { text = before.data; offset = text.length; before.remove(); }
+        if (after && after.nodeType === Node.TEXT_NODE) { text += after.data; after.remove(); }
+        const sel = window.getSelection();
+        const r = document.createRange();
+        if (text) {
+            const joined = document.createTextNode(text);
+            marker.replaceWith(joined);
+            r.setStart(joined, offset);
+        } else {
+            const idx = Array.prototype.indexOf.call(parent.childNodes, marker);
+            marker.remove();
+            if (!parent.childNodes.length && parent !== contentEl) parent.appendChild(document.createElement('br'));
+            r.setStart(parent, Math.min(idx, parent.childNodes.length));
+        }
+        r.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(r);
+        if (pill.classList.contains('fn-pill')) {
+            const id = pill.getAttribute('data-fnid') || '';
+            const esc = window.CSS && CSS.escape ? CSS.escape(id) : id;
+            if (id && !contentEl.querySelector('.fn-pill[data-fnid="' + esc + '"]')) delete _fnDefs[id];
+            renumberFootnotePills();
+        }
+        contentDirty = true;
+        contentEl.dispatchEvent(new Event('input'));
+    }
+
     function setupContentEditor() {
         // Make execCommand emit semantic tags (<b>/<i>) instead of styled <span>s, so
         // bold/italic survive serialization. (styleWithCSS=true would produce
@@ -2352,6 +2410,17 @@ const NodeEditor = (() => {
         try { document.execCommand('styleWithCSS', false, false); } catch (e) { /* not supported */ }
 
         contentEl.addEventListener('keydown', e => {
+            // Backspace/Delete beside an atomic pill: remove it ourselves. Chrome's own
+            // deletion rebalances the whitespace around the caret and turns the space that
+            // followed the pill into a non-breaking space, which would then be stored.
+            if ((e.key === 'Backspace' || e.key === 'Delete') && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                const sel = window.getSelection();
+                if (sel.rangeCount && sel.isCollapsed) {
+                    const pill = pillBesideCaret(sel.getRangeAt(0), e.key === 'Backspace' ? 'before' : 'after');
+                    if (pill) { e.preventDefault(); removePillAtCaret(pill); return; }
+                }
+            }
+
             if (e.key === 'Enter' && !e.shiftKey) {
                 const sel = window.getSelection();
                 if (!sel.rangeCount) return;

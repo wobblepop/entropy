@@ -285,3 +285,10 @@ test('without KaTeX the TeX source shows in a code span and still round-trips', 
         global.window.katex = saved;
     }
 });
+
+test('a non-breaking space left at a line end by the browser is not stored', { skip }, () => {
+    assert.equal(INT.htmlToMarkdown('<p>word\u00a0<br>next</p>'), 'word\nnext');
+    assert.equal(INT.htmlToMarkdown('<p>end\u00a0</p>'), 'end');
+    // a non-breaking space between words is kept: it may be deliberate
+    assert.equal(INT.htmlToMarkdown('<p>10\u00a0km</p>'), '10\u00a0km');
+});
