@@ -12,6 +12,7 @@ const Palette = (() => {
         { type: 'cmd', label: 'New File', action: () => document.getElementById('btn-new').click(), hint: 'Ctrl+N' },
         { type: 'cmd', label: 'Open File', action: () => document.getElementById('btn-open').click(), hint: 'Ctrl+O' },
         { type: 'cmd', label: 'Save File', action: () => saveFile(), hint: 'Ctrl+S' },
+        { type: 'cmd', label: 'Save As…', action: () => saveFileAs(), hint: 'Ctrl+Alt+S' },
         { type: 'cmd', label: 'Add New Node', action: () => showNewNodeModal(), hint: 'Ctrl+Shift+N' },
         { type: 'cmd', label: 'Open in Viewer', action: () => openPreview(), hint: 'Ctrl+P' },
         { type: 'cmd', label: 'Generate PDF…', action: () => PdfExport.open() },
@@ -19,6 +20,7 @@ const Palette = (() => {
         { type: 'cmd', label: 'Review Suggested Changes', action: () => NodeEditor.enterReview() },
         { type: 'cmd', label: 'Insert Footnote', action: () => NodeEditor.applyFormat('footnote'), hint: 'Ctrl+Shift+F' },
         { type: 'cmd', label: 'Insert Equation', action: () => NodeEditor.applyFormat('equation'), hint: 'Ctrl+Shift+E' },
+        { type: 'cmd', label: 'Show Node Details', action: () => switchTab('node') },
         { type: 'cmd', label: 'Show Preview Panel', action: () => switchTab('preview') },
         { type: 'cmd', label: 'Show Graph View', action: () => switchTab('graph') },
         { type: 'cmd', label: 'Show Book Metadata', action: () => switchTab('meta') },
@@ -183,6 +185,51 @@ async function saveFile(silent) {
     URL.revokeObjectURL(url);
     EditorState.markClean();
     if (!silent) NodeEditor.toast('File saved', 'success');
+}
+
+// Save As: write a new file chosen in the save picker and keep editing that file (it
+// becomes the autosave target and the header shows its name). Without the picker
+// (e.g. Firefox) the copy is downloaded under a name the user types.
+async function saveFileAs() {
+    NodeEditor.flushContent();
+    const data = EditorState.getExportData();
+    if (!data) {
+        NodeEditor.toast('Nothing to save — create or open a file first', 'info');
+        return;
+    }
+    const json = JSON.stringify(data, null, 2);
+    if (window.showSaveFilePicker) {
+        try {
+            const newHandle = await window.showSaveFilePicker({
+                suggestedName: EditorState.getFileName(),
+                types: [{ description: 'Entropy JSON', accept: { 'application/json': ['.json', '.entropy.json'] } }]
+            });
+            const writable = await newHandle.createWritable();
+            await writable.write(json);
+            await writable.close();
+            EditorState.setFileHandle(newHandle);
+            EditorState.setFileName(newHandle.name || EditorState.getFileName());
+            EditorState.markClean();
+            NodeEditor.toast('Saved as ' + EditorState.getFileName(), 'success');
+        } catch (err) {
+            if (err && err.name === 'AbortError') return;
+            NodeEditor.toast('Save As failed: ' + (err && err.message ? err.message : err), 'error');
+        }
+        return;
+    }
+    const typed = window.prompt('File name for the copy', EditorState.getFileName());
+    if (typed === null) return;
+    const safe = (typed.trim() || EditorState.getFileName()).replace(/[\\/:*?"<>|]+/g, '-');
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = safe;
+    a.click();
+    URL.revokeObjectURL(url);
+    EditorState.setFileName(safe);
+    EditorState.markClean();
+    NodeEditor.toast('Downloaded ' + safe, 'success');
 }
 
 function showNewNodeModal(forceAsChild) {

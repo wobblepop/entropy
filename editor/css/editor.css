@@ -9,50 +9,11 @@
     margin: 0 auto;
 }
 
-/* Meta bar */
-.editor-meta {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-    padding: 8px 10px;
-    background: var(--bg-surface);
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-}
-
-.meta-field {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.meta-field label {
-    font-size: 11px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-}
-
-.meta-input {
-    padding: 3px 6px;
-    font-size: 12px;
-    width: auto;
-}
-
+/* Node id (read-only) and the Created/Edited stamps live in the right panel's Node tab */
 .id-input {
     font-family: var(--font-mono);
     color: var(--text-dim);
-    background: transparent;
-    border-color: transparent;
     font-size: 11px;
-}
-
-/* Read-only per-node Created/Edited stamps — muted text, grouped at the end of the bar.
-   Only the first stamp field gets the auto margin so the pair stays together (two
-   auto margins would split the free space and gap them apart). */
-.meta-field-created {
-    margin-left: auto;
 }
 
 .meta-stamp {
@@ -104,8 +65,12 @@
 }
 
 /* Toolbar. Wraps onto a second row in a narrow centre panel: the wrapper no longer clips,
-   so overflowing buttons must wrap rather than spill past the border. */
+   so overflowing buttons must wrap rather than spill past the border. Sticks to the top
+   of the centre panel while the text scrolls beneath it (the panel is the only scroll). */
 .editor-toolbar {
+    position: sticky;
+    top: -16px;          /* the centre panel's 16px padding scrolls with the content */
+    z-index: 30;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -288,12 +253,11 @@
     line-height: 0;
 }
 
-/* Rich text content area (contenteditable) */
+/* Rich text content area (contenteditable). Grows with the content: the centre panel is
+   the one scroll, so there is no inner scroll box here. */
 .editor-content {
     width: 100%;
     min-height: 280px;
-    max-height: 600px;
-    overflow-y: auto;
     padding: 14px 16px;
     font-size: 14px;
     line-height: 1.65;

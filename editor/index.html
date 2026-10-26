@@ -42,6 +42,7 @@
             <button class="header-btn" id="btn-new" title="New file (Ctrl+N)">New</button>
             <button class="header-btn" id="btn-open" title="Open file (Ctrl+O)">Open</button>
             <button class="header-btn" id="btn-save" title="Save file (Ctrl+S)">Save</button>
+            <button class="header-btn" id="btn-save-as" title="Save as a new file (Ctrl+Alt+S)">Save As</button>
             <span class="header-sep"></span>
             <button class="header-btn" id="btn-add-node" title="Add node (Ctrl+Shift+N)">+ Node</button>
             <button class="header-btn" id="btn-preview" title="Open your book in the full Viewer, new tab (Ctrl+P)">View</button>
@@ -80,40 +81,6 @@
 
             <!-- Node editor (hidden until node selected) -->
             <div class="node-editor" id="node-editor" hidden>
-                <!-- Node metadata bar -->
-                <div class="editor-meta">
-                    <div class="meta-field">
-                        <label for="edit-id">ID</label>
-                        <input type="text" id="edit-id" class="meta-input id-input" readonly>
-                    </div>
-                    <div class="meta-field">
-                        <label for="edit-difficulty">Level</label>
-                        <select id="edit-difficulty" class="meta-input">
-                            <option value="">—</option>
-                            <option value="intro">Intro</option>
-                            <option value="intermediate">Intermediate</option>
-                            <option value="advanced">Advanced</option>
-                            <option value="expert">Expert</option>
-                        </select>
-                    </div>
-                    <div class="meta-field">
-                        <label for="edit-time">Time</label>
-                        <input type="text" id="edit-time" class="meta-input" placeholder="e.g. 5 min">
-                    </div>
-                    <div class="meta-field">
-                        <label for="edit-order">Order</label>
-                        <input type="number" id="edit-order" class="meta-input" style="width:60px">
-                    </div>
-                    <div class="meta-field meta-field-stamp meta-field-created">
-                        <label>Created</label>
-                        <span id="edit-created" class="meta-stamp">—</span>
-                    </div>
-                    <div class="meta-field meta-field-stamp">
-                        <label>Edited</label>
-                        <span id="edit-modified" class="meta-stamp">—</span>
-                    </div>
-                </div>
-
                 <!-- Title -->
                 <input type="text" id="edit-title" class="editor-title" placeholder="Node title" aria-label="Node title">
 
@@ -240,87 +207,6 @@
                     </div>
                 </div>
 
-                <!-- Private author notes (never shown to readers or in the PDF) -->
-                <div class="editor-notes">
-                    <label for="edit-notes">Notes <span class="notes-hint">private — not shown to readers or PDF</span></label>
-                    <textarea id="edit-notes" class="editor-notes-input" rows="2" placeholder="Editing notes to yourself — to-dos, fact-checks, reminders…" aria-label="Private author notes"></textarea>
-                </div>
-
-                <!-- Tags -->
-                <div class="editor-tags">
-                    <label>Tags</label>
-                    <div class="tags-container" id="tags-container"></div>
-                    <input type="text" id="tag-input" class="tag-input" placeholder="Add tag (Enter)" aria-label="Add tag">
-                </div>
-
-                <!-- Children -->
-                <div class="editor-section">
-                    <div class="section-header">
-                        <h3>Children (sub-sections)</h3>
-                        <button class="small-btn" id="btn-new-child" title="Create new child node">+ New</button>
-                        <button class="small-btn" id="btn-add-child" title="Link existing node as child">+ Link</button>
-                    </div>
-                    <div class="link-list" id="children-list"></div>
-                    <div class="inline-add-form" id="add-child-form" hidden>
-                        <select id="add-child-select" class="inline-select">
-                            <option value="">Select a node...</option>
-                        </select>
-                        <button class="inline-confirm" id="add-child-confirm">Add</button>
-                        <button class="inline-cancel" id="add-child-cancel">Cancel</button>
-                    </div>
-                </div>
-
-                <!-- Connections -->
-                <div class="editor-section">
-                    <div class="section-header">
-                        <h3>Connections (cross-links)</h3>
-                        <button class="small-btn" id="btn-add-connection" title="Add a cross-link">+ Add</button>
-                    </div>
-                    <div class="link-list" id="connections-list"></div>
-                    <div class="inline-add-form" id="add-conn-form" hidden>
-                        <select id="add-conn-target" class="inline-select">
-                            <option value="">Target node...</option>
-                        </select>
-                        <select id="add-conn-type" class="inline-select-sm">
-                            <option value="related">Related</option>
-                            <option value="prerequisite">Prerequisite</option>
-                            <option value="deeper">Deeper</option>
-                            <option value="example">Example</option>
-                            <option value="tangent">Tangent</option>
-                        </select>
-                        <input type="text" id="add-conn-label" class="inline-input" placeholder="Label (optional)">
-                        <button class="inline-confirm" id="add-conn-confirm">Add</button>
-                        <button class="inline-cancel" id="add-conn-cancel">Cancel</button>
-                    </div>
-                </div>
-
-                <!-- Media -->
-                <div class="editor-section">
-                    <div class="section-header">
-                        <h3>Media</h3>
-                        <button class="small-btn" id="btn-add-media" title="Add media">+ Add</button>
-                    </div>
-                    <div class="media-list" id="media-list"></div>
-                    <div class="inline-add-form" id="add-media-form" hidden>
-                        <select id="add-media-type" class="inline-select-sm">
-                            <option value="image">Image</option>
-                            <option value="video">Video</option>
-                            <option value="audio">Audio</option>
-                            <option value="embed">Embed</option>
-                            <option value="diagram">Diagram</option>
-                        </select>
-                        <input type="text" id="add-media-src" class="inline-input" placeholder="URL or path">
-                        <input type="text" id="add-media-alt" class="inline-input" placeholder="Alt text">
-                        <button class="inline-confirm" id="add-media-confirm">Add</button>
-                        <button class="inline-cancel" id="add-media-cancel">Cancel</button>
-                    </div>
-                </div>
-
-                <!-- Danger zone -->
-                <div class="editor-danger">
-                    <button class="small-btn" id="btn-duplicate-node" title="Duplicate this node">Duplicate</button>
-                    <button class="danger-btn" id="btn-delete-node" title="Delete this node">Delete Node</button>
-                </div>
             </div>
         </main>
 
@@ -334,14 +220,131 @@
         <aside class="panel panel-right" id="panel-right">
             <div class="panel-header">
                 <div class="panel-tabs">
-                    <button class="panel-tab active" data-tab="meta">Book Meta</button>
+                    <button class="panel-tab active" data-tab="node">Node</button>
+                    <button class="panel-tab" data-tab="meta">Book Meta</button>
                     <button class="panel-tab" data-tab="preview">Preview</button>
                     <button class="panel-tab" data-tab="graph">Graph</button>
                 </div>
             </div>
 
+            <!-- Node tab: everything about the selected section except its text -->
+            <div class="panel-body tab-content active" id="tab-node">
+                <p class="node-props-empty" id="node-props-empty">Open a file and select a section to see its details here.</p>
+                <div class="node-props" id="node-props" hidden>
+                    <div class="form-field">
+                        <label for="edit-id">ID</label>
+                        <input type="text" id="edit-id" class="form-input id-input" readonly>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label for="edit-difficulty">Level</label>
+                            <select id="edit-difficulty" class="form-input">
+                                <option value="">—</option>
+                                <option value="intro">Intro</option>
+                                <option value="intermediate">Intermediate</option>
+                                <option value="advanced">Advanced</option>
+                                <option value="expert">Expert</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="edit-time">Time</label>
+                            <input type="text" id="edit-time" class="form-input" placeholder="e.g. 5 min">
+                        </div>
+                        <div class="form-field">
+                            <label for="edit-order">Order</label>
+                            <input type="number" id="edit-order" class="form-input">
+                        </div>
+                    </div>
+                    <div class="node-stamps">
+                        <span><span class="stamp-label">Created</span><span id="edit-created" class="meta-stamp">—</span></span>
+                        <span><span class="stamp-label">Edited</span><span id="edit-modified" class="meta-stamp">—</span></span>
+                    </div>
+                    <!-- Private author notes (never shown to readers or in the PDF) -->
+                    <div class="editor-notes">
+                        <label for="edit-notes">Notes <span class="notes-hint">private — not shown to readers or PDF</span></label>
+                        <textarea id="edit-notes" class="editor-notes-input" rows="2" placeholder="Editing notes to yourself — to-dos, fact-checks, reminders…" aria-label="Private author notes"></textarea>
+                    </div>
+
+                    <!-- Tags -->
+                    <div class="editor-tags">
+                        <label>Tags</label>
+                        <div class="tags-container" id="tags-container"></div>
+                        <input type="text" id="tag-input" class="tag-input" placeholder="Add tag (Enter)" aria-label="Add tag">
+                    </div>
+
+                    <!-- Children -->
+                    <div class="editor-section">
+                        <div class="section-header">
+                            <h3>Children (sub-sections)</h3>
+                            <button class="small-btn" id="btn-new-child" title="Create new child node">+ New</button>
+                            <button class="small-btn" id="btn-add-child" title="Link existing node as child">+ Link</button>
+                        </div>
+                        <div class="link-list" id="children-list"></div>
+                        <div class="inline-add-form" id="add-child-form" hidden>
+                            <select id="add-child-select" class="inline-select">
+                                <option value="">Select a node...</option>
+                            </select>
+                            <button class="inline-confirm" id="add-child-confirm">Add</button>
+                            <button class="inline-cancel" id="add-child-cancel">Cancel</button>
+                        </div>
+                    </div>
+
+                    <!-- Connections -->
+                    <div class="editor-section">
+                        <div class="section-header">
+                            <h3>Connections (cross-links)</h3>
+                            <button class="small-btn" id="btn-add-connection" title="Add a cross-link">+ Add</button>
+                        </div>
+                        <div class="link-list" id="connections-list"></div>
+                        <div class="inline-add-form" id="add-conn-form" hidden>
+                            <select id="add-conn-target" class="inline-select">
+                                <option value="">Target node...</option>
+                            </select>
+                            <select id="add-conn-type" class="inline-select-sm">
+                                <option value="related">Related</option>
+                                <option value="prerequisite">Prerequisite</option>
+                                <option value="deeper">Deeper</option>
+                                <option value="example">Example</option>
+                                <option value="tangent">Tangent</option>
+                            </select>
+                            <input type="text" id="add-conn-label" class="inline-input" placeholder="Label (optional)">
+                            <button class="inline-confirm" id="add-conn-confirm">Add</button>
+                            <button class="inline-cancel" id="add-conn-cancel">Cancel</button>
+                        </div>
+                    </div>
+
+                    <!-- Media -->
+                    <div class="editor-section">
+                        <div class="section-header">
+                            <h3>Media</h3>
+                            <button class="small-btn" id="btn-add-media" title="Add media">+ Add</button>
+                        </div>
+                        <div class="media-list" id="media-list"></div>
+                        <div class="inline-add-form" id="add-media-form" hidden>
+                            <select id="add-media-type" class="inline-select-sm">
+                                <option value="image">Image</option>
+                                <option value="video">Video</option>
+                                <option value="audio">Audio</option>
+                                <option value="embed">Embed</option>
+                                <option value="diagram">Diagram</option>
+                            </select>
+                            <input type="text" id="add-media-src" class="inline-input" placeholder="URL or path">
+                            <input type="text" id="add-media-alt" class="inline-input" placeholder="Alt text">
+                            <button class="inline-confirm" id="add-media-confirm">Add</button>
+                            <button class="inline-cancel" id="add-media-cancel">Cancel</button>
+                        </div>
+                    </div>
+
+                    <!-- Danger zone -->
+                    <div class="editor-danger">
+                        <button class="small-btn" id="btn-duplicate-node" title="Duplicate this node">Duplicate</button>
+                        <button class="danger-btn" id="btn-delete-node" title="Delete this node">Delete Node</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Meta tab -->
-            <div class="panel-body tab-content active" id="tab-meta">
+            <div class="panel-body tab-content" id="tab-meta">
                 <div class="meta-form">
                     <div class="form-field">
                         <label for="meta-title">Title</label>
@@ -427,6 +430,7 @@
                     <h3>File</h3>
                     <div class="shortcut"><kbd>Ctrl+K</kbd> Command palette</div>
                     <div class="shortcut"><kbd>Ctrl+S</kbd> Save</div>
+                    <div class="shortcut"><kbd>Ctrl+Alt+S</kbd> Save as new file</div>
                     <div class="shortcut"><kbd>Ctrl+O</kbd> Open</div>
                     <div class="shortcut"><kbd>Ctrl+N</kbd> New file</div>
                     <div class="shortcut"><kbd>Ctrl+Shift+N</kbd> New node</div>

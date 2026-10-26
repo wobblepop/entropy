@@ -82,6 +82,7 @@ const App = (() => {
         });
 
         document.getElementById('btn-save').addEventListener('click', () => saveFile());
+        document.getElementById('btn-save-as').addEventListener('click', () => saveFileAs());
         document.getElementById('btn-add-node').addEventListener('click', showNewNodeModal);
         document.getElementById('btn-preview').addEventListener('click', openPreview);
 
@@ -172,6 +173,11 @@ const App = (() => {
             }
 
             // File operations
+            if (e.ctrlKey && e.altKey && (e.key === 's' || e.key === 'S')) {   // Ctrl+Alt+S = Save As
+                e.preventDefault();
+                saveFileAs();
+                return;
+            }
             if (e.ctrlKey && e.key === 's') {
                 e.preventDefault();
                 saveFile();
@@ -349,6 +355,10 @@ const App = (() => {
         EditorState.on('file-loaded', () => {
             fileNameEl.textContent = EditorState.getFileName();
             indicator.hidden = true;
+            autosaveEl.hidden = !EditorState.getFileHandle();
+        });
+        EditorState.on('file-renamed', name => {        // Save As picked a new file
+            fileNameEl.textContent = name;
             autosaveEl.hidden = !EditorState.getFileHandle();
         });
     }

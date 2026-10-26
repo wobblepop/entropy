@@ -35,6 +35,10 @@ const NodeEditor = (() => {
         EditorState.on('file-loaded', () => {
             emptyState.hidden = true;
             editorEl.hidden = false;
+            const props = document.getElementById('node-props');
+            const propsEmpty = document.getElementById('node-props-empty');
+            if (props) props.hidden = false;
+            if (propsEmpty) propsEmpty.hidden = true;
         });
         // Keep the read-only "Edited" stamp current after autosave bumps it.
         EditorState.on('node-updated', id => { if (id === loadedNodeId) updateStampDisplay(); });

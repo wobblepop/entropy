@@ -27,9 +27,9 @@
 }
 
 .panel-right {
-    width: 280px;
-    min-width: 200px;
-    max-width: 400px;
+    width: 320px;
+    min-width: 220px;
+    max-width: 520px;
     background: var(--bg-surface);
     border-left: 1px solid var(--border);
     transition: width var(--transition);
@@ -282,6 +282,38 @@
     color: var(--text-dim);
     line-height: 1.8;
 }
+
+/* Node tab: the selected section's details (its text stays in the centre) */
+.form-row {
+    display: flex;
+    gap: 8px;
+}
+.form-row .form-field {
+    flex: 1;
+    min-width: 0;
+}
+.node-stamps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin-bottom: 12px;
+    font-size: 11px;
+}
+.stamp-label {
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-faint);
+    margin-right: 5px;
+}
+.node-props-empty {
+    font-size: 12px;
+    color: var(--text-faint);
+    line-height: 1.5;
+}
+.node-props-empty[hidden] { display: none; }
+#tab-node .editor-section { background: var(--bg); }
+#tab-node .inline-add-form { flex-wrap: wrap; }
+#tab-node .editor-danger { margin-top: 16px; }
 
 /* Preview pane */
 .preview-pane {

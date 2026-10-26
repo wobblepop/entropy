@@ -390,9 +390,9 @@ kbd {
 }
 
 .panel-right {
-    width: 280px;
-    min-width: 200px;
-    max-width: 400px;
+    width: 320px;
+    min-width: 220px;
+    max-width: 520px;
     background: var(--bg-surface);
     border-left: 1px solid var(--border);
     transition: width var(--transition);
@@ -646,6 +646,38 @@ kbd {
     line-height: 1.8;
 }
 
+/* Node tab: the selected section's details (its text stays in the centre) */
+.form-row {
+    display: flex;
+    gap: 8px;
+}
+.form-row .form-field {
+    flex: 1;
+    min-width: 0;
+}
+.node-stamps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin-bottom: 12px;
+    font-size: 11px;
+}
+.stamp-label {
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-faint);
+    margin-right: 5px;
+}
+.node-props-empty {
+    font-size: 12px;
+    color: var(--text-faint);
+    line-height: 1.5;
+}
+.node-props-empty[hidden] { display: none; }
+#tab-node .editor-section { background: var(--bg); }
+#tab-node .inline-add-form { flex-wrap: wrap; }
+#tab-node .editor-danger { margin-top: 16px; }
+
 /* Preview pane */
 .preview-pane {
     font-size: 13px;
@@ -750,50 +782,11 @@ kbd {
     margin: 0 auto;
 }
 
-/* Meta bar */
-.editor-meta {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-    padding: 8px 10px;
-    background: var(--bg-surface);
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-}
-
-.meta-field {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.meta-field label {
-    font-size: 11px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-}
-
-.meta-input {
-    padding: 3px 6px;
-    font-size: 12px;
-    width: auto;
-}
-
+/* Node id (read-only) and the Created/Edited stamps live in the right panel's Node tab */
 .id-input {
     font-family: var(--font-mono);
     color: var(--text-dim);
-    background: transparent;
-    border-color: transparent;
     font-size: 11px;
-}
-
-/* Read-only per-node Created/Edited stamps — muted text, grouped at the end of the bar.
-   Only the first stamp field gets the auto margin so the pair stays together (two
-   auto margins would split the free space and gap them apart). */
-.meta-field-created {
-    margin-left: auto;
 }
 
 .meta-stamp {
@@ -845,8 +838,12 @@ kbd {
 }
 
 /* Toolbar. Wraps onto a second row in a narrow centre panel: the wrapper no longer clips,
-   so overflowing buttons must wrap rather than spill past the border. */
+   so overflowing buttons must wrap rather than spill past the border. Sticks to the top
+   of the centre panel while the text scrolls beneath it (the panel is the only scroll). */
 .editor-toolbar {
+    position: sticky;
+    top: -16px;          /* the centre panel's 16px padding scrolls with the content */
+    z-index: 30;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -1029,12 +1026,11 @@ kbd {
     line-height: 0;
 }
 
-/* Rich text content area (contenteditable) */
+/* Rich text content area (contenteditable). Grows with the content: the centre panel is
+   the one scroll, so there is no inner scroll box here. */
 .editor-content {
     width: 100%;
     min-height: 280px;
-    max-height: 600px;
-    overflow-y: auto;
     padding: 14px 16px;
     font-size: 14px;
     line-height: 1.65;
@@ -2217,6 +2213,7 @@ kbd {
             <button class="header-btn" id="btn-new" title="New file (Ctrl+N)">New</button>
             <button class="header-btn" id="btn-open" title="Open file (Ctrl+O)">Open</button>
             <button class="header-btn" id="btn-save" title="Save file (Ctrl+S)">Save</button>
+            <button class="header-btn" id="btn-save-as" title="Save as a new file (Ctrl+Alt+S)">Save As</button>
             <span class="header-sep"></span>
             <button class="header-btn" id="btn-add-node" title="Add node (Ctrl+Shift+N)">+ Node</button>
             <button class="header-btn" id="btn-preview" title="Open your book in the full Viewer, new tab (Ctrl+P)">View</button>
@@ -2255,40 +2252,6 @@ kbd {
 
             <!-- Node editor (hidden until node selected) -->
             <div class="node-editor" id="node-editor" hidden>
-                <!-- Node metadata bar -->
-                <div class="editor-meta">
-                    <div class="meta-field">
-                        <label for="edit-id">ID</label>
-                        <input type="text" id="edit-id" class="meta-input id-input" readonly>
-                    </div>
-                    <div class="meta-field">
-                        <label for="edit-difficulty">Level</label>
-                        <select id="edit-difficulty" class="meta-input">
-                            <option value="">—</option>
-                            <option value="intro">Intro</option>
-                            <option value="intermediate">Intermediate</option>
-                            <option value="advanced">Advanced</option>
-                            <option value="expert">Expert</option>
-                        </select>
-                    </div>
-                    <div class="meta-field">
-                        <label for="edit-time">Time</label>
-                        <input type="text" id="edit-time" class="meta-input" placeholder="e.g. 5 min">
-                    </div>
-                    <div class="meta-field">
-                        <label for="edit-order">Order</label>
-                        <input type="number" id="edit-order" class="meta-input" style="width:60px">
-                    </div>
-                    <div class="meta-field meta-field-stamp meta-field-created">
-                        <label>Created</label>
-                        <span id="edit-created" class="meta-stamp">—</span>
-                    </div>
-                    <div class="meta-field meta-field-stamp">
-                        <label>Edited</label>
-                        <span id="edit-modified" class="meta-stamp">—</span>
-                    </div>
-                </div>
-
                 <!-- Title -->
                 <input type="text" id="edit-title" class="editor-title" placeholder="Node title" aria-label="Node title">
 
@@ -2415,87 +2378,6 @@ kbd {
                     </div>
                 </div>
 
-                <!-- Private author notes (never shown to readers or in the PDF) -->
-                <div class="editor-notes">
-                    <label for="edit-notes">Notes <span class="notes-hint">private — not shown to readers or PDF</span></label>
-                    <textarea id="edit-notes" class="editor-notes-input" rows="2" placeholder="Editing notes to yourself — to-dos, fact-checks, reminders…" aria-label="Private author notes"></textarea>
-                </div>
-
-                <!-- Tags -->
-                <div class="editor-tags">
-                    <label>Tags</label>
-                    <div class="tags-container" id="tags-container"></div>
-                    <input type="text" id="tag-input" class="tag-input" placeholder="Add tag (Enter)" aria-label="Add tag">
-                </div>
-
-                <!-- Children -->
-                <div class="editor-section">
-                    <div class="section-header">
-                        <h3>Children (sub-sections)</h3>
-                        <button class="small-btn" id="btn-new-child" title="Create new child node">+ New</button>
-                        <button class="small-btn" id="btn-add-child" title="Link existing node as child">+ Link</button>
-                    </div>
-                    <div class="link-list" id="children-list"></div>
-                    <div class="inline-add-form" id="add-child-form" hidden>
-                        <select id="add-child-select" class="inline-select">
-                            <option value="">Select a node...</option>
-                        </select>
-                        <button class="inline-confirm" id="add-child-confirm">Add</button>
-                        <button class="inline-cancel" id="add-child-cancel">Cancel</button>
-                    </div>
-                </div>
-
-                <!-- Connections -->
-                <div class="editor-section">
-                    <div class="section-header">
-                        <h3>Connections (cross-links)</h3>
-                        <button class="small-btn" id="btn-add-connection" title="Add a cross-link">+ Add</button>
-                    </div>
-                    <div class="link-list" id="connections-list"></div>
-                    <div class="inline-add-form" id="add-conn-form" hidden>
-                        <select id="add-conn-target" class="inline-select">
-                            <option value="">Target node...</option>
-                        </select>
-                        <select id="add-conn-type" class="inline-select-sm">
-                            <option value="related">Related</option>
-                            <option value="prerequisite">Prerequisite</option>
-                            <option value="deeper">Deeper</option>
-                            <option value="example">Example</option>
-                            <option value="tangent">Tangent</option>
-                        </select>
-                        <input type="text" id="add-conn-label" class="inline-input" placeholder="Label (optional)">
-                        <button class="inline-confirm" id="add-conn-confirm">Add</button>
-                        <button class="inline-cancel" id="add-conn-cancel">Cancel</button>
-                    </div>
-                </div>
-
-                <!-- Media -->
-                <div class="editor-section">
-                    <div class="section-header">
-                        <h3>Media</h3>
-                        <button class="small-btn" id="btn-add-media" title="Add media">+ Add</button>
-                    </div>
-                    <div class="media-list" id="media-list"></div>
-                    <div class="inline-add-form" id="add-media-form" hidden>
-                        <select id="add-media-type" class="inline-select-sm">
-                            <option value="image">Image</option>
-                            <option value="video">Video</option>
-                            <option value="audio">Audio</option>
-                            <option value="embed">Embed</option>
-                            <option value="diagram">Diagram</option>
-                        </select>
-                        <input type="text" id="add-media-src" class="inline-input" placeholder="URL or path">
-                        <input type="text" id="add-media-alt" class="inline-input" placeholder="Alt text">
-                        <button class="inline-confirm" id="add-media-confirm">Add</button>
-                        <button class="inline-cancel" id="add-media-cancel">Cancel</button>
-                    </div>
-                </div>
-
-                <!-- Danger zone -->
-                <div class="editor-danger">
-                    <button class="small-btn" id="btn-duplicate-node" title="Duplicate this node">Duplicate</button>
-                    <button class="danger-btn" id="btn-delete-node" title="Delete this node">Delete Node</button>
-                </div>
             </div>
         </main>
 
@@ -2509,14 +2391,131 @@ kbd {
         <aside class="panel panel-right" id="panel-right">
             <div class="panel-header">
                 <div class="panel-tabs">
-                    <button class="panel-tab active" data-tab="meta">Book Meta</button>
+                    <button class="panel-tab active" data-tab="node">Node</button>
+                    <button class="panel-tab" data-tab="meta">Book Meta</button>
                     <button class="panel-tab" data-tab="preview">Preview</button>
                     <button class="panel-tab" data-tab="graph">Graph</button>
                 </div>
             </div>
 
+            <!-- Node tab: everything about the selected section except its text -->
+            <div class="panel-body tab-content active" id="tab-node">
+                <p class="node-props-empty" id="node-props-empty">Open a file and select a section to see its details here.</p>
+                <div class="node-props" id="node-props" hidden>
+                    <div class="form-field">
+                        <label for="edit-id">ID</label>
+                        <input type="text" id="edit-id" class="form-input id-input" readonly>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label for="edit-difficulty">Level</label>
+                            <select id="edit-difficulty" class="form-input">
+                                <option value="">—</option>
+                                <option value="intro">Intro</option>
+                                <option value="intermediate">Intermediate</option>
+                                <option value="advanced">Advanced</option>
+                                <option value="expert">Expert</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="edit-time">Time</label>
+                            <input type="text" id="edit-time" class="form-input" placeholder="e.g. 5 min">
+                        </div>
+                        <div class="form-field">
+                            <label for="edit-order">Order</label>
+                            <input type="number" id="edit-order" class="form-input">
+                        </div>
+                    </div>
+                    <div class="node-stamps">
+                        <span><span class="stamp-label">Created</span><span id="edit-created" class="meta-stamp">—</span></span>
+                        <span><span class="stamp-label">Edited</span><span id="edit-modified" class="meta-stamp">—</span></span>
+                    </div>
+                    <!-- Private author notes (never shown to readers or in the PDF) -->
+                    <div class="editor-notes">
+                        <label for="edit-notes">Notes <span class="notes-hint">private — not shown to readers or PDF</span></label>
+                        <textarea id="edit-notes" class="editor-notes-input" rows="2" placeholder="Editing notes to yourself — to-dos, fact-checks, reminders…" aria-label="Private author notes"></textarea>
+                    </div>
+
+                    <!-- Tags -->
+                    <div class="editor-tags">
+                        <label>Tags</label>
+                        <div class="tags-container" id="tags-container"></div>
+                        <input type="text" id="tag-input" class="tag-input" placeholder="Add tag (Enter)" aria-label="Add tag">
+                    </div>
+
+                    <!-- Children -->
+                    <div class="editor-section">
+                        <div class="section-header">
+                            <h3>Children (sub-sections)</h3>
+                            <button class="small-btn" id="btn-new-child" title="Create new child node">+ New</button>
+                            <button class="small-btn" id="btn-add-child" title="Link existing node as child">+ Link</button>
+                        </div>
+                        <div class="link-list" id="children-list"></div>
+                        <div class="inline-add-form" id="add-child-form" hidden>
+                            <select id="add-child-select" class="inline-select">
+                                <option value="">Select a node...</option>
+                            </select>
+                            <button class="inline-confirm" id="add-child-confirm">Add</button>
+                            <button class="inline-cancel" id="add-child-cancel">Cancel</button>
+                        </div>
+                    </div>
+
+                    <!-- Connections -->
+                    <div class="editor-section">
+                        <div class="section-header">
+                            <h3>Connections (cross-links)</h3>
+                            <button class="small-btn" id="btn-add-connection" title="Add a cross-link">+ Add</button>
+                        </div>
+                        <div class="link-list" id="connections-list"></div>
+                        <div class="inline-add-form" id="add-conn-form" hidden>
+                            <select id="add-conn-target" class="inline-select">
+                                <option value="">Target node...</option>
+                            </select>
+                            <select id="add-conn-type" class="inline-select-sm">
+                                <option value="related">Related</option>
+                                <option value="prerequisite">Prerequisite</option>
+                                <option value="deeper">Deeper</option>
+                                <option value="example">Example</option>
+                                <option value="tangent">Tangent</option>
+                            </select>
+                            <input type="text" id="add-conn-label" class="inline-input" placeholder="Label (optional)">
+                            <button class="inline-confirm" id="add-conn-confirm">Add</button>
+                            <button class="inline-cancel" id="add-conn-cancel">Cancel</button>
+                        </div>
+                    </div>
+
+                    <!-- Media -->
+                    <div class="editor-section">
+                        <div class="section-header">
+                            <h3>Media</h3>
+                            <button class="small-btn" id="btn-add-media" title="Add media">+ Add</button>
+                        </div>
+                        <div class="media-list" id="media-list"></div>
+                        <div class="inline-add-form" id="add-media-form" hidden>
+                            <select id="add-media-type" class="inline-select-sm">
+                                <option value="image">Image</option>
+                                <option value="video">Video</option>
+                                <option value="audio">Audio</option>
+                                <option value="embed">Embed</option>
+                                <option value="diagram">Diagram</option>
+                            </select>
+                            <input type="text" id="add-media-src" class="inline-input" placeholder="URL or path">
+                            <input type="text" id="add-media-alt" class="inline-input" placeholder="Alt text">
+                            <button class="inline-confirm" id="add-media-confirm">Add</button>
+                            <button class="inline-cancel" id="add-media-cancel">Cancel</button>
+                        </div>
+                    </div>
+
+                    <!-- Danger zone -->
+                    <div class="editor-danger">
+                        <button class="small-btn" id="btn-duplicate-node" title="Duplicate this node">Duplicate</button>
+                        <button class="danger-btn" id="btn-delete-node" title="Delete this node">Delete Node</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Meta tab -->
-            <div class="panel-body tab-content active" id="tab-meta">
+            <div class="panel-body tab-content" id="tab-meta">
                 <div class="meta-form">
                     <div class="form-field">
                         <label for="meta-title">Title</label>
@@ -2602,6 +2601,7 @@ kbd {
                     <h3>File</h3>
                     <div class="shortcut"><kbd>Ctrl+K</kbd> Command palette</div>
                     <div class="shortcut"><kbd>Ctrl+S</kbd> Save</div>
+                    <div class="shortcut"><kbd>Ctrl+Alt+S</kbd> Save as new file</div>
                     <div class="shortcut"><kbd>Ctrl+O</kbd> Open</div>
                     <div class="shortcut"><kbd>Ctrl+N</kbd> New file</div>
                     <div class="shortcut"><kbd>Ctrl+Shift+N</kbd> New node</div>
@@ -2814,6 +2814,11 @@ const EditorState = (() => {
     function getFileName() { return fileName; }
     function getFileHandle() { return fileHandle; }
     function setFileHandle(handle) { fileHandle = handle; }
+    function setFileName(name) {
+        if (typeof name !== 'string' || !name.trim()) return;
+        fileName = name.trim();
+        emit('file-renamed', fileName);
+    }
     function isDirty() { return dirty; }
     function getSelectedNodeId() { return selectedNodeId; }
 
@@ -2985,7 +2990,7 @@ const EditorState = (() => {
     }
 
     return {
-        on, emit, newFile, loadContent, getData, getFileName, getFileHandle, setFileHandle, isDirty,
+        on, emit, newFile, loadContent, getData, getFileName, getFileHandle, setFileHandle, setFileName, isDirty,
         getSelectedNodeId, getNode, getSelectedNode, selectNode,
         markDirty, markClean, updateNode, updateMeta, setRoot,
         addNode, duplicateNode, deleteNode, getAllNodeIds, getExportData,
@@ -3675,6 +3680,10 @@ const NodeEditor = (() => {
         EditorState.on('file-loaded', () => {
             emptyState.hidden = true;
             editorEl.hidden = false;
+            const props = document.getElementById('node-props');
+            const propsEmpty = document.getElementById('node-props-empty');
+            if (props) props.hidden = false;
+            if (propsEmpty) propsEmpty.hidden = true;
         });
         // Keep the read-only "Edited" stamp current after autosave bumps it.
         EditorState.on('node-updated', id => { if (id === loadedNodeId) updateStampDisplay(); });
@@ -7136,6 +7145,7 @@ const Palette = (() => {
         { type: 'cmd', label: 'New File', action: () => document.getElementById('btn-new').click(), hint: 'Ctrl+N' },
         { type: 'cmd', label: 'Open File', action: () => document.getElementById('btn-open').click(), hint: 'Ctrl+O' },
         { type: 'cmd', label: 'Save File', action: () => saveFile(), hint: 'Ctrl+S' },
+        { type: 'cmd', label: 'Save As…', action: () => saveFileAs(), hint: 'Ctrl+Alt+S' },
         { type: 'cmd', label: 'Add New Node', action: () => showNewNodeModal(), hint: 'Ctrl+Shift+N' },
         { type: 'cmd', label: 'Open in Viewer', action: () => openPreview(), hint: 'Ctrl+P' },
         { type: 'cmd', label: 'Generate PDF…', action: () => PdfExport.open() },
@@ -7143,6 +7153,7 @@ const Palette = (() => {
         { type: 'cmd', label: 'Review Suggested Changes', action: () => NodeEditor.enterReview() },
         { type: 'cmd', label: 'Insert Footnote', action: () => NodeEditor.applyFormat('footnote'), hint: 'Ctrl+Shift+F' },
         { type: 'cmd', label: 'Insert Equation', action: () => NodeEditor.applyFormat('equation'), hint: 'Ctrl+Shift+E' },
+        { type: 'cmd', label: 'Show Node Details', action: () => switchTab('node') },
         { type: 'cmd', label: 'Show Preview Panel', action: () => switchTab('preview') },
         { type: 'cmd', label: 'Show Graph View', action: () => switchTab('graph') },
         { type: 'cmd', label: 'Show Book Metadata', action: () => switchTab('meta') },
@@ -7307,6 +7318,51 @@ async function saveFile(silent) {
     URL.revokeObjectURL(url);
     EditorState.markClean();
     if (!silent) NodeEditor.toast('File saved', 'success');
+}
+
+// Save As: write a new file chosen in the save picker and keep editing that file (it
+// becomes the autosave target and the header shows its name). Without the picker
+// (e.g. Firefox) the copy is downloaded under a name the user types.
+async function saveFileAs() {
+    NodeEditor.flushContent();
+    const data = EditorState.getExportData();
+    if (!data) {
+        NodeEditor.toast('Nothing to save — create or open a file first', 'info');
+        return;
+    }
+    const json = JSON.stringify(data, null, 2);
+    if (window.showSaveFilePicker) {
+        try {
+            const newHandle = await window.showSaveFilePicker({
+                suggestedName: EditorState.getFileName(),
+                types: [{ description: 'Entropy JSON', accept: { 'application/json': ['.json', '.entropy.json'] } }]
+            });
+            const writable = await newHandle.createWritable();
+            await writable.write(json);
+            await writable.close();
+            EditorState.setFileHandle(newHandle);
+            EditorState.setFileName(newHandle.name || EditorState.getFileName());
+            EditorState.markClean();
+            NodeEditor.toast('Saved as ' + EditorState.getFileName(), 'success');
+        } catch (err) {
+            if (err && err.name === 'AbortError') return;
+            NodeEditor.toast('Save As failed: ' + (err && err.message ? err.message : err), 'error');
+        }
+        return;
+    }
+    const typed = window.prompt('File name for the copy', EditorState.getFileName());
+    if (typed === null) return;
+    const safe = (typed.trim() || EditorState.getFileName()).replace(/[\\/:*?"<>|]+/g, '-');
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = safe;
+    a.click();
+    URL.revokeObjectURL(url);
+    EditorState.setFileName(safe);
+    EditorState.markClean();
+    NodeEditor.toast('Downloaded ' + safe, 'success');
 }
 
 function showNewNodeModal(forceAsChild) {
@@ -7750,6 +7806,7 @@ const App = (() => {
         });
 
         document.getElementById('btn-save').addEventListener('click', () => saveFile());
+        document.getElementById('btn-save-as').addEventListener('click', () => saveFileAs());
         document.getElementById('btn-add-node').addEventListener('click', showNewNodeModal);
         document.getElementById('btn-preview').addEventListener('click', openPreview);
 
@@ -7840,6 +7897,11 @@ const App = (() => {
             }
 
             // File operations
+            if (e.ctrlKey && e.altKey && (e.key === 's' || e.key === 'S')) {   // Ctrl+Alt+S = Save As
+                e.preventDefault();
+                saveFileAs();
+                return;
+            }
             if (e.ctrlKey && e.key === 's') {
                 e.preventDefault();
                 saveFile();
@@ -8017,6 +8079,10 @@ const App = (() => {
         EditorState.on('file-loaded', () => {
             fileNameEl.textContent = EditorState.getFileName();
             indicator.hidden = true;
+            autosaveEl.hidden = !EditorState.getFileHandle();
+        });
+        EditorState.on('file-renamed', name => {        // Save As picked a new file
+            fileNameEl.textContent = name;
             autosaveEl.hidden = !EditorState.getFileHandle();
         });
     }

@@ -132,6 +132,11 @@ const EditorState = (() => {
     function getFileName() { return fileName; }
     function getFileHandle() { return fileHandle; }
     function setFileHandle(handle) { fileHandle = handle; }
+    function setFileName(name) {
+        if (typeof name !== 'string' || !name.trim()) return;
+        fileName = name.trim();
+        emit('file-renamed', fileName);
+    }
     function isDirty() { return dirty; }
     function getSelectedNodeId() { return selectedNodeId; }
 
@@ -303,7 +308,7 @@ const EditorState = (() => {
     }
 
     return {
-        on, emit, newFile, loadContent, getData, getFileName, getFileHandle, setFileHandle, isDirty,
+        on, emit, newFile, loadContent, getData, getFileName, getFileHandle, setFileHandle, setFileName, isDirty,
         getSelectedNodeId, getNode, getSelectedNode, selectNode,
         markDirty, markClean, updateNode, updateMeta, setRoot,
         addNode, duplicateNode, deleteNode, getAllNodeIds, getExportData,
