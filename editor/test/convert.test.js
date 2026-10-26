@@ -229,7 +229,7 @@ test('footnote text with line breaks stays inside the note', { skip }, () => {
 test('inline equation renders with KaTeX on the surface and round-trips', { skip }, () => {
     const md = 'where $RP_{fu}$ is modeled on $[0,1]$.';
     const html = INT.markdownToHtml(md);
-    assert.match(html, /<span class="math-pill" contenteditable="false" data-tex="RP_\{fu\}">/);
+    assert.match(html, /<span class="math-pill" contenteditable="false" aria-label="Equation: RP_\{fu\}" data-tex="RP_\{fu\}">/);
     assert.match(html, /class="katex"/);
     assert.equal(INT.roundTrip(md), md);
 });
@@ -279,7 +279,7 @@ test('without KaTeX the TeX source shows in a code span and still round-trips', 
     global.window.katex = undefined;
     try {
         const html = INT.markdownToHtml('see $x^2$');
-        assert.match(html, /<span class="math-pill" contenteditable="false" data-tex="x\^2"><code class="math-src">\$x\^2\$<\/code><\/span>/);
+        assert.match(html, /<span class="math-pill" contenteditable="false" aria-label="Equation: x\^2" data-tex="x\^2"><code class="math-src">\$x\^2\$<\/code><\/span>/);
         assert.equal(INT.roundTrip('see $x^2$'), 'see $x^2$');
     } finally {
         global.window.katex = saved;

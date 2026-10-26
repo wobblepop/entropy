@@ -39,13 +39,13 @@
             <span class="autosave-indicator" id="autosave-indicator" hidden>autosave on</span>
         </div>
         <div class="header-center">
-            <button class="header-btn" id="btn-new" title="New file (Ctrl+N)">New</button>
+            <button class="header-btn" id="btn-new" title="New file (Alt+N)">New</button>
             <button class="header-btn" id="btn-open" title="Open file (Ctrl+O)">Open</button>
             <button class="header-btn" id="btn-save" title="Save file (Ctrl+S)">Save</button>
             <button class="header-btn" id="btn-save-as" title="Save as a new file (Ctrl+Alt+S)">Save As</button>
             <span class="header-sep"></span>
-            <button class="header-btn" id="btn-add-node" title="Add node (Ctrl+Shift+N)">+ Node</button>
-            <button class="header-btn" id="btn-preview" title="Open your book in the full Viewer, new tab (Ctrl+P)">View</button>
+            <button class="header-btn" id="btn-add-node" title="Add node (Alt+Shift+N)">+ Node</button>
+            <button class="header-btn" id="btn-preview" title="Open the book in the reader, new tab (Ctrl+P)">View</button>
             <button class="header-btn" id="btn-pdf" title="Generate a PDF of chosen sections (needs the local PDF service)">PDF</button>
         </div>
         <div class="header-right">
@@ -57,12 +57,11 @@
     <!-- Main workspace -->
     <div class="workspace">
         <!-- Left Panel: Node Tree -->
-        <aside class="panel panel-left" id="panel-left">
+        <aside class="panel panel-left" id="panel-left" aria-label="Nodes">
             <div class="panel-header">
-                <h2>Nodes</h2>
-                <input type="search" id="node-search" class="search-input" placeholder="Filter..." aria-label="Filter nodes">
+                <input type="search" id="node-search" class="search-input" placeholder="Filter nodes…" aria-label="Filter nodes">
             </div>
-            <div class="node-tree" id="node-tree" role="tree"></div>
+            <div class="node-tree" id="node-tree"></div>
         </aside>
 
         <!-- Resize handle -->
@@ -85,7 +84,7 @@
                 <input type="text" id="edit-title" class="editor-title" placeholder="Node title" aria-label="Node title">
 
                 <!-- Summary -->
-                <textarea id="edit-summary" class="editor-summary" placeholder="Brief summary shown before expanding this section" rows="2" aria-label="Node summary"></textarea>
+                <textarea id="edit-summary" class="editor-summary" placeholder="One-line summary shown on this section's card in the reader" rows="1" aria-label="Node summary"></textarea>
 
                 <!-- Rich text content editor -->
                 <div class="editor-content-wrapper">
@@ -95,20 +94,19 @@
                         <button class="toolbar-btn" data-action="underline" title="Underline (Ctrl+U)"><u>U</u></button>
                         <button class="toolbar-btn" data-action="strikethrough" title="Strikethrough (Ctrl+Shift+S)"><s>S</s></button>
                         <span class="toolbar-sep"></span>
+                        <button class="toolbar-btn" data-action="paragraph" title="Normal text (Ctrl+0)">Text</button>
                         <button class="toolbar-btn" data-action="h2" title="Heading (Ctrl+2)">H2</button>
                         <button class="toolbar-btn" data-action="h3" title="Sub-heading (Ctrl+3)">H3</button>
                         <span class="toolbar-sep"></span>
                         <button class="toolbar-btn" data-action="ul" title="Bullet list (Ctrl+Shift+8)">&#8226; List</button>
                         <button class="toolbar-btn" data-action="ol" title="Numbered list">1. List</button>
-                        <button class="toolbar-btn" data-action="quote" title="Blockquote (Ctrl+Q)"> &#8221;</button>
+                        <button class="toolbar-btn" data-action="quote" title="Blockquote (Ctrl+Q)">Quote</button>
                         <button class="toolbar-btn" data-action="example" title="Example block (Ctrl+E)">Ex</button>
                         <span class="toolbar-sep"></span>
                         <button class="toolbar-btn" data-action="link" title="Insert link (Ctrl+L)">Link</button>
                         <button class="toolbar-btn" data-action="footnote" title="Insert footnote (Ctrl+Shift+F)">Fn</button>
                         <button class="toolbar-btn" data-action="equation" title="Insert equation, LaTeX (Ctrl+Shift+E)">&sum;</button>
                         <button class="toolbar-btn" data-action="code" title="Inline code">Code</button>
-                        <span class="toolbar-sep"></span>
-                        <button class="toolbar-btn" data-action="paragraph" title="Normal text (Ctrl+0)">Text</button>
                         <button class="toolbar-btn" data-action="hr" title="Horizontal rule">―</button>
                         <span class="toolbar-sep"></span>
                         <!-- More text formatting: size, font, super/subscript, colour, highlight, flip, clear -->
@@ -160,7 +158,7 @@
                                 <button class="dropdown-item" data-action="subscript" role="menuitem"><span>Subscript</span><span class="dd-demo">x<sub>2</sub></span></button>
                                 <div class="dropdown-sep"></div>
                                 <div class="dropdown-label">Text colour</div>
-                                <div class="swatch-row">
+                                <div class="swatch-row" role="group" aria-label="Text colour">
                                     <button class="swatch" type="button" data-action="fore-color" data-value="#d64545" style="background:#d64545" title="Red" aria-label="Red text"></button>
                                     <button class="swatch" type="button" data-action="fore-color" data-value="#d98324" style="background:#d98324" title="Orange" aria-label="Orange text"></button>
                                     <button class="swatch" type="button" data-action="fore-color" data-value="#2e9e5b" style="background:#2e9e5b" title="Green" aria-label="Green text"></button>
@@ -171,7 +169,7 @@
                                     </label>
                                 </div>
                                 <div class="dropdown-label">Highlight</div>
-                                <div class="swatch-row">
+                                <div class="swatch-row" role="group" aria-label="Highlight">
                                     <button class="swatch" type="button" data-action="hilite-color" data-value="#fff59d" style="background:#fff59d" title="Yellow" aria-label="Yellow highlight"></button>
                                     <button class="swatch" type="button" data-action="hilite-color" data-value="#c5f7c5" style="background:#c5f7c5" title="Green" aria-label="Green highlight"></button>
                                     <button class="swatch" type="button" data-action="hilite-color" data-value="#c5e3ff" style="background:#c5e3ff" title="Blue" aria-label="Blue highlight"></button>
@@ -186,14 +184,15 @@
                                 <button class="dropdown-item" data-action="clear" role="menuitem"><span>Clear formatting</span><span class="dd-demo">⌫</span></button>
                             </div>
                         </div>
-                        <span class="toolbar-sep"></span>
-                        <button class="toolbar-btn" id="btn-suggest-mode" data-action="suggest-toggle" title="Suggesting mode — track changes (Ctrl+Shift+M)">Suggest</button>
-                        <button class="toolbar-btn" id="btn-review" data-action="review" title="Review suggested changes">Review</button>
+                        <span class="toolbar-modes">
+                            <button class="toolbar-btn" id="btn-suggest-mode" data-action="suggest-toggle" title="Suggesting mode — track changes (Ctrl+Shift+M)" aria-pressed="false">Suggest</button>
+                            <button class="toolbar-btn" id="btn-review" data-action="review" title="Review suggested changes" hidden>Review</button>
+                        </span>
                     </div>
                     <!-- Link input form (shown when inserting a link) -->
                     <div id="link-input-form" class="inline-add-form" hidden>
-                        <input type="text" id="link-url-input" class="inline-input" placeholder="URL">
-                        <input type="text" id="link-text-input" class="inline-input" placeholder="Link text (optional)">
+                        <input type="text" id="link-url-input" class="inline-input" placeholder="URL" aria-label="Link URL">
+                        <input type="text" id="link-text-input" class="inline-input" placeholder="Link text (optional)" aria-label="Link text">
                         <button class="inline-confirm" id="link-confirm">Insert</button>
                         <button class="inline-cancel" id="link-cancel">Cancel</button>
                     </div>
@@ -217,18 +216,18 @@
         </div>
 
         <!-- Right Panel: Properties/Preview -->
-        <aside class="panel panel-right" id="panel-right">
+        <aside class="panel panel-right" id="panel-right" aria-label="Details">
             <div class="panel-header">
-                <div class="panel-tabs">
-                    <button class="panel-tab active" data-tab="node">Node</button>
-                    <button class="panel-tab" data-tab="meta">Book Meta</button>
-                    <button class="panel-tab" data-tab="preview">Preview</button>
-                    <button class="panel-tab" data-tab="graph">Graph</button>
+                <div class="panel-tabs" role="tablist" aria-label="Details">
+                    <button class="panel-tab active" data-tab="node" role="tab" id="tab-btn-node" aria-controls="tab-node" aria-selected="true">Node</button>
+                    <button class="panel-tab" data-tab="meta" role="tab" id="tab-btn-meta" aria-controls="tab-meta" aria-selected="false" tabindex="-1">Book Meta</button>
+                    <button class="panel-tab" data-tab="preview" role="tab" id="tab-btn-preview" aria-controls="tab-preview" aria-selected="false" tabindex="-1">Preview</button>
+                    <button class="panel-tab" data-tab="graph" role="tab" id="tab-btn-graph" aria-controls="tab-graph" aria-selected="false" tabindex="-1">Graph</button>
                 </div>
             </div>
 
             <!-- Node tab: everything about the selected section except its text -->
-            <div class="panel-body tab-content active" id="tab-node">
+            <div class="panel-body tab-content active" id="tab-node" role="tabpanel" aria-labelledby="tab-btn-node" tabindex="0">
                 <p class="node-props-empty" id="node-props-empty">Open a file and select a section to see its details here.</p>
                 <div class="node-props" id="node-props" hidden>
                     <div class="form-field">
@@ -250,10 +249,6 @@
                             <label for="edit-time">Time</label>
                             <input type="text" id="edit-time" class="form-input" placeholder="e.g. 5 min">
                         </div>
-                        <div class="form-field">
-                            <label for="edit-order">Order</label>
-                            <input type="number" id="edit-order" class="form-input">
-                        </div>
                     </div>
                     <div class="node-stamps">
                         <span><span class="stamp-label">Created</span><span id="edit-created" class="meta-stamp">—</span></span>
@@ -267,7 +262,7 @@
 
                     <!-- Tags -->
                     <div class="editor-tags">
-                        <label>Tags</label>
+                        <label for="tag-input">Tags</label>
                         <div class="tags-container" id="tags-container"></div>
                         <input type="text" id="tag-input" class="tag-input" placeholder="Add tag (Enter)" aria-label="Add tag">
                     </div>
@@ -281,7 +276,7 @@
                         </div>
                         <div class="link-list" id="children-list"></div>
                         <div class="inline-add-form" id="add-child-form" hidden>
-                            <select id="add-child-select" class="inline-select">
+                            <select id="add-child-select" class="inline-select" aria-label="Node to link as child">
                                 <option value="">Select a node...</option>
                             </select>
                             <button class="inline-confirm" id="add-child-confirm">Add</button>
@@ -297,17 +292,17 @@
                         </div>
                         <div class="link-list" id="connections-list"></div>
                         <div class="inline-add-form" id="add-conn-form" hidden>
-                            <select id="add-conn-target" class="inline-select">
+                            <select id="add-conn-target" class="inline-select" aria-label="Target node">
                                 <option value="">Target node...</option>
                             </select>
-                            <select id="add-conn-type" class="inline-select-sm">
+                            <select id="add-conn-type" class="inline-select-sm" aria-label="Connection type">
                                 <option value="related">Related</option>
                                 <option value="prerequisite">Prerequisite</option>
                                 <option value="deeper">Deeper</option>
                                 <option value="example">Example</option>
                                 <option value="tangent">Tangent</option>
                             </select>
-                            <input type="text" id="add-conn-label" class="inline-input" placeholder="Label (optional)">
+                            <input type="text" id="add-conn-label" class="inline-input" placeholder="Label (optional)" aria-label="Connection label">
                             <button class="inline-confirm" id="add-conn-confirm">Add</button>
                             <button class="inline-cancel" id="add-conn-cancel">Cancel</button>
                         </div>
@@ -321,15 +316,15 @@
                         </div>
                         <div class="media-list" id="media-list"></div>
                         <div class="inline-add-form" id="add-media-form" hidden>
-                            <select id="add-media-type" class="inline-select-sm">
+                            <select id="add-media-type" class="inline-select-sm" aria-label="Media type">
                                 <option value="image">Image</option>
                                 <option value="video">Video</option>
                                 <option value="audio">Audio</option>
                                 <option value="embed">Embed</option>
                                 <option value="diagram">Diagram</option>
                             </select>
-                            <input type="text" id="add-media-src" class="inline-input" placeholder="URL or path">
-                            <input type="text" id="add-media-alt" class="inline-input" placeholder="Alt text">
+                            <input type="text" id="add-media-src" class="inline-input" placeholder="URL or path" aria-label="Media URL or path">
+                            <input type="text" id="add-media-alt" class="inline-input" placeholder="Alt text" aria-label="Media alt text">
                             <button class="inline-confirm" id="add-media-confirm">Add</button>
                             <button class="inline-cancel" id="add-media-cancel">Cancel</button>
                         </div>
@@ -344,7 +339,7 @@
             </div>
 
             <!-- Meta tab -->
-            <div class="panel-body tab-content" id="tab-meta">
+            <div class="panel-body tab-content" id="tab-meta" role="tabpanel" aria-labelledby="tab-btn-meta" tabindex="0">
                 <div class="meta-form">
                     <div class="form-field">
                         <label for="meta-title">Title</label>
@@ -374,12 +369,12 @@
             </div>
 
             <!-- Preview tab -->
-            <div class="panel-body tab-content" id="tab-preview">
+            <div class="panel-body tab-content" id="tab-preview" role="tabpanel" aria-labelledby="tab-btn-preview" tabindex="0">
                 <div class="preview-pane" id="preview-pane"></div>
             </div>
 
             <!-- Graph tab -->
-            <div class="panel-body tab-content" id="tab-graph">
+            <div class="panel-body tab-content" id="tab-graph" role="tabpanel" aria-labelledby="tab-btn-graph" tabindex="0">
                 <div class="graph-container" id="graph-container">
                     <canvas id="graph-canvas"></canvas>
                 </div>
@@ -395,10 +390,10 @@
     </div>
 
     <!-- New Node Modal -->
-    <div id="new-node-modal" class="modal" hidden>
+    <div id="new-node-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="new-node-title-h" hidden>
         <div class="modal-backdrop"></div>
         <div class="modal-content">
-            <h2>Create New Node</h2>
+            <h2 id="new-node-title-h">Create New Node</h2>
             <div class="form-field">
                 <label for="new-node-title">Title</label>
                 <input type="text" id="new-node-title" class="form-input" placeholder="What is this section about?" autofocus>
@@ -421,10 +416,10 @@
     </div>
 
     <!-- Keyboard shortcuts modal -->
-    <div id="shortcuts-modal" class="modal" hidden>
+    <div id="shortcuts-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="shortcuts-title-h" hidden>
         <div class="modal-backdrop"></div>
         <div class="modal-content wide">
-            <h2>Keyboard Shortcuts</h2>
+            <h2 id="shortcuts-title-h">Keyboard Shortcuts</h2>
             <div class="shortcuts-grid">
                 <div class="shortcut-group">
                     <h3>File</h3>
@@ -432,19 +427,22 @@
                     <div class="shortcut"><kbd>Ctrl+S</kbd> Save</div>
                     <div class="shortcut"><kbd>Ctrl+Alt+S</kbd> Save as new file</div>
                     <div class="shortcut"><kbd>Ctrl+O</kbd> Open</div>
-                    <div class="shortcut"><kbd>Ctrl+N</kbd> New file</div>
-                    <div class="shortcut"><kbd>Ctrl+Shift+N</kbd> New node</div>
-                    <div class="shortcut"><kbd>Ctrl+P</kbd> Preview</div>
+                    <div class="shortcut"><kbd>Alt+N</kbd> New file</div>
+                    <div class="shortcut"><kbd>Alt+Shift+N</kbd> New node</div>
+                    <div class="shortcut"><kbd>Ctrl+P</kbd> View in reader (new tab)</div>
+                    <div class="shortcut"><kbd>Ctrl+Shift+[</kbd> Toggle Nodes panel</div>
+                    <div class="shortcut"><kbd>Ctrl+Shift+]</kbd> Toggle details panel</div>
+                    <div class="shortcut"><kbd>Ctrl+Shift+\</kbd> Writing view (both panels)</div>
                 </div>
                 <div class="shortcut-group">
                     <h3>Formatting</h3>
                     <div class="shortcut"><kbd>Ctrl+B</kbd> Bold</div>
                     <div class="shortcut"><kbd>Ctrl+I</kbd> Italic</div>
                     <div class="shortcut"><kbd>Ctrl+Shift+S</kbd> Strikethrough</div>
+                    <div class="shortcut"><kbd>Ctrl+U</kbd> Underline</div>
                     <div class="shortcut"><kbd>Ctrl+2</kbd> Heading</div>
                     <div class="shortcut"><kbd>Ctrl+3</kbd> Sub-heading</div>
-                    <div class="shortcut"><kbd>Ctrl+U</kbd> Bullet list</div>
-                    <div class="shortcut"><kbd>Ctrl+L</kbd> Link</div>
+                    <div class="shortcut"><kbd>Ctrl+Shift+8</kbd> Bullet list</div>
                     <div class="shortcut"><kbd>Ctrl+Q</kbd> Blockquote</div>
                     <div class="shortcut"><kbd>Ctrl+E</kbd> Example block</div>
                 </div>
@@ -452,10 +450,11 @@
                     <h3>Editing</h3>
                     <div class="shortcut"><kbd>Ctrl+Z</kbd> Undo</div>
                     <div class="shortcut"><kbd>Ctrl+0</kbd> Normal paragraph</div>
-                    <div class="shortcut"><kbd>Ctrl+L</kbd> Insert link</div>
+                    <div class="shortcut"><kbd>Ctrl+L</kbd> Insert or edit link</div>
                     <div class="shortcut"><kbd>Ctrl+Shift+M</kbd> Suggesting mode</div>
-                    <div class="shortcut"><kbd>Ctrl+Shift+F</kbd> Insert footnote</div>
-                    <div class="shortcut"><kbd>Ctrl+Shift+E</kbd> Insert equation</div>
+                    <div class="shortcut"><kbd>Ctrl+Shift+F</kbd> Insert or edit footnote</div>
+                    <div class="shortcut"><kbd>Ctrl+Shift+E</kbd> Insert or edit equation</div>
+                    <div class="shortcut"><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd> Indent / outdent a list item</div>
                     <div class="shortcut"><kbd>?</kbd> This help</div>
                     <div class="shortcut"><kbd>Esc</kbd> Close modal/palette</div>
                 </div>
@@ -465,11 +464,11 @@
     </div>
 
     <!-- Unsaved changes warning modal -->
-    <div id="unsaved-modal" class="modal" hidden>
+    <div id="unsaved-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="unsaved-title-h" aria-describedby="unsaved-desc" hidden>
         <div class="modal-backdrop"></div>
         <div class="modal-content">
-            <h2>Unsaved Changes</h2>
-            <p style="color:var(--text-dim);margin-bottom:16px;font-size:13px">You have unsaved changes that will be lost. Do you want to save first?</p>
+            <h2 id="unsaved-title-h">Unsaved Changes</h2>
+            <p id="unsaved-desc" style="color:var(--text-dim);margin-bottom:16px;font-size:13px">You have unsaved changes that will be lost. Do you want to save first?</p>
             <div class="modal-actions">
                 <button class="modal-btn primary" id="unsaved-save">Save First</button>
                 <button class="modal-btn" id="unsaved-discard" style="color:var(--danger)">Discard</button>

@@ -13,11 +13,16 @@ const Graph = (() => {
         canvas = document.getElementById('graph-canvas');
         ctx = canvas.getContext('2d');
 
-        EditorState.on('file-loaded', scheduleRender);
-        EditorState.on('node-added', scheduleRender);
-        EditorState.on('node-deleted', scheduleRender);
-        EditorState.on('node-updated', scheduleRender);
-        EditorState.on('node-selected', scheduleRender);
+        // Render only while the Graph tab is showing; opening the tab renders afresh.
+        const whenVisible = () => {
+            const tab = document.getElementById('tab-graph');
+            if (!tab || tab.classList.contains('active')) scheduleRender();
+        };
+        EditorState.on('file-loaded', whenVisible);
+        EditorState.on('node-added', whenVisible);
+        EditorState.on('node-deleted', whenVisible);
+        EditorState.on('node-updated', whenVisible);
+        EditorState.on('node-selected', whenVisible);
 
         document.querySelectorAll('.panel-tab').forEach(tab => {
             tab.addEventListener('click', () => {

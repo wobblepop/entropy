@@ -25,11 +25,18 @@ const NodeEditor = (() => {
             summary: document.getElementById('edit-summary'),
             notes: document.getElementById('edit-notes'),
             difficulty: document.getElementById('edit-difficulty'),
-            time: document.getElementById('edit-time'),
-            order: document.getElementById('edit-order')
+            time: document.getElementById('edit-time')
         };
         modifiedEl = document.getElementById('edit-modified');
         createdEl = document.getElementById('edit-created');
+
+        // Enter walks down into the text: title -> summary -> text (the summary is one line).
+        fields.title.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); fields.summary.focus(); }
+        });
+        fields.summary.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); focusContent(); }
+        });
 
         EditorState.on('node-selected', loadNode);
         EditorState.on('file-loaded', () => {
@@ -68,7 +75,7 @@ const NodeEditor = (() => {
     function formatStamp(iso) {
         if (!iso) return '—';
         const d = new Date(iso);
-        return isNaN(d.getTime()) ? '—' : d.toLocaleString();
+        return isNaN(d.getTime()) ? '—' : d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
     }
 
     // Refresh the meta-bar stamp from the currently loaded node.
@@ -106,6 +113,67 @@ const NodeEditor = (() => {
 
     function fnSanitizeId(s) {
         return String(s == null ? '' : s).replace(/[^A-Za-z0-9_-]/g, '-') || 'fn';
+    }
+    function cssEscape(s) {
+        return (window.CSS && CSS.escape) ? CSS.escape(String(s)) : String(s);
+    }
+    // True when the text right after an element starts with a space (so no extra one is
+    // needed after inserting a pill).
+    function spaceFollows(el) {
+        const n = el.nextSibling;
+        return !!(n && n.nodeType === Node.TEXT_NODE && /^[  	]/.test(n.data));
+    }
+
+    // Focus the text with the caret right after an element on the surface (or at the
+    // current caret when no element is given). Used when a pop-up closes.
+    function focusCaretAfter(el) {
+        if (!contentEl) return;
+        contentEl.focus();
+        if (!el || !contentEl.contains(el)) return;
+        const sel = window.getSelection();
+        const r = document.createRange();
+        r.setStartAfter(el);
+        r.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(r);
+    }
+
+    // Put the caret at the start of the text and focus it (after navigation or creation).
+    function focusContent() {
+        if (!contentEl || !editorEl || editorEl.hidden || contentEl.hidden) return;
+        contentEl.focus();
+        const sel = window.getSelection();
+        const r = document.createRange();
+        r.setStart(contentEl, 0);
+        r.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(r);
+    }
+
+    // Place a fixed-position pop-up under (or above) an anchor, inside the viewport.
+    function placePopupAt(popup, anchor) {
+        if (!popup || !anchor) return;
+        const r = anchor.getBoundingClientRect();
+        const pw = popup.offsetWidth, ph = popup.offsetHeight;
+        const left = Math.max(12, Math.min(r.left, window.innerWidth - pw - 12));
+        let top = r.bottom + 6;
+        if (top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 6);
+        popup.style.left = left + 'px';
+        popup.style.top = top + 'px';
+    }
+
+    // Keep Tab inside an open pop-up (dialog): cycle through its focusable controls.
+    function trapTabIn(popup, e) {
+        if (e.key !== 'Tab') return;
+        const items = Array.from(popup.querySelectorAll('input, textarea, button, a[href], [tabindex="0"]'))
+            .filter(el => !el.disabled && el.offsetParent !== null);
+        if (!items.length) return;
+        const i = items.indexOf(document.activeElement);
+        let next;
+        if (e.shiftKey) next = i <= 0 ? items[items.length - 1] : items[i - 1];
+        else next = i < 0 || i === items.length - 1 ? items[0] : items[i + 1];
+        e.preventDefault();
+        next.focus();
     }
 
     // Pull `[^id]: text` definitions out of markdown (skipping fenced code). A note may
@@ -218,7 +286,7 @@ const NodeEditor = (() => {
         ol.innerHTML = items.map((id, i) => {
             const has = Object.prototype.hasOwnProperty.call(_fnDefs, id) && _fnDefs[id] !== '';
             const body = has ? noteInlineEd(_fnDefs[id]) : '<span class="fn-error">[no footnote text yet]</span>';
-            return '<li class="editor-footnote" data-fnid="' + escHtml(id) + '" title="Click to edit this footnote">' +
+            return '<li class="editor-footnote" data-fnid="' + escHtml(id) + '" role="button" tabindex="0" title="Click to edit this footnote">' +
                 '<span class="editor-footnote-n">' + (i + 1) + '</span>' +
                 '<span class="editor-footnote-text">' + body + '</span></li>';
         }).join('');
@@ -227,13 +295,21 @@ const NodeEditor = (() => {
     function setupFootnoteList() {
         fnListEl = document.getElementById('edit-footnotes');
         if (!fnListEl) return;
-        fnListEl.addEventListener('click', e => {
-            const li = e.target && e.target.closest && e.target.closest('.editor-footnote');
+        const openFromEntry = li => {
             if (!li || reviewMode) return;
             const id = li.getAttribute('data-fnid') || '';
-            const sel = '.fn-pill[data-fnid="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]';
-            const pill = contentEl.querySelector(sel);
+            const pill = contentEl.querySelector('.fn-pill[data-fnid="' + cssEscape(id) + '"]');
             if (pill) openFootnoteEditor(pill, false, li);
+        };
+        fnListEl.addEventListener('click', e => {
+            openFromEntry(e.target && e.target.closest && e.target.closest('.editor-footnote'));
+        });
+        fnListEl.addEventListener('keydown', e => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const li = e.target && e.target.closest && e.target.closest('.editor-footnote');
+            if (!li) return;
+            e.preventDefault();
+            openFromEntry(li);
         });
     }
 
@@ -311,7 +387,7 @@ const NodeEditor = (() => {
     // On the editing surface an equation is an atomic pill (contenteditable=false); in the
     // preview (_fnEd is set while it renders) it is a plain span / div.
     function mathInlineHtml(tex) {
-        return (_fnEd ? '<span class="math-inline"' : '<span class="math-pill" contenteditable="false"') +
+        return (_fnEd ? '<span class="math-inline"' : '<span class="math-pill" contenteditable="false" aria-label="Equation: ' + escAttr(tex) + '"') +
             ' data-tex="' + escAttr(tex) + '">' + renderTex(tex, false) + '</span>';
     }
     function mathBlockHtml(tex) {
@@ -796,14 +872,17 @@ const NodeEditor = (() => {
             notes: fields.notes.value || undefined,
             content: readActiveContent(),
             difficulty: fields.difficulty.value || undefined,
-            estimatedTime: fields.time.value || undefined,
-            order: fields.order.value ? parseInt(fields.order.value) : undefined
+            estimatedTime: fields.time.value || undefined
         };
     }
 
     // --- Node loading ---
 
+    const _scrollPos = {};   // per-node centre-panel scroll offset, for this session
+
     function loadNode(nodeId) {
+        const panelCenter = document.getElementById('panel-center');
+        if (panelCenter && loadedNodeId && loadedNodeId !== nodeId) _scrollPos[loadedNodeId] = panelCenter.scrollTop;
         // Leaving a node closes any open review view (its hunks belong to the old node).
         if (reviewMode && loadedNodeId !== nodeId) {
             reviewMode = false;
@@ -838,7 +917,6 @@ const NodeEditor = (() => {
         fields.notes.value = node.notes || '';
         fields.difficulty.value = node.difficulty || '';
         fields.time.value = node.estimatedTime || '';
-        fields.order.value = node.order || '';
 
         // In Suggesting mode the surface shows the proposed text (baseline + hunks);
         // otherwise it shows the clean accepted content exactly as before.
@@ -847,6 +925,9 @@ const NodeEditor = (() => {
         const surfaceMd = (sHunks && sHunks.length) ? proposedText(baselineContent, sHunks) : (node.content || '');
         setSurfaceFromMarkdown(surfaceMd);
         contentDirty = false;
+        // Land where this node was last left (top for a first visit), not at the previous
+        // node's offset.
+        if (panelCenter) panelCenter.scrollTop = _scrollPos[nodeId] || 0;
 
         renderTags(node.tags || []);
         renderChildren(node.children || []);
@@ -966,12 +1047,16 @@ const NodeEditor = (() => {
     }
 
     function updateSuggestUI() {
-        if (suggestBtn) suggestBtn.classList.toggle('active', suggestMode);
+        if (suggestBtn) {
+            suggestBtn.classList.toggle('active', suggestMode);
+            suggestBtn.setAttribute('aria-pressed', suggestMode ? 'true' : 'false');
+        }
         if (reviewBtn) {
             const n = currentSuggestions().length;
             reviewBtn.textContent = n ? ('Review (' + n + ')') : 'Review';
             reviewBtn.classList.toggle('active', reviewMode);
             reviewBtn.classList.toggle('has-suggestions', n > 0);
+            reviewBtn.hidden = !suggestMode && n === 0 && !reviewMode;   // nothing to review yet
         }
     }
 
@@ -1210,8 +1295,21 @@ const NodeEditor = (() => {
 
     // --- Rich text toolbar ---
 
+    const TOOLBAR_NAMES = {
+        bold: 'Bold', italic: 'Italic', underline: 'Underline', strikethrough: 'Strikethrough',
+        h2: 'Heading 2', h3: 'Heading 3', ul: 'Bullet list', ol: 'Numbered list', quote: 'Blockquote',
+        example: 'Example block', link: 'Insert link', footnote: 'Insert footnote',
+        equation: 'Insert equation (LaTeX)', code: 'Inline code', paragraph: 'Normal text',
+        hr: 'Horizontal rule', 'suggest-toggle': 'Suggesting mode', review: 'Review suggested changes'
+    };
+
     function setupToolbar() {
-        document.querySelectorAll('.toolbar-btn').forEach(btn => {
+        // Only buttons with an action: the A± menu trigger is handled by setupFormatMenu.
+        const buttons = Array.from(document.querySelectorAll('.toolbar-btn[data-action]'));
+        buttons.forEach(btn => {
+            if (TOOLBAR_NAMES[btn.dataset.action] && !btn.getAttribute('aria-label')) {
+                btn.setAttribute('aria-label', TOOLBAR_NAMES[btn.dataset.action]);
+            }
             btn.addEventListener('mousedown', e => e.preventDefault());
             btn.addEventListener('click', e => {
                 e.preventDefault();
@@ -1221,6 +1319,76 @@ const NodeEditor = (() => {
                 if (action === 'review') { reviewMode ? exitReview() : enterReview(); return; }
                 applyFormat(action);
             });
+        });
+
+        // One Tab stop for the whole toolbar; Left/Right (Home/End) move within it.
+        const bar = document.querySelector('.editor-toolbar');
+        if (bar) {
+            bar.setAttribute('role', 'toolbar');
+            bar.setAttribute('aria-label', 'Formatting');
+            const stops = () => Array.from(bar.querySelectorAll('.toolbar-btn')).filter(b => !b.hidden && b.offsetParent !== null);
+            const setCurrent = cur => stops().forEach(b => b.setAttribute('tabindex', b === cur ? '0' : '-1'));
+            setCurrent(bar.querySelector('.toolbar-btn'));
+            bar.addEventListener('focusin', e => {
+                const b = e.target.closest && e.target.closest('.toolbar-btn');
+                if (b) setCurrent(b);
+            });
+            bar.addEventListener('keydown', e => {
+                const b = e.target.closest && e.target.closest('.toolbar-btn');
+                if (!b) return;
+                const list = stops();
+                const i = list.indexOf(b);
+                let target = null;
+                if (e.key === 'ArrowRight') target = list[(i + 1) % list.length];
+                else if (e.key === 'ArrowLeft') target = list[(i - 1 + list.length) % list.length];
+                else if (e.key === 'Home') target = list[0];
+                else if (e.key === 'End') target = list[list.length - 1];
+                if (target) { e.preventDefault(); setCurrent(target); target.focus(); }
+            });
+        }
+        setupToolbarState();
+    }
+
+    // Buttons reflect the formatting at the caret (bold, italic, heading, list, ...).
+    function setupToolbarState() {
+        const byAction = {};
+        document.querySelectorAll('.toolbar-btn[data-action]').forEach(b => { byAction[b.dataset.action] = b; });
+        const stateButtons = ['bold', 'italic', 'underline', 'strikethrough', 'h2', 'h3', 'quote', 'ul', 'ol', 'example', 'code'];
+        let queued = false;
+        function refresh() {
+            queued = false;
+            const sel = window.getSelection();
+            const inside = sel && sel.rangeCount && contentEl && !contentEl.hidden &&
+                contentEl.contains(sel.getRangeAt(0).commonAncestorContainer);
+            let el = inside ? sel.getRangeAt(0).commonAncestorContainer : null;
+            if (el && el.nodeType === Node.TEXT_NODE) el = el.parentElement;
+            const on = {};
+            if (inside) {
+                try {
+                    on.bold = document.queryCommandState('bold');
+                    on.italic = document.queryCommandState('italic');
+                    on.underline = document.queryCommandState('underline');
+                    on.strikethrough = document.queryCommandState('strikeThrough');
+                } catch (e) { /* unsupported: leave off */ }
+                on.h2 = !!el.closest('h2');
+                on.h3 = !!el.closest('h3');
+                on.quote = !!el.closest('blockquote');
+                on.ul = !!el.closest('ul');
+                on.ol = !!el.closest('ol');
+                on.example = !!el.closest('.example-block');
+                on.code = !!el.closest('code');
+            }
+            stateButtons.forEach(a => {
+                const b = byAction[a];
+                if (!b) return;
+                b.classList.toggle('active', !!on[a]);
+                b.setAttribute('aria-pressed', on[a] ? 'true' : 'false');
+            });
+        }
+        document.addEventListener('selectionchange', () => {
+            if (queued) return;
+            queued = true;
+            requestAnimationFrame(refresh);
         });
     }
 
@@ -1313,6 +1481,8 @@ const NodeEditor = (() => {
             case 'clear':
                 clearFormatting();
                 break;
+            default:
+                return;                       // unknown action: nothing changed, nothing to save
         }
         contentEl.dispatchEvent(new Event('input'));
     }
@@ -1510,21 +1680,42 @@ const NodeEditor = (() => {
         const trigger = document.getElementById('btn-format-more');
         const dropdown = document.getElementById('format-dropdown');
 
-        function close() {
+        trigger.setAttribute('aria-controls', 'format-dropdown');
+        trigger.setAttribute('aria-label', 'More text formatting');
+        const menuItems = () => Array.from(dropdown.querySelectorAll('.dropdown-item, .swatch, input, .inline-confirm'))
+            .filter(el => !el.disabled && el.offsetParent !== null && el.tagName !== 'LABEL');
+        function close(refocus) {
             dropdown.hidden = true;
             trigger.setAttribute('aria-expanded', 'false');
             fmtSavedRange = null;        // never restore a stale selection later
+            if (refocus) trigger.focus();
         }
         function open() {
             saveFmtSelection();          // capture selection before focus can move
             dropdown.hidden = false;
             trigger.setAttribute('aria-expanded', 'true');
+            const first = menuItems()[0];
+            if (first) first.focus();
         }
+        // Arrow keys walk the menu; Escape returns to the trigger; Tab leaves and closes.
+        dropdown.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); return; }
+            if (e.key === 'Tab') { close(false); return; }
+            if (e.target && e.target.type === 'text' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Home' || e.key === 'End')) return;
+            const items = menuItems();
+            const i = items.indexOf(document.activeElement);
+            let target = null;
+            if (e.key === 'ArrowDown') target = items[(i + 1) % items.length];
+            else if (e.key === 'ArrowUp') target = items[(i - 1 + items.length) % items.length];
+            else if (e.key === 'Home') target = items[0];
+            else if (e.key === 'End') target = items[items.length - 1];
+            if (target) { e.preventDefault(); target.focus(); }
+        });
 
         trigger.addEventListener('mousedown', e => e.preventDefault());
         trigger.addEventListener('click', e => {
             e.preventDefault();
-            dropdown.hidden ? open() : close();
+            dropdown.hidden ? open() : close(true);
         });
 
         // Keep the contenteditable selection while clicking inside the menu. Colour and
@@ -1824,6 +2015,18 @@ const NodeEditor = (() => {
 
     function showLinkInput() {
         const sel = window.getSelection();
+        // Caret on or beside an existing link: edit that link instead of inserting another.
+        if (sel.rangeCount && _openLinkPopup) {
+            const range = sel.getRangeAt(0);
+            let host = range.commonAncestorContainer;
+            if (host.nodeType === Node.TEXT_NODE) host = host.parentElement;
+            const existing = (host && host.closest && host.closest('.link-pill')) ||
+                (sel.isCollapsed && (pillBesideCaret(range, 'before') || pillBesideCaret(range, 'after')));
+            if (existing && existing.classList.contains('link-pill') && contentEl.contains(existing)) {
+                _openLinkPopup(existing);
+                return;
+            }
+        }
         if (sel.rangeCount) savedRange = sel.getRangeAt(0).cloneRange();
 
         const form = document.getElementById('link-input-form');
@@ -1867,13 +2070,14 @@ const NodeEditor = (() => {
         a.setAttribute('contenteditable', 'false');
         a.textContent = text;
 
-        // A trailing space gives the caret an editable slot after the atomic pill.
-        const trailing = document.createTextNode(' ');
+        // A trailing space gives the caret an editable slot after the atomic pill, unless
+        // the text already continues with one.
         range.insertNode(a);
-        a.after(trailing);
+        const trailing = spaceFollows(a) ? null : document.createTextNode(' ');
+        if (trailing) a.after(trailing);
 
         const after = document.createRange();
-        after.setStartAfter(trailing);
+        after.setStartAfter(trailing || a);
         after.collapse(true);
         sel.removeAllRanges();
         sel.addRange(after);
@@ -1893,10 +2097,14 @@ const NodeEditor = (() => {
     // the only way to change their text/URL, so the raw markdown is never typed
     // over by hand. The popup lives on <body>, outside the contenteditable, so
     // typing in its inputs never mutates node content directly.
+    let _openLinkPopup = null;   // set by setupLinkPopup: opens the editor for a given pill
+
     function setupLinkPopup() {
         const popup = document.createElement('div');
         popup.className = 'link-popup';
         popup.hidden = true;
+        popup.setAttribute('role', 'dialog');
+        popup.setAttribute('aria-label', 'Edit link');
         popup.innerHTML =
             '<div class="link-popup-title">Edit link</div>' +
             '<div class="link-popup-row"><label for="lp-text">Text</label>' +
@@ -1950,6 +2158,8 @@ const NodeEditor = (() => {
             popup.hidden = true;
             currentPill = null;
         }
+        _openLinkPopup = pill => { cancelHide(); open(pill); pinned = true; textInput.focus(); };
+        popup.addEventListener('keydown', e => trapTabIn(popup, e));
         function hide() { if (!pinned) close(); }
         function scheduleHide() { clearTimeout(hideTimer); hideTimer = setTimeout(hide, 250); }
         function cancelHide() { clearTimeout(hideTimer); }
@@ -2024,6 +2234,8 @@ const NodeEditor = (() => {
 
     let _fnPopupEl = null;
     let _fnPopupPill = null;
+    let _fnPopupIsNew = false;
+    let _fnPopupAnchor = null;
 
     // Smallest positive integer not already used as a footnote id in the surface.
     function nextFootnoteId() {
@@ -2041,6 +2253,11 @@ const NodeEditor = (() => {
         if (!sel.rangeCount) return;
         const range = sel.getRangeAt(0);
         if (!contentEl.contains(range.commonAncestorContainer)) return;
+        // Caret beside an existing footnote: edit it rather than adding a second one.
+        if (sel.isCollapsed) {
+            const beside = pillBesideCaret(range, 'before') || pillBesideCaret(range, 'after');
+            if (beside && beside.classList.contains('fn-pill')) { openFootnoteEditor(beside, false); return; }
+        }
         range.deleteContents();
 
         const id = nextFootnoteId();
@@ -2049,12 +2266,13 @@ const NodeEditor = (() => {
         sup.setAttribute('contenteditable', 'false');
         sup.setAttribute('data-fnid', id);
         sup.textContent = '[?]';
-        const trailing = document.createTextNode(' ');
         range.insertNode(sup);
-        sup.after(trailing);
+        // An editable slot after the atomic pill; not when a space already follows it.
+        const trailing = spaceFollows(sup) ? null : document.createTextNode(' ');
+        if (trailing) sup.after(trailing);
 
         const after = document.createRange();
-        after.setStartAfter(trailing);
+        after.setStartAfter(trailing || sup);
         after.collapse(true);
         sel.removeAllRanges();
         sel.addRange(after);
@@ -2072,23 +2290,47 @@ const NodeEditor = (() => {
         const popup = document.createElement('div');
         popup.className = 'hunk-popup fn-edit-popup';
         popup.hidden = true;
+        popup.setAttribute('role', 'dialog');
+        popup.setAttribute('aria-label', 'Footnote text');
         popup.innerHTML =
             '<div class="hunk-popup-title">Footnote text</div>' +
             '<textarea class="hunk-popup-text" rows="3" aria-label="Footnote text"></textarea>' +
             '<div class="hunk-popup-actions">' +
             '<button type="button" class="hunk-popup-save">Save</button>' +
             '<button type="button" class="fn-popup-remove">Remove</button>' +
-            '</div>';
+            '</div>' +
+            '<div class="eq-popup-hint">Ctrl+Enter saves · Esc cancels · Enter starts a new line</div>';
         document.body.appendChild(popup);
         _fnPopupEl = popup;
         const ta = popup.querySelector('.hunk-popup-text');
 
-        function close() { popup.hidden = true; _fnPopupPill = null; }
-        function save() {
+        // Closing a brand-new footnote that got no text removes its pill (as the equation
+        // pop-up does). refocus: put the caret back in the text after the pill (Escape,
+        // Save); false when the author clicked somewhere else on purpose.
+        function close(refocus) {
+            const pill = _fnPopupPill;
+            const wasNew = _fnPopupIsNew;
+            popup.hidden = true;
+            _fnPopupPill = null;
+            _fnPopupIsNew = false;
+            _fnPopupAnchor = null;
+            if (pill && wasNew && !((_fnDefs[pill.getAttribute('data-fnid') || ''] || '').trim())) {
+                const id = pill.getAttribute('data-fnid') || '';
+                pill.remove();
+                if (!contentEl.querySelector('.fn-pill[data-fnid="' + cssEscape(id) + '"]')) delete _fnDefs[id];
+                renumberFootnotePills();
+                contentDirty = true;
+                contentEl.dispatchEvent(new Event('input'));
+                if (refocus) focusCaretAfter(null);
+            } else if (refocus) {
+                focusCaretAfter(pill);
+            }
+        }
+        function save(refocus) {
             if (!_fnPopupPill) return;
             const id = _fnPopupPill.getAttribute('data-fnid') || '';
             _fnDefs[id] = ta.value;
-            close();
+            close(refocus !== false);
             renderFootnoteList();
             contentDirty = true;
             contentEl.dispatchEvent(new Event('input'));
@@ -2109,14 +2351,16 @@ const NodeEditor = (() => {
             toast('Footnote removed', 'success');
         }
 
-        popup.querySelector('.hunk-popup-save').addEventListener('click', save);
+        popup.querySelector('.hunk-popup-save').addEventListener('click', () => save(true));
         popup.querySelector('.fn-popup-remove').addEventListener('click', remove);
-        ta.addEventListener('keydown', e => {
-            if (e.key === 'Escape') { e.preventDefault(); close(); contentEl.focus(); }
-            else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); }
+        popup.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); return; }
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(true); return; }
+            trapTabIn(popup, e);
         });
 
-        // Click a pill to edit; click elsewhere closes.
+        // Click a pill to edit; a click elsewhere keeps what was typed (saves a non-empty
+        // note, drops an empty new one) and lets the click land where it was aimed.
         contentEl.addEventListener('click', e => {
             const pill = e.target && e.target.closest && e.target.closest('.fn-pill');
             if (pill && contentEl.contains(pill)) { e.preventDefault(); openFootnoteEditor(pill, false); }
@@ -2125,25 +2369,30 @@ const NodeEditor = (() => {
             if (popup.hidden) return;
             if (popup.contains(e.target)) return;
             if (e.target.closest && e.target.closest('.fn-pill, .editor-footnote')) return;
-            close();
+            if (ta.value.trim()) save(false); else close(false);
+        });
+        // Escape closes it from anywhere (focus may have moved out with an outside click).
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && !popup.hidden && !popup.contains(e.target)) close(true);
+        });
+        // The pop-up follows its pill while the centre panel scrolls.
+        const panelCenter = document.getElementById('panel-center');
+        if (panelCenter) panelCenter.addEventListener('scroll', () => {
+            if (!popup.hidden && _fnPopupAnchor) placePopupAt(popup, _fnPopupAnchor);
         });
     }
 
     function openFootnoteEditor(pill, isNew, anchorEl) {
         if (!_fnPopupEl || !pill) return;
         _fnPopupPill = pill;
+        _fnPopupIsNew = !!isNew;
+        _fnPopupAnchor = anchorEl || pill;
         const id = pill.getAttribute('data-fnid') || '';
         const ta = _fnPopupEl.querySelector('.hunk-popup-text');
         ta.value = Object.prototype.hasOwnProperty.call(_fnDefs, id) ? (_fnDefs[id] || '') : '';
         _fnPopupEl.querySelector('.hunk-popup-title').textContent = isNew ? 'New footnote text' : 'Footnote text';
         _fnPopupEl.hidden = false;  // unhide to measure
-        const r = (anchorEl || pill).getBoundingClientRect();
-        const pw = _fnPopupEl.offsetWidth, ph = _fnPopupEl.offsetHeight;
-        const left = Math.max(12, Math.min(r.left, window.innerWidth - pw - 12));
-        let top = r.bottom + 6;
-        if (top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 6);
-        _fnPopupEl.style.left = left + 'px';
-        _fnPopupEl.style.top = top + 'px';
+        placePopupAt(_fnPopupEl, _fnPopupAnchor);
         ta.focus();
     }
 
@@ -2152,6 +2401,7 @@ const NodeEditor = (() => {
     let _eqPopupEl = null;
     let _eqPopupTarget = null;      // the .math-pill / .math-block being edited
     let _eqPopupIsNew = false;
+    let _eqPopupAnchor = null;
 
     function insertEquationAtCursor() {
         if (reviewMode) return;
@@ -2221,6 +2471,8 @@ const NodeEditor = (() => {
         const popup = document.createElement('div');
         popup.className = 'hunk-popup eq-popup';
         popup.hidden = true;
+        popup.setAttribute('role', 'dialog');
+        popup.setAttribute('aria-label', 'Equation (LaTeX)');
         popup.innerHTML =
             '<div class="hunk-popup-title">Equation (LaTeX)</div>' +
             '<textarea class="hunk-popup-text eq-popup-tex" rows="3" spellcheck="false" aria-label="Equation in LaTeX" placeholder="e.g. \\frac{a}{b}, x_{fu}^2, \\alpha"></textarea>' +
@@ -2256,17 +2508,29 @@ const NodeEditor = (() => {
         }
         popup.refresh = refreshPreview;
 
-        function close() {
+        // refocus: put the caret back in the text after the equation (Escape, Save); false
+        // when the author clicked somewhere else on purpose.
+        function close(refocus) {
+            let after = _eqPopupTarget;
             if (_eqPopupTarget && _eqPopupIsNew && !(_eqPopupTarget.getAttribute('data-tex') || '')) {
                 _eqPopupTarget.remove();              // a brand-new equation left empty
+                after = null;
                 contentDirty = true;
                 contentEl.dispatchEvent(new Event('input'));
             }
             popup.hidden = true;
             _eqPopupTarget = null;
             _eqPopupIsNew = false;
+            _eqPopupAnchor = null;
+            if (refocus) focusCaretAfter(after);
         }
-        function save() {
+        function texParses(tex, display) {
+            const k = katexLib();
+            if (!k) return true;
+            try { k.renderToString(tex, { displayMode: !!display, throwOnError: true, trust: false }); return true; }
+            catch (e) { return false; }
+        }
+        function save(refocus) {
             const target = _eqPopupTarget;
             if (!target) return;
             const tex = ta.value.replace(/\r\n?/g, '\n').trim();
@@ -2275,11 +2539,14 @@ const NodeEditor = (() => {
             let el = target;
             if (wantBlock !== target.classList.contains('math-block')) el = convertEquationKind(target, wantBlock);
             el.setAttribute('data-tex', tex);
+            el.setAttribute('aria-label', 'Equation: ' + tex);
             el.classList.remove('math-empty');
             el.innerHTML = renderTex(tex, wantBlock);
             _eqPopupIsNew = false;
             _eqPopupTarget = null;
-            close();
+            popup.hidden = true;
+            _eqPopupAnchor = null;
+            if (refocus !== false) focusCaretAfter(el);
             contentDirty = true;
             contentEl.dispatchEvent(new Event('input'));
             toast('Equation saved', 'success');
@@ -2308,16 +2575,19 @@ const NodeEditor = (() => {
             toast(tex ? 'Equation converted to plain text' : 'Equation removed', 'success');
         }
 
-        popup.querySelector('.hunk-popup-save').addEventListener('click', save);
+        popup.querySelector('.hunk-popup-save').addEventListener('click', () => save(true));
         popup.querySelector('.eq-popup-unwrap').addEventListener('click', unwrap);
         ta.addEventListener('input', refreshPreview);
         dispCb.addEventListener('change', refreshPreview);
-        ta.addEventListener('keydown', e => {
-            if (e.key === 'Escape') { e.preventDefault(); close(); contentEl.focus(); }
-            else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); }
+        popup.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); return; }
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(true); return; }
+            trapTabIn(popup, e);
         });
 
-        // Click an equation to edit it; click elsewhere closes.
+        // Click an equation to edit it. A click elsewhere keeps what was typed: a TeX that
+        // parses is saved, an empty new equation is dropped, and one with an error stays
+        // open (the message is showing) until it is fixed or Escape discards it.
         contentEl.addEventListener('click', e => {
             const el = e.target && e.target.closest && e.target.closest('.math-pill, .math-block');
             if (el && contentEl.contains(el)) { e.preventDefault(); openEquationEditor(el, false); }
@@ -2326,7 +2596,16 @@ const NodeEditor = (() => {
             if (popup.hidden) return;
             if (popup.contains(e.target)) return;
             if (e.target.closest && e.target.closest('.math-pill, .math-block')) return;
-            close();
+            const tex = ta.value.trim();
+            if (!tex) close(false);
+            else if (texParses(tex, dispCb.checked)) save(false);
+        });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && !popup.hidden && !popup.contains(e.target)) close(true);
+        });
+        const panelCenter = document.getElementById('panel-center');
+        if (panelCenter) panelCenter.addEventListener('scroll', () => {
+            if (!popup.hidden && _eqPopupAnchor) placePopupAt(popup, _eqPopupAnchor);
         });
     }
 
@@ -2340,13 +2619,8 @@ const NodeEditor = (() => {
         _eqPopupEl.querySelector('.hunk-popup-title').textContent = isNew ? 'New equation (LaTeX)' : 'Equation (LaTeX)';
         _eqPopupEl.hidden = false;  // unhide to measure
         _eqPopupEl.refresh();
-        const r = el.getBoundingClientRect();
-        const pw = _eqPopupEl.offsetWidth, ph = _eqPopupEl.offsetHeight;
-        const left = Math.max(12, Math.min(r.left, window.innerWidth - pw - 12));
-        let top = r.bottom + 6;
-        if (top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 6);
-        _eqPopupEl.style.left = left + 'px';
-        _eqPopupEl.style.top = top + 'px';
+        _eqPopupAnchor = el;
+        placePopupAt(_eqPopupEl, el);
         ta.focus();
     }
 
@@ -2521,10 +2795,8 @@ const NodeEditor = (() => {
                 if (li) {
                     e.preventDefault();
                     document.execCommand(e.shiftKey ? 'outdent' : 'indent', false);
-                } else {
-                    // Prevent losing focus from content area
-                    e.preventDefault();
                 }
+                // Outside a list Tab is left alone, so focus can move on (no keyboard trap).
             }
         });
 
@@ -2646,7 +2918,7 @@ const NodeEditor = (() => {
 
         container.querySelectorAll('.tag-remove').forEach(btn => {
             btn.addEventListener('click', () => removeTag(btn.dataset.tag));
-            btn.addEventListener('keydown', e => { if (e.key === 'Enter') removeTag(btn.dataset.tag); });
+            btn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); removeTag(btn.dataset.tag); } });
         });
     }
 
@@ -3042,5 +3314,5 @@ const NodeEditor = (() => {
     }
 
     return { init, toast, applyFormat, updatePreview, commitLink, cancelLink, flushContent,
-             toggleSuggestMode, enterReview, exitReview };
+             toggleSuggestMode, enterReview, exitReview, focusContent };
 })();

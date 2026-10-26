@@ -71,7 +71,7 @@
 .panel-collapse-btn {
     position: absolute;
     top: 10px;
-    width: 16px;
+    width: 24px;
     height: 30px;
     display: flex;
     align-items: center;
@@ -84,7 +84,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     cursor: pointer;
-    opacity: 0;
+    opacity: 0.35;                /* findable at rest, full on hover / focus */
     transition: opacity var(--transition), color var(--transition), border-color var(--transition);
     z-index: 5;
 }
@@ -93,7 +93,8 @@
 #resize-right .panel-collapse-btn { right: 2px; }
 
 .resize-handle:hover .panel-collapse-btn,
-.resize-handle.is-collapsed .panel-collapse-btn {
+.resize-handle.is-collapsed .panel-collapse-btn,
+.panel-collapse-btn:focus-visible {
     opacity: 1;
 }
 
@@ -311,9 +312,22 @@
     line-height: 1.5;
 }
 .node-props-empty[hidden] { display: none; }
-#tab-node .editor-section { background: var(--bg); }
+/* Node tab sections: flat, separated by a rule, one rhythm (12px) between blocks. */
+#tab-node .editor-section {
+    background: transparent;
+    border: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    padding: 10px 0 0;
+    margin-bottom: 12px;
+}
+#tab-node .form-field, #tab-node .node-stamps, #tab-node .editor-notes, #tab-node .editor-tags { margin-bottom: 12px; }
 #tab-node .inline-add-form { flex-wrap: wrap; }
-#tab-node .editor-danger { margin-top: 16px; }
+#tab-node .editor-danger { margin-top: 12px; padding-top: 12px; }
+/* Tab underline sits on the header's divider. */
+#panel-right .panel-header { padding: 0 10px; }
+.panel-tab { padding: 9px 10px 7px; }
+.panel-left .panel-header { padding: 6px 8px; }
 
 /* Preview pane */
 .preview-pane {
@@ -335,7 +349,7 @@
 }
 
 .preview-pane strong {
-    color: var(--accent-hover);
+    color: inherit;
 }
 
 /* Emphasis inside a heading takes the heading's color, so a bold word in a heading doesn't

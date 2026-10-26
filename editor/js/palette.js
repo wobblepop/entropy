@@ -9,12 +9,15 @@ const Palette = (() => {
     let currentResults = [];
 
     const commands = [
-        { type: 'cmd', label: 'New File', action: () => document.getElementById('btn-new').click(), hint: 'Ctrl+N' },
+        { type: 'cmd', label: 'New File', action: () => document.getElementById('btn-new').click(), hint: 'Alt+N' },
         { type: 'cmd', label: 'Open File', action: () => document.getElementById('btn-open').click(), hint: 'Ctrl+O' },
         { type: 'cmd', label: 'Save File', action: () => saveFile(), hint: 'Ctrl+S' },
         { type: 'cmd', label: 'Save As…', action: () => saveFileAs(), hint: 'Ctrl+Alt+S' },
-        { type: 'cmd', label: 'Add New Node', action: () => showNewNodeModal(), hint: 'Ctrl+Shift+N' },
-        { type: 'cmd', label: 'Open in Viewer', action: () => openPreview(), hint: 'Ctrl+P' },
+        { type: 'cmd', label: 'Add New Node', action: () => showNewNodeModal(), hint: 'Alt+Shift+N' },
+        { type: 'cmd', label: 'View in reader (new tab)', action: () => openPreview(), hint: 'Ctrl+P' },
+        { type: 'cmd', label: 'Toggle Nodes panel', action: () => App.togglePanel('left'), hint: 'Ctrl+Shift+[' },
+        { type: 'cmd', label: 'Toggle details panel', action: () => App.togglePanel('right'), hint: 'Ctrl+Shift+]' },
+        { type: 'cmd', label: 'Writing view (hide / show both panels)', action: () => App.togglePanel('both'), hint: 'Ctrl+Shift+\\' },
         { type: 'cmd', label: 'Generate PDF…', action: () => PdfExport.open() },
         { type: 'cmd', label: 'Toggle Suggesting Mode', action: () => NodeEditor.toggleSuggestMode(), hint: 'Ctrl+Shift+M' },
         { type: 'cmd', label: 'Review Suggested Changes', action: () => NodeEditor.enterReview() },
@@ -27,10 +30,19 @@ const Palette = (() => {
         { type: 'cmd', label: 'Keyboard Shortcuts', action: () => showShortcuts(), hint: '?' },
     ];
 
+    let savedRange = null;     // caret in the text when the palette opened
+    let openerEl = null;       // element focused when the palette opened
+
     function init() {
         paletteEl = document.getElementById('command-palette');
         inputEl = document.getElementById('palette-input');
         resultsEl = document.getElementById('palette-results');
+
+        inputEl.setAttribute('role', 'combobox');
+        inputEl.setAttribute('aria-autocomplete', 'list');
+        inputEl.setAttribute('aria-controls', 'palette-results');
+        inputEl.setAttribute('aria-expanded', 'false');
+        resultsEl.setAttribute('role', 'listbox');
 
         inputEl.addEventListener('input', updateResults);
         inputEl.addEventListener('keydown', handleKeydown);
@@ -38,7 +50,15 @@ const Palette = (() => {
     }
 
     function show() {
+        // Remember where the author was: a command such as Insert Footnote acts at the
+        // caret it finds, and opening the palette would otherwise move it.
+        const contentEl = document.getElementById('edit-content');
+        const sel = window.getSelection();
+        savedRange = (contentEl && sel && sel.rangeCount && contentEl.contains(sel.getRangeAt(0).commonAncestorContainer))
+            ? sel.getRangeAt(0).cloneRange() : null;
+        openerEl = document.activeElement;
         paletteEl.hidden = false;
+        inputEl.setAttribute('aria-expanded', 'true');
         inputEl.value = '';
         selectedIndex = 0;
         updateResults();
@@ -47,6 +67,10 @@ const Palette = (() => {
 
     function hide() {
         paletteEl.hidden = true;
+        inputEl.setAttribute('aria-expanded', 'false');
+        const back = openerEl;
+        openerEl = null;
+        if (back && back !== document.body && document.contains(back) && typeof back.focus === 'function') back.focus();
     }
 
     function isVisible() {
@@ -57,12 +81,7 @@ const Palette = (() => {
         const query = inputEl.value.toLowerCase().trim();
         currentResults = [];
 
-        commands.forEach(cmd => {
-            if (!query || cmd.label.toLowerCase().includes(query)) {
-                currentResults.push(cmd);
-            }
-        });
-
+        // Sections first: hopping between chapters is the common case. Commands follow.
         const allIds = EditorState.getAllNodeIds();
         allIds.forEach(id => {
             const node = EditorState.getNode(id);
@@ -72,8 +91,14 @@ const Palette = (() => {
                     type: 'node',
                     label: node.title,
                     hint: id,
-                    action: () => EditorState.selectNode(id)
+                    action: () => { EditorState.selectNode(id); NodeEditor.focusContent(); }
                 });
+            }
+        });
+
+        commands.forEach(cmd => {
+            if (!query || cmd.label.toLowerCase().includes(query)) {
+                currentResults.push(cmd);
             }
         });
 
@@ -85,12 +110,15 @@ const Palette = (() => {
         if (selectedIndex < 0) selectedIndex = 0;
 
         resultsEl.innerHTML = currentResults.map((item, i) => `
-            <li class="palette-result ${i === selectedIndex ? 'selected' : ''}" data-index="${i}" role="option">
+            <li class="palette-result ${i === selectedIndex ? 'selected' : ''}" data-index="${i}" id="palette-opt-${i}" role="option" aria-selected="${i === selectedIndex ? 'true' : 'false'}">
                 <span class="result-type">${item.type}</span>
                 <span class="result-label">${item.label}</span>
                 ${item.hint ? `<span class="result-hint">${item.hint}</span>` : ''}
             </li>
         `).join('');
+        inputEl.setAttribute('aria-activedescendant', currentResults.length ? ('palette-opt-' + selectedIndex) : '');
+        const sel = resultsEl.querySelector('.palette-result.selected');
+        if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: 'nearest' });
 
         resultsEl.querySelectorAll('.palette-result').forEach(el => {
             el.addEventListener('click', () => executeResult(parseInt(el.dataset.index)));
@@ -117,14 +145,25 @@ const Palette = (() => {
     function executeResult(index) {
         const item = currentResults[index];
         if (item && item.action) {
+            const range = savedRange;
+            savedRange = null;
             hide();
+            // Restore the caret the author had in the text before the command runs.
+            if (range) {
+                const contentEl = document.getElementById('edit-content');
+                if (contentEl && contentEl.contains(range.commonAncestorContainer)) {
+                    contentEl.focus();
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+            }
             item.action();
         }
     }
 
     function switchTab(tabName) {
-        document.querySelectorAll('.panel-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === `tab-${tabName}`));
+        App.activateTab(tabName);
     }
 
     return { init, show, hide, isVisible, switchTab };
@@ -241,8 +280,7 @@ function showNewNodeModal(forceAsChild) {
     titleInput.value = '';
     idInput.value = '';
     checkbox.checked = forceAsChild === true || !!EditorState.getSelectedNode();
-    modal.hidden = false;
-    requestAnimationFrame(() => titleInput.focus());
+    App.openModal(modal, titleInput);
 
     // Auto-generate ID from title
     titleInput.oninput = () => {
@@ -287,8 +325,9 @@ function createNewNode() {
     }
 
     EditorState.selectNode(id);
-    document.getElementById('new-node-modal').hidden = true;
+    App.closeModal(document.getElementById('new-node-modal'));
     NodeEditor.toast(`"${title}" created`, 'success');
+    NodeEditor.focusContent();   // start writing at once
 }
 
 function openPreview(opts) {
@@ -325,5 +364,6 @@ function openPreview(opts) {
 }
 
 function showShortcuts() {
-    document.getElementById('shortcuts-modal').hidden = false;
+    const modal = document.getElementById('shortcuts-modal');
+    App.openModal(modal, document.getElementById('shortcuts-close'));
 }

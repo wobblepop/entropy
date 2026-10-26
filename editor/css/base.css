@@ -17,8 +17,8 @@
     --bg-active: #3a3a3a;
     --bg-danger: #3b1a1a;
     --text: #d4d4d4;
-    --text-dim: #888888;
-    --text-faint: #555555;
+    --text-dim: #a0a0a0;      /* 5.5:1 on the lightest surface */
+    --text-faint: #949494;    /* 4.7:1: captions stay readable */
     --accent: #60a5fa;
     --accent-hover: #93c5fd;
     --accent-dim: #1e3a5f;
@@ -30,7 +30,7 @@
     --border-focus: #60a5fa;
     --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
-    --header-height: 44px;
+    --header-height: 36px;
     --radius: 4px;
     --transition: 150ms ease;
 }
@@ -95,7 +95,8 @@ body {
 }
 
 .header-btn {
-    padding: 4px 10px;
+    padding: 3px 9px;
+    white-space: nowrap;
     background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -136,8 +137,17 @@ input, textarea, select {
     transition: border-color var(--transition);
 }
 
+/* Focused fields show one accent border (border + 1px shadow), never a second ring. */
 input:focus, textarea:focus, select:focus {
-    border-color: var(--border-focus);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+}
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: none;
+}
+input::placeholder, textarea::placeholder {
+    color: #9a9a9a;
+    opacity: 1;
 }
 
 textarea {
@@ -347,3 +357,21 @@ kbd {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* ---- Review round 2: layout that survives narrow windows and browser zoom ---- */
+body {
+    display: flex;
+    flex-direction: column;
+}
+.editor-header {
+    height: auto;
+    min-height: var(--header-height);
+    flex-wrap: wrap;
+}
+.workspace {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+}
+/* Danger text at 5:1 on its surfaces; --danger stays for borders */
+.danger-btn, #unsaved-discard { color: #f87171; }

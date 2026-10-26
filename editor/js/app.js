@@ -23,10 +23,10 @@ const App = (() => {
     function confirmUnsavedChanges(onDiscard) {
         if (!EditorState.isDirty()) { onDiscard(); return; }
         const modal = document.getElementById('unsaved-modal');
-        modal.hidden = false;
+        openModal(modal, document.getElementById('unsaved-save'));
 
         const cleanup = () => {
-            modal.hidden = true;
+            closeModal(modal);
             saveBtn.removeEventListener('click', handleSave);
             discardBtn.removeEventListener('click', handleDiscard);
             cancelBtn.removeEventListener('click', handleCancel);
@@ -137,18 +137,20 @@ const App = (() => {
 
     function setupKeyboard() {
         document.addEventListener('keydown', e => {
+            const key = (e.key || '').toLowerCase();   // Caps Lock must not disable shortcuts
+
             // Escape closes things in priority order
             if (e.key === 'Escape') {
                 if (Palette.isVisible()) { Palette.hide(); return; }
                 const modals = document.querySelectorAll('.modal:not([hidden])');
-                if (modals.length) { modals.forEach(m => m.hidden = true); return; }
+                if (modals.length) { modals.forEach(m => closeModal(m)); return; }
                 // Close inline forms
                 document.querySelectorAll('.inline-add-form:not([hidden])').forEach(f => f.hidden = true);
                 return;
             }
 
             // Command palette
-            if (e.ctrlKey && e.key === 'k') {
+            if (e.ctrlKey && !e.altKey && key === 'k') {
                 e.preventDefault();
                 if (Palette.isVisible()) Palette.hide();
                 else Palette.show();
@@ -156,50 +158,62 @@ const App = (() => {
             }
 
             // Don't intercept shortcuts when a modal is open
-            if (document.querySelector('.modal:not([hidden])')) {
-                // Enter in new node modal creates the node
-                if (e.key === 'Enter' && !document.getElementById('new-node-modal').hidden) {
+            const openDialog = document.querySelector('.modal:not([hidden])');
+            if (openDialog) {
+                // Enter in the new-node title or id field creates the node (not on Cancel)
+                if (e.key === 'Enter' && e.target && e.target.matches && e.target.matches('#new-node-title, #new-node-id')) {
                     e.preventDefault();
                     createNewNode();
+                    return;
                 }
+                if (e.key === 'Tab') trapTabInModal(openDialog, e);
                 return;
             }
 
             // Undo (only global undo when NOT in contenteditable)
-            if (e.ctrlKey && e.key === 'z' && !isInputFocused()) {
+            if (e.ctrlKey && !e.altKey && key === 'z' && !isInputFocused()) {
                 e.preventDefault();
                 EditorState.undo();
                 return;
             }
 
+            // Panels: Ctrl+Shift+[ nodes, Ctrl+Shift+] details, Ctrl+Shift+\ both (writing view)
+            if (e.ctrlKey && e.shiftKey && !e.altKey && (e.code === 'BracketLeft' || e.code === 'BracketRight' || e.code === 'Backslash')) {
+                e.preventDefault();
+                togglePanel(e.code === 'BracketLeft' ? 'left' : e.code === 'BracketRight' ? 'right' : 'both');
+                return;
+            }
+
             // File operations
-            if (e.ctrlKey && e.altKey && (e.key === 's' || e.key === 'S')) {   // Ctrl+Alt+S = Save As
+            if (e.ctrlKey && e.altKey && key === 's') {   // Ctrl+Alt+S = Save As
                 e.preventDefault();
                 saveFileAs();
                 return;
             }
-            if (e.ctrlKey && e.key === 's') {
+            if (e.ctrlKey && !e.altKey && key === 's') {
                 e.preventDefault();
                 saveFile();
             }
-            if (e.ctrlKey && e.key === 'o' && !e.shiftKey) {
+            if (e.ctrlKey && !e.altKey && key === 'o' && !e.shiftKey) {
                 e.preventDefault();
                 confirmUnsavedChanges(() => openFile());
             }
-            if (e.ctrlKey && e.key === 'n' && !e.shiftKey) {
+            // Alt+N / Alt+Shift+N: Ctrl+N and Ctrl+Shift+N are reserved by Chromium browsers
+            // (new window / incognito) and never reach the page.
+            if (e.altKey && !e.ctrlKey && key === 'n' && !e.shiftKey) {
                 e.preventDefault();
                 confirmUnsavedChanges(() => EditorState.newFile());
             }
-            if (e.ctrlKey && e.shiftKey && (e.key === 'N' || e.key === 'n')) {
+            if (e.altKey && !e.ctrlKey && e.shiftKey && key === 'n') {
                 e.preventDefault();
                 showNewNodeModal();
             }
-            if (e.ctrlKey && e.shiftKey && (e.key === 'M' || e.key === 'm')) {
+            if (e.ctrlKey && !e.altKey && e.shiftKey && key === 'm') {
                 e.preventDefault();
                 NodeEditor.toggleSuggestMode();
                 return;
             }
-            if (e.ctrlKey && e.key === 'p') {
+            if (e.ctrlKey && !e.altKey && key === 'p') {
                 e.preventDefault();
                 openPreview();
             }
@@ -212,41 +226,106 @@ const App = (() => {
         });
     }
 
+    // Right-panel tabs: one activator for clicks, the palette and arrow keys, keeping the
+    // tab/tabpanel states in step.
+    function activateTab(tabName, focusTab) {
+        const tabs = Array.from(document.querySelectorAll('.panel-tab'));
+        if (!tabs.some(t => t.dataset.tab === tabName)) return;
+        tabs.forEach(t => {
+            const on = t.dataset.tab === tabName;
+            t.classList.toggle('active', on);
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+            t.setAttribute('tabindex', on ? '0' : '-1');
+            if (on && focusTab) t.focus();
+        });
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === `tab-${tabName}`));
+    }
+
     function setupTabs() {
-        document.querySelectorAll('.panel-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+        const tabs = Array.from(document.querySelectorAll('.panel-tab'));
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => activateTab(tab.dataset.tab));
+            tab.addEventListener('keydown', e => {
+                const i = tabs.indexOf(tab);
+                let next = null;
+                if (e.key === 'ArrowRight') next = tabs[(i + 1) % tabs.length];
+                else if (e.key === 'ArrowLeft') next = tabs[(i - 1 + tabs.length) % tabs.length];
+                else if (e.key === 'Home') next = tabs[0];
+                else if (e.key === 'End') next = tabs[tabs.length - 1];
+                if (next) { e.preventDefault(); activateTab(next.dataset.tab, true); }
             });
         });
+        const current = tabs.find(t => t.classList.contains('active')) || tabs[0];
+        if (current) activateTab(current.dataset.tab);
+    }
+
+    // Modals as dialogs: focus moves in, stays in (Tab wraps), and returns on close.
+    const modalOpeners = new WeakMap();
+    function openModal(modal, first) {
+        if (!modal) return;
+        modalOpeners.set(modal, document.activeElement);
+        modal.hidden = false;
+        const target = first || modal.querySelector('input, textarea, select, button');
+        if (target) requestAnimationFrame(() => target.focus());
+    }
+    function closeModal(modal) {
+        if (!modal || modal.hidden) return;
+        modal.hidden = true;
+        const back = modalOpeners.get(modal);
+        modalOpeners.delete(modal);
+        if (back && back !== document.body && document.contains(back) && typeof back.focus === 'function') back.focus();
+    }
+    function trapTabInModal(modal, e) {
+        const items = Array.from(modal.querySelectorAll('.modal-content input, .modal-content textarea, .modal-content select, .modal-content button, .modal-content a[href]'))
+            .filter(el => !el.disabled && el.offsetParent !== null);
+        if (!items.length) return;
+        const i = items.indexOf(document.activeElement);
+        let next;
+        if (e.shiftKey) next = i <= 0 ? items[items.length - 1] : items[i - 1];
+        else next = i < 0 || i === items.length - 1 ? items[0] : items[i + 1];
+        e.preventDefault();
+        next.focus();
     }
 
     function setupModals() {
         // Shortcuts modal
         document.getElementById('btn-shortcuts').addEventListener('click', showShortcuts);
         document.getElementById('shortcuts-close').addEventListener('click', () => {
-            document.getElementById('shortcuts-modal').hidden = true;
+            closeModal(document.getElementById('shortcuts-modal'));
         });
 
         // New node modal
         document.getElementById('new-node-create').addEventListener('click', createNewNode);
         document.getElementById('new-node-cancel').addEventListener('click', () => {
-            document.getElementById('new-node-modal').hidden = true;
+            closeModal(document.getElementById('new-node-modal'));
         });
 
         // Close modals on backdrop click
         document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
             backdrop.addEventListener('click', () => {
-                backdrop.closest('.modal').hidden = true;
+                closeModal(backdrop.closest('.modal'));
             });
         });
     }
 
+    const panelControls = {};   // panelId -> { toggle, setCollapsed, isCollapsed }
+
     function setupResize() {
         setupResizeHandle('resize-left', 'panel-left', 160, 350, false, 'collapse-left', 'Nodes');
-        setupResizeHandle('resize-right', 'panel-right', 200, 400, true, 'collapse-right', 'properties');
+        setupResizeHandle('resize-right', 'panel-right', 220, 520, true, 'collapse-right', 'details');
+    }
+
+    // 'left' / 'right' toggle one panel; 'both' gives a full-width writing view and back.
+    function togglePanel(which) {
+        const left = panelControls['panel-left'];
+        const right = panelControls['panel-right'];
+        if (which === 'left' && left) left.toggle();
+        else if (which === 'right' && right) right.toggle();
+        else if (which === 'both' && left && right) {
+            const anyOpen = !left.isCollapsed() || !right.isCollapsed();
+            left.setCollapsed(anyOpen);
+            right.setCollapsed(anyOpen);
+        }
     }
 
     function savePanelCollapsed(panelId, collapsed) {
@@ -324,6 +403,7 @@ const App = (() => {
         }
 
         function toggle() { setCollapsed(!panel.classList.contains('collapsed')); }
+        panelControls[panelId] = { toggle, setCollapsed, isCollapsed: () => panel.classList.contains('collapsed') };
 
         // Double-clicking the bar (but not the button itself) toggles collapse.
         handle.addEventListener('dblclick', e => {
@@ -454,5 +534,5 @@ const App = (() => {
     });
 
     document.addEventListener('DOMContentLoaded', init);
-    return {};
+    return { activateTab, togglePanel, openModal, closeModal };
 })();

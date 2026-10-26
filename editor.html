@@ -29,8 +29,8 @@
     --bg-active: #3a3a3a;
     --bg-danger: #3b1a1a;
     --text: #d4d4d4;
-    --text-dim: #888888;
-    --text-faint: #555555;
+    --text-dim: #a0a0a0;      /* 5.5:1 on the lightest surface */
+    --text-faint: #949494;    /* 4.7:1: captions stay readable */
     --accent: #60a5fa;
     --accent-hover: #93c5fd;
     --accent-dim: #1e3a5f;
@@ -42,7 +42,7 @@
     --border-focus: #60a5fa;
     --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
-    --header-height: 44px;
+    --header-height: 36px;
     --radius: 4px;
     --transition: 150ms ease;
 }
@@ -107,7 +107,8 @@ body {
 }
 
 .header-btn {
-    padding: 4px 10px;
+    padding: 3px 9px;
+    white-space: nowrap;
     background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -148,8 +149,17 @@ input, textarea, select {
     transition: border-color var(--transition);
 }
 
+/* Focused fields show one accent border (border + 1px shadow), never a second ring. */
 input:focus, textarea:focus, select:focus {
-    border-color: var(--border-focus);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+}
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: none;
+}
+input::placeholder, textarea::placeholder {
+    color: #9a9a9a;
+    opacity: 1;
 }
 
 textarea {
@@ -360,6 +370,24 @@ kbd {
     }
 }
 
+/* ---- Review round 2: layout that survives narrow windows and browser zoom ---- */
+body {
+    display: flex;
+    flex-direction: column;
+}
+.editor-header {
+    height: auto;
+    min-height: var(--header-height);
+    flex-wrap: wrap;
+}
+.workspace {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+}
+/* Danger text at 5:1 on its surfaces; --danger stays for borders */
+.danger-btn, #unsaved-discard { color: #f87171; }
+
 /* ===== css/panels.css ===== */
 /* ============================================
    PANELS — Three-panel layout
@@ -434,7 +462,7 @@ kbd {
 .panel-collapse-btn {
     position: absolute;
     top: 10px;
-    width: 16px;
+    width: 24px;
     height: 30px;
     display: flex;
     align-items: center;
@@ -447,7 +475,7 @@ kbd {
     border: 1px solid var(--border);
     border-radius: var(--radius);
     cursor: pointer;
-    opacity: 0;
+    opacity: 0.35;                /* findable at rest, full on hover / focus */
     transition: opacity var(--transition), color var(--transition), border-color var(--transition);
     z-index: 5;
 }
@@ -456,7 +484,8 @@ kbd {
 #resize-right .panel-collapse-btn { right: 2px; }
 
 .resize-handle:hover .panel-collapse-btn,
-.resize-handle.is-collapsed .panel-collapse-btn {
+.resize-handle.is-collapsed .panel-collapse-btn,
+.panel-collapse-btn:focus-visible {
     opacity: 1;
 }
 
@@ -674,9 +703,22 @@ kbd {
     line-height: 1.5;
 }
 .node-props-empty[hidden] { display: none; }
-#tab-node .editor-section { background: var(--bg); }
+/* Node tab sections: flat, separated by a rule, one rhythm (12px) between blocks. */
+#tab-node .editor-section {
+    background: transparent;
+    border: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    padding: 10px 0 0;
+    margin-bottom: 12px;
+}
+#tab-node .form-field, #tab-node .node-stamps, #tab-node .editor-notes, #tab-node .editor-tags { margin-bottom: 12px; }
 #tab-node .inline-add-form { flex-wrap: wrap; }
-#tab-node .editor-danger { margin-top: 16px; }
+#tab-node .editor-danger { margin-top: 12px; padding-top: 12px; }
+/* Tab underline sits on the header's divider. */
+#panel-right .panel-header { padding: 0 10px; }
+.panel-tab { padding: 9px 10px 7px; }
+.panel-left .panel-header { padding: 6px 8px; }
 
 /* Preview pane */
 .preview-pane {
@@ -698,7 +740,7 @@ kbd {
 }
 
 .preview-pane strong {
-    color: var(--accent-hover);
+    color: inherit;
 }
 
 /* Emphasis inside a heading takes the heading's color, so a bold word in a heading doesn't
@@ -800,33 +842,40 @@ kbd {
 .editor-title {
     width: 100%;
     font-size: 22px;
-    font-weight: 700;
-    padding: 6px 0;
+    font-weight: 600;
+    padding: 4px 17px;             /* text edge lines up with the toolbar and the body */
     background: transparent;
     border: none;
     border-bottom: 1px solid transparent;
     color: var(--text);
-    margin-bottom: 8px;
+    margin-bottom: 2px;
     transition: border-color var(--transition);
 }
+.editor-title:focus { box-shadow: none; }
 
 .editor-title:focus {
     border-bottom-color: var(--accent);
 }
 
-/* Summary */
+/* Summary: one quiet line under the title, not a second box. Grows with its text. */
 .editor-summary {
     width: 100%;
-    padding: 8px 10px;
+    padding: 4px 17px;
     font-size: 13px;
     font-style: italic;
     color: var(--text-dim);
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    margin-bottom: 12px;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid transparent;
+    border-radius: 0;
+    margin-bottom: 10px;
     resize: none;
+    min-height: 28px;
+    field-sizing: content;
+    transition: border-color var(--transition);
 }
+.editor-summary:hover { border-bottom-color: var(--border); }
+.editor-summary:focus { border-bottom-color: var(--accent); box-shadow: none; }
 
 /* Content editor wrapper. No overflow clipping here: the A± formatting dropdown hangs
    below the toolbar and must stay visible even when the content area is short, so the
@@ -894,7 +943,8 @@ kbd {
 .toolbar-dropdown {
     position: absolute;
     top: calc(100% + 4px);
-    left: 0;
+    left: auto;
+    right: 0;                      /* opens leftward: the centre panel clips to the right */
     z-index: 50;
     min-width: 230px;
     padding: 4px;
@@ -1032,8 +1082,8 @@ kbd {
     width: 100%;
     min-height: 280px;
     padding: 14px 16px;
-    font-size: 14px;
-    line-height: 1.65;
+    font-size: 15px;
+    line-height: 1.6;
     background: var(--bg-input);
     color: var(--text);
     outline: none;
@@ -1053,8 +1103,8 @@ kbd {
 
 /* Rich text styles within contenteditable */
 .editor-content h1 { font-size: 1.5em; font-weight: 700; margin: 16px 0 8px; color: var(--text); }
-.editor-content h2 { font-size: 1.25em; font-weight: 600; margin: 14px 0 6px; color: var(--accent-hover); }
-.editor-content h3 { font-size: 1.1em; font-weight: 600; margin: 12px 0 4px; color: var(--accent); }
+.editor-content h2 { font-size: 1.25em; font-weight: 600; margin: 14px 0 6px; color: var(--text); }
+.editor-content h3 { font-size: 1.1em; font-weight: 600; margin: 12px 0 4px; color: var(--text); }
 .editor-content p { margin-bottom: 10px; }
 /* execCommand emits <b>/<i>; the markdown round-trip re-renders the same bold/italic as
    <strong>/<em>. Style them identically so formatting doesn't visibly change when a node is
@@ -1102,8 +1152,8 @@ kbd {
 .editor-notes .notes-hint {
     text-transform: none;
     letter-spacing: 0;
-    color: var(--warning);
-    font-size: 10px;
+    color: var(--text-dim);
+    font-size: 11px;
     margin-left: 6px;
 }
 .editor-notes-input {
@@ -1112,15 +1162,15 @@ kbd {
     font-family: var(--font-body);
     font-size: 13px;
     line-height: 1.5;
-    background: rgba(245, 158, 11, 0.06);
+    background: var(--bg-input);
     color: var(--text);
     border: 1px solid var(--border);
-    border-left: 3px solid var(--warning);
+    border-left: 3px solid var(--warning);     /* the one "private" marker */
     border-radius: 0 var(--radius) var(--radius) 0;
     outline: none;
     resize: vertical;
 }
-.editor-notes-input:focus { background: rgba(245, 158, 11, 0.1); border-color: var(--warning); }
+.editor-notes-input:focus { border-left-color: var(--warning); }
 
 /* Tags */
 .editor-tags {
@@ -1195,23 +1245,28 @@ kbd {
 }
 
 .section-header h3 {
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 11px;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
     color: var(--text-dim);
 }
 
 .small-btn {
-    padding: 2px 8px;
-    font-size: 11px;
+    padding: 0 8px;
+    height: 24px;
+    font-size: 12px;
     background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    color: var(--accent);
-    transition: background var(--transition);
+    color: var(--text);
+    transition: background var(--transition), color var(--transition), border-color var(--transition);
 }
 
 .small-btn:hover {
     background: var(--bg-hover);
+    color: var(--accent);
+    border-color: var(--accent);
 }
 
 /* Link list */
@@ -1515,7 +1570,7 @@ kbd {
 
 .palette-results {
     list-style: none;
-    max-height: 300px;
+    max-height: 50vh;
     overflow-y: auto;
 }
 
@@ -1652,20 +1707,20 @@ kbd {
 /* Footnote texts under the editing surface (the pills only show numbers) */
 .editor-footnotes {
     border-top: 1px solid var(--border);
-    background: var(--bg-elevated);
-    padding: 8px 16px 10px;
+    background: var(--bg-input);
+    padding: 10px 16px 12px;
     border-radius: 0 0 var(--radius) var(--radius);
 }
 .editor-footnotes[hidden] { display: none; }
 .editor-content-wrapper:has(.editor-footnotes:not([hidden])) .editor-content { border-radius: 0; }
 .editor-footnotes-title {
-    font-size: 10px;
+    font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-faint);
+    letter-spacing: 0.04em;
+    color: var(--text-dim);
     margin-bottom: 5px;
 }
-.editor-footnotes-hint { text-transform: none; letter-spacing: 0; margin-left: 6px; }
+.editor-footnotes-hint { text-transform: none; letter-spacing: 0; margin-left: 6px; color: var(--text-dim); }
 .editor-footnotes ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .editor-footnote {
     display: flex;
@@ -2029,6 +2084,42 @@ kbd {
 }
 .hunk-popup-cancel:hover { color: var(--text); }
 
+/* ---- Review round 2: alignment, consistency, focus, hit targets ---- */
+/* Body text keeps a readable measure inside the full-width surface. */
+.editor-content > * { max-width: 74ch; }
+.editor-content > .math-block { max-width: none; }
+/* Focus on the writing surface: one inset accent line (the caret does the rest). */
+.editor-content:focus-visible { box-shadow: inset 0 0 0 1px var(--accent); }
+/* Suggest / Review sit apart from the formatting commands. */
+.toolbar-modes { margin-left: auto; display: inline-flex; gap: 2px; }
+/* A hidden toolbar button must stay hidden (the button rule sets display: flex). */
+.toolbar-btn[hidden] { display: none; }
+/* One label voice everywhere: 11px, regular, small caps spacing. */
+.panel-header h2, .form-field label, .editor-notes label, .editor-tags label, .stamp-label,
+.section-header h3, .editor-footnotes-title, .dropdown-label, .link-popup-title, .hunk-popup-title {
+    font-size: 11px;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-dim);
+}
+.notes-hint, .link-type-badge, .media-type-badge, .media-alt, .link-order, .graph-legend, .sg-hunk-type, .result-type { font-size: 11px; }
+/* Control heights: 28px fields, 24px small buttons, 28px danger-zone buttons. */
+input.form-input, select.form-input { height: 28px; padding: 4px 8px; box-sizing: border-box; }
+.inline-confirm, .inline-cancel, .tag-input { height: 24px; padding: 0 8px; font-size: 12px; box-sizing: border-box; }
+.danger-btn, .editor-danger .small-btn { height: 28px; padding: 0 12px; font-size: 12px; }
+/* Hit targets of at least 24px for the small controls. */
+.tag-pill .tag-remove { min-width: 24px; min-height: 24px; display: inline-flex; align-items: center; justify-content: center; }
+.link-move { min-width: 24px; min-height: 24px; }
+/* Read-only id reads as a value, not a field to fill in. */
+.id-input, input.id-input.form-input { background: transparent; border-color: transparent; padding-left: 0; }
+.id-input:focus { border-color: var(--border); box-shadow: none; }
+/* Tree branches fold; the glyph is the handle. */
+.tree-node.collapsed > .tree-children { display: none; }
+.tree-toggle { cursor: pointer; }
+.tree-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.palette-result[aria-selected="true"] { background: var(--bg-hover); }
+
 /* ===== css/pdf-export.css ===== */
 /* ============================================
    PDF EXPORT — "Generate PDF" picker (editor)
@@ -2210,13 +2301,13 @@ kbd {
             <span class="autosave-indicator" id="autosave-indicator" hidden>autosave on</span>
         </div>
         <div class="header-center">
-            <button class="header-btn" id="btn-new" title="New file (Ctrl+N)">New</button>
+            <button class="header-btn" id="btn-new" title="New file (Alt+N)">New</button>
             <button class="header-btn" id="btn-open" title="Open file (Ctrl+O)">Open</button>
             <button class="header-btn" id="btn-save" title="Save file (Ctrl+S)">Save</button>
             <button class="header-btn" id="btn-save-as" title="Save as a new file (Ctrl+Alt+S)">Save As</button>
             <span class="header-sep"></span>
-            <button class="header-btn" id="btn-add-node" title="Add node (Ctrl+Shift+N)">+ Node</button>
-            <button class="header-btn" id="btn-preview" title="Open your book in the full Viewer, new tab (Ctrl+P)">View</button>
+            <button class="header-btn" id="btn-add-node" title="Add node (Alt+Shift+N)">+ Node</button>
+            <button class="header-btn" id="btn-preview" title="Open the book in the reader, new tab (Ctrl+P)">View</button>
             <button class="header-btn" id="btn-pdf" title="Generate a PDF of chosen sections (needs the local PDF service)">PDF</button>
         </div>
         <div class="header-right">
@@ -2228,12 +2319,11 @@ kbd {
     <!-- Main workspace -->
     <div class="workspace">
         <!-- Left Panel: Node Tree -->
-        <aside class="panel panel-left" id="panel-left">
+        <aside class="panel panel-left" id="panel-left" aria-label="Nodes">
             <div class="panel-header">
-                <h2>Nodes</h2>
-                <input type="search" id="node-search" class="search-input" placeholder="Filter..." aria-label="Filter nodes">
+                <input type="search" id="node-search" class="search-input" placeholder="Filter nodes…" aria-label="Filter nodes">
             </div>
-            <div class="node-tree" id="node-tree" role="tree"></div>
+            <div class="node-tree" id="node-tree"></div>
         </aside>
 
         <!-- Resize handle -->
@@ -2256,7 +2346,7 @@ kbd {
                 <input type="text" id="edit-title" class="editor-title" placeholder="Node title" aria-label="Node title">
 
                 <!-- Summary -->
-                <textarea id="edit-summary" class="editor-summary" placeholder="Brief summary shown before expanding this section" rows="2" aria-label="Node summary"></textarea>
+                <textarea id="edit-summary" class="editor-summary" placeholder="One-line summary shown on this section's card in the reader" rows="1" aria-label="Node summary"></textarea>
 
                 <!-- Rich text content editor -->
                 <div class="editor-content-wrapper">
@@ -2266,20 +2356,19 @@ kbd {
                         <button class="toolbar-btn" data-action="underline" title="Underline (Ctrl+U)"><u>U</u></button>
                         <button class="toolbar-btn" data-action="strikethrough" title="Strikethrough (Ctrl+Shift+S)"><s>S</s></button>
                         <span class="toolbar-sep"></span>
+                        <button class="toolbar-btn" data-action="paragraph" title="Normal text (Ctrl+0)">Text</button>
                         <button class="toolbar-btn" data-action="h2" title="Heading (Ctrl+2)">H2</button>
                         <button class="toolbar-btn" data-action="h3" title="Sub-heading (Ctrl+3)">H3</button>
                         <span class="toolbar-sep"></span>
                         <button class="toolbar-btn" data-action="ul" title="Bullet list (Ctrl+Shift+8)">&#8226; List</button>
                         <button class="toolbar-btn" data-action="ol" title="Numbered list">1. List</button>
-                        <button class="toolbar-btn" data-action="quote" title="Blockquote (Ctrl+Q)"> &#8221;</button>
+                        <button class="toolbar-btn" data-action="quote" title="Blockquote (Ctrl+Q)">Quote</button>
                         <button class="toolbar-btn" data-action="example" title="Example block (Ctrl+E)">Ex</button>
                         <span class="toolbar-sep"></span>
                         <button class="toolbar-btn" data-action="link" title="Insert link (Ctrl+L)">Link</button>
                         <button class="toolbar-btn" data-action="footnote" title="Insert footnote (Ctrl+Shift+F)">Fn</button>
                         <button class="toolbar-btn" data-action="equation" title="Insert equation, LaTeX (Ctrl+Shift+E)">&sum;</button>
                         <button class="toolbar-btn" data-action="code" title="Inline code">Code</button>
-                        <span class="toolbar-sep"></span>
-                        <button class="toolbar-btn" data-action="paragraph" title="Normal text (Ctrl+0)">Text</button>
                         <button class="toolbar-btn" data-action="hr" title="Horizontal rule">―</button>
                         <span class="toolbar-sep"></span>
                         <!-- More text formatting: size, font, super/subscript, colour, highlight, flip, clear -->
@@ -2331,7 +2420,7 @@ kbd {
                                 <button class="dropdown-item" data-action="subscript" role="menuitem"><span>Subscript</span><span class="dd-demo">x<sub>2</sub></span></button>
                                 <div class="dropdown-sep"></div>
                                 <div class="dropdown-label">Text colour</div>
-                                <div class="swatch-row">
+                                <div class="swatch-row" role="group" aria-label="Text colour">
                                     <button class="swatch" type="button" data-action="fore-color" data-value="#d64545" style="background:#d64545" title="Red" aria-label="Red text"></button>
                                     <button class="swatch" type="button" data-action="fore-color" data-value="#d98324" style="background:#d98324" title="Orange" aria-label="Orange text"></button>
                                     <button class="swatch" type="button" data-action="fore-color" data-value="#2e9e5b" style="background:#2e9e5b" title="Green" aria-label="Green text"></button>
@@ -2342,7 +2431,7 @@ kbd {
                                     </label>
                                 </div>
                                 <div class="dropdown-label">Highlight</div>
-                                <div class="swatch-row">
+                                <div class="swatch-row" role="group" aria-label="Highlight">
                                     <button class="swatch" type="button" data-action="hilite-color" data-value="#fff59d" style="background:#fff59d" title="Yellow" aria-label="Yellow highlight"></button>
                                     <button class="swatch" type="button" data-action="hilite-color" data-value="#c5f7c5" style="background:#c5f7c5" title="Green" aria-label="Green highlight"></button>
                                     <button class="swatch" type="button" data-action="hilite-color" data-value="#c5e3ff" style="background:#c5e3ff" title="Blue" aria-label="Blue highlight"></button>
@@ -2357,14 +2446,15 @@ kbd {
                                 <button class="dropdown-item" data-action="clear" role="menuitem"><span>Clear formatting</span><span class="dd-demo">⌫</span></button>
                             </div>
                         </div>
-                        <span class="toolbar-sep"></span>
-                        <button class="toolbar-btn" id="btn-suggest-mode" data-action="suggest-toggle" title="Suggesting mode — track changes (Ctrl+Shift+M)">Suggest</button>
-                        <button class="toolbar-btn" id="btn-review" data-action="review" title="Review suggested changes">Review</button>
+                        <span class="toolbar-modes">
+                            <button class="toolbar-btn" id="btn-suggest-mode" data-action="suggest-toggle" title="Suggesting mode — track changes (Ctrl+Shift+M)" aria-pressed="false">Suggest</button>
+                            <button class="toolbar-btn" id="btn-review" data-action="review" title="Review suggested changes" hidden>Review</button>
+                        </span>
                     </div>
                     <!-- Link input form (shown when inserting a link) -->
                     <div id="link-input-form" class="inline-add-form" hidden>
-                        <input type="text" id="link-url-input" class="inline-input" placeholder="URL">
-                        <input type="text" id="link-text-input" class="inline-input" placeholder="Link text (optional)">
+                        <input type="text" id="link-url-input" class="inline-input" placeholder="URL" aria-label="Link URL">
+                        <input type="text" id="link-text-input" class="inline-input" placeholder="Link text (optional)" aria-label="Link text">
                         <button class="inline-confirm" id="link-confirm">Insert</button>
                         <button class="inline-cancel" id="link-cancel">Cancel</button>
                     </div>
@@ -2388,18 +2478,18 @@ kbd {
         </div>
 
         <!-- Right Panel: Properties/Preview -->
-        <aside class="panel panel-right" id="panel-right">
+        <aside class="panel panel-right" id="panel-right" aria-label="Details">
             <div class="panel-header">
-                <div class="panel-tabs">
-                    <button class="panel-tab active" data-tab="node">Node</button>
-                    <button class="panel-tab" data-tab="meta">Book Meta</button>
-                    <button class="panel-tab" data-tab="preview">Preview</button>
-                    <button class="panel-tab" data-tab="graph">Graph</button>
+                <div class="panel-tabs" role="tablist" aria-label="Details">
+                    <button class="panel-tab active" data-tab="node" role="tab" id="tab-btn-node" aria-controls="tab-node" aria-selected="true">Node</button>
+                    <button class="panel-tab" data-tab="meta" role="tab" id="tab-btn-meta" aria-controls="tab-meta" aria-selected="false" tabindex="-1">Book Meta</button>
+                    <button class="panel-tab" data-tab="preview" role="tab" id="tab-btn-preview" aria-controls="tab-preview" aria-selected="false" tabindex="-1">Preview</button>
+                    <button class="panel-tab" data-tab="graph" role="tab" id="tab-btn-graph" aria-controls="tab-graph" aria-selected="false" tabindex="-1">Graph</button>
                 </div>
             </div>
 
             <!-- Node tab: everything about the selected section except its text -->
-            <div class="panel-body tab-content active" id="tab-node">
+            <div class="panel-body tab-content active" id="tab-node" role="tabpanel" aria-labelledby="tab-btn-node" tabindex="0">
                 <p class="node-props-empty" id="node-props-empty">Open a file and select a section to see its details here.</p>
                 <div class="node-props" id="node-props" hidden>
                     <div class="form-field">
@@ -2421,10 +2511,6 @@ kbd {
                             <label for="edit-time">Time</label>
                             <input type="text" id="edit-time" class="form-input" placeholder="e.g. 5 min">
                         </div>
-                        <div class="form-field">
-                            <label for="edit-order">Order</label>
-                            <input type="number" id="edit-order" class="form-input">
-                        </div>
                     </div>
                     <div class="node-stamps">
                         <span><span class="stamp-label">Created</span><span id="edit-created" class="meta-stamp">—</span></span>
@@ -2438,7 +2524,7 @@ kbd {
 
                     <!-- Tags -->
                     <div class="editor-tags">
-                        <label>Tags</label>
+                        <label for="tag-input">Tags</label>
                         <div class="tags-container" id="tags-container"></div>
                         <input type="text" id="tag-input" class="tag-input" placeholder="Add tag (Enter)" aria-label="Add tag">
                     </div>
@@ -2452,7 +2538,7 @@ kbd {
                         </div>
                         <div class="link-list" id="children-list"></div>
                         <div class="inline-add-form" id="add-child-form" hidden>
-                            <select id="add-child-select" class="inline-select">
+                            <select id="add-child-select" class="inline-select" aria-label="Node to link as child">
                                 <option value="">Select a node...</option>
                             </select>
                             <button class="inline-confirm" id="add-child-confirm">Add</button>
@@ -2468,17 +2554,17 @@ kbd {
                         </div>
                         <div class="link-list" id="connections-list"></div>
                         <div class="inline-add-form" id="add-conn-form" hidden>
-                            <select id="add-conn-target" class="inline-select">
+                            <select id="add-conn-target" class="inline-select" aria-label="Target node">
                                 <option value="">Target node...</option>
                             </select>
-                            <select id="add-conn-type" class="inline-select-sm">
+                            <select id="add-conn-type" class="inline-select-sm" aria-label="Connection type">
                                 <option value="related">Related</option>
                                 <option value="prerequisite">Prerequisite</option>
                                 <option value="deeper">Deeper</option>
                                 <option value="example">Example</option>
                                 <option value="tangent">Tangent</option>
                             </select>
-                            <input type="text" id="add-conn-label" class="inline-input" placeholder="Label (optional)">
+                            <input type="text" id="add-conn-label" class="inline-input" placeholder="Label (optional)" aria-label="Connection label">
                             <button class="inline-confirm" id="add-conn-confirm">Add</button>
                             <button class="inline-cancel" id="add-conn-cancel">Cancel</button>
                         </div>
@@ -2492,15 +2578,15 @@ kbd {
                         </div>
                         <div class="media-list" id="media-list"></div>
                         <div class="inline-add-form" id="add-media-form" hidden>
-                            <select id="add-media-type" class="inline-select-sm">
+                            <select id="add-media-type" class="inline-select-sm" aria-label="Media type">
                                 <option value="image">Image</option>
                                 <option value="video">Video</option>
                                 <option value="audio">Audio</option>
                                 <option value="embed">Embed</option>
                                 <option value="diagram">Diagram</option>
                             </select>
-                            <input type="text" id="add-media-src" class="inline-input" placeholder="URL or path">
-                            <input type="text" id="add-media-alt" class="inline-input" placeholder="Alt text">
+                            <input type="text" id="add-media-src" class="inline-input" placeholder="URL or path" aria-label="Media URL or path">
+                            <input type="text" id="add-media-alt" class="inline-input" placeholder="Alt text" aria-label="Media alt text">
                             <button class="inline-confirm" id="add-media-confirm">Add</button>
                             <button class="inline-cancel" id="add-media-cancel">Cancel</button>
                         </div>
@@ -2515,7 +2601,7 @@ kbd {
             </div>
 
             <!-- Meta tab -->
-            <div class="panel-body tab-content" id="tab-meta">
+            <div class="panel-body tab-content" id="tab-meta" role="tabpanel" aria-labelledby="tab-btn-meta" tabindex="0">
                 <div class="meta-form">
                     <div class="form-field">
                         <label for="meta-title">Title</label>
@@ -2545,12 +2631,12 @@ kbd {
             </div>
 
             <!-- Preview tab -->
-            <div class="panel-body tab-content" id="tab-preview">
+            <div class="panel-body tab-content" id="tab-preview" role="tabpanel" aria-labelledby="tab-btn-preview" tabindex="0">
                 <div class="preview-pane" id="preview-pane"></div>
             </div>
 
             <!-- Graph tab -->
-            <div class="panel-body tab-content" id="tab-graph">
+            <div class="panel-body tab-content" id="tab-graph" role="tabpanel" aria-labelledby="tab-btn-graph" tabindex="0">
                 <div class="graph-container" id="graph-container">
                     <canvas id="graph-canvas"></canvas>
                 </div>
@@ -2566,10 +2652,10 @@ kbd {
     </div>
 
     <!-- New Node Modal -->
-    <div id="new-node-modal" class="modal" hidden>
+    <div id="new-node-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="new-node-title-h" hidden>
         <div class="modal-backdrop"></div>
         <div class="modal-content">
-            <h2>Create New Node</h2>
+            <h2 id="new-node-title-h">Create New Node</h2>
             <div class="form-field">
                 <label for="new-node-title">Title</label>
                 <input type="text" id="new-node-title" class="form-input" placeholder="What is this section about?" autofocus>
@@ -2592,10 +2678,10 @@ kbd {
     </div>
 
     <!-- Keyboard shortcuts modal -->
-    <div id="shortcuts-modal" class="modal" hidden>
+    <div id="shortcuts-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="shortcuts-title-h" hidden>
         <div class="modal-backdrop"></div>
         <div class="modal-content wide">
-            <h2>Keyboard Shortcuts</h2>
+            <h2 id="shortcuts-title-h">Keyboard Shortcuts</h2>
             <div class="shortcuts-grid">
                 <div class="shortcut-group">
                     <h3>File</h3>
@@ -2603,19 +2689,22 @@ kbd {
                     <div class="shortcut"><kbd>Ctrl+S</kbd> Save</div>
                     <div class="shortcut"><kbd>Ctrl+Alt+S</kbd> Save as new file</div>
                     <div class="shortcut"><kbd>Ctrl+O</kbd> Open</div>
-                    <div class="shortcut"><kbd>Ctrl+N</kbd> New file</div>
-                    <div class="shortcut"><kbd>Ctrl+Shift+N</kbd> New node</div>
-                    <div class="shortcut"><kbd>Ctrl+P</kbd> Preview</div>
+                    <div class="shortcut"><kbd>Alt+N</kbd> New file</div>
+                    <div class="shortcut"><kbd>Alt+Shift+N</kbd> New node</div>
+                    <div class="shortcut"><kbd>Ctrl+P</kbd> View in reader (new tab)</div>
+                    <div class="shortcut"><kbd>Ctrl+Shift+[</kbd> Toggle Nodes panel</div>
+                    <div class="shortcut"><kbd>Ctrl+Shift+]</kbd> Toggle details panel</div>
+                    <div class="shortcut"><kbd>Ctrl+Shift+\</kbd> Writing view (both panels)</div>
                 </div>
                 <div class="shortcut-group">
                     <h3>Formatting</h3>
                     <div class="shortcut"><kbd>Ctrl+B</kbd> Bold</div>
                     <div class="shortcut"><kbd>Ctrl+I</kbd> Italic</div>
                     <div class="shortcut"><kbd>Ctrl+Shift+S</kbd> Strikethrough</div>
+                    <div class="shortcut"><kbd>Ctrl+U</kbd> Underline</div>
                     <div class="shortcut"><kbd>Ctrl+2</kbd> Heading</div>
                     <div class="shortcut"><kbd>Ctrl+3</kbd> Sub-heading</div>
-                    <div class="shortcut"><kbd>Ctrl+U</kbd> Bullet list</div>
-                    <div class="shortcut"><kbd>Ctrl+L</kbd> Link</div>
+                    <div class="shortcut"><kbd>Ctrl+Shift+8</kbd> Bullet list</div>
                     <div class="shortcut"><kbd>Ctrl+Q</kbd> Blockquote</div>
                     <div class="shortcut"><kbd>Ctrl+E</kbd> Example block</div>
                 </div>
@@ -2623,10 +2712,11 @@ kbd {
                     <h3>Editing</h3>
                     <div class="shortcut"><kbd>Ctrl+Z</kbd> Undo</div>
                     <div class="shortcut"><kbd>Ctrl+0</kbd> Normal paragraph</div>
-                    <div class="shortcut"><kbd>Ctrl+L</kbd> Insert link</div>
+                    <div class="shortcut"><kbd>Ctrl+L</kbd> Insert or edit link</div>
                     <div class="shortcut"><kbd>Ctrl+Shift+M</kbd> Suggesting mode</div>
-                    <div class="shortcut"><kbd>Ctrl+Shift+F</kbd> Insert footnote</div>
-                    <div class="shortcut"><kbd>Ctrl+Shift+E</kbd> Insert equation</div>
+                    <div class="shortcut"><kbd>Ctrl+Shift+F</kbd> Insert or edit footnote</div>
+                    <div class="shortcut"><kbd>Ctrl+Shift+E</kbd> Insert or edit equation</div>
+                    <div class="shortcut"><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd> Indent / outdent a list item</div>
                     <div class="shortcut"><kbd>?</kbd> This help</div>
                     <div class="shortcut"><kbd>Esc</kbd> Close modal/palette</div>
                 </div>
@@ -2636,11 +2726,11 @@ kbd {
     </div>
 
     <!-- Unsaved changes warning modal -->
-    <div id="unsaved-modal" class="modal" hidden>
+    <div id="unsaved-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="unsaved-title-h" aria-describedby="unsaved-desc" hidden>
         <div class="modal-backdrop"></div>
         <div class="modal-content">
-            <h2>Unsaved Changes</h2>
-            <p style="color:var(--text-dim);margin-bottom:16px;font-size:13px">You have unsaved changes that will be lost. Do you want to save first?</p>
+            <h2 id="unsaved-title-h">Unsaved Changes</h2>
+            <p id="unsaved-desc" style="color:var(--text-dim);margin-bottom:16px;font-size:13px">You have unsaved changes that will be lost. Do you want to save first?</p>
             <div class="modal-actions">
                 <button class="modal-btn primary" id="unsaved-save">Save First</button>
                 <button class="modal-btn" id="unsaved-discard" style="color:var(--danger)">Discard</button>
@@ -3001,13 +3091,17 @@ const EditorState = (() => {
 // ===== js/tree.js =====
 /* ============================================
    TREE — Node tree panel (left sidebar)
-   Nested UL/LI structure with drag-drop reorder
+   Nested UL/LI structure with drag-drop reorder,
+   collapsible branches, keyboard navigation and
+   keyboard reordering.
    ============================================ */
 
 const Tree = (() => {
     let treeContainer = null;
     let searchInput = null;
     let draggedId = null;
+    let lastSignature = null;              // titles + structure of the last render
+    const collapsed = loadCollapsed();     // node ids whose children are hidden
 
     function init() {
         treeContainer = document.getElementById('node-tree');
@@ -3015,53 +3109,94 @@ const Tree = (() => {
 
         searchInput.addEventListener('input', handleSearch);
 
-        EditorState.on('file-loaded', render);
+        EditorState.on('file-loaded', () => { lastSignature = null; render(); });
         EditorState.on('node-added', render);
         EditorState.on('node-deleted', render);
-        EditorState.on('node-updated', render);
+        // Content autosave fires node-updated every 400 ms while typing; only titles or
+        // structure need a rebuild (the filter and focus would otherwise be lost).
+        EditorState.on('node-updated', () => { if (signature() !== lastSignature) render(); });
         EditorState.on('node-selected', highlightActive);
+        treeContainer.addEventListener('keydown', onTreeKeydown);
+    }
+
+    function signature() {
+        const data = EditorState.getData();
+        if (!data) return '';
+        return data.root + '|' + Object.keys(data.nodes).map(id => {
+            const n = data.nodes[id];
+            return id + ':' + (n.title || '') + ':' + ((n.children || []).join(','));
+        }).join(';');
+    }
+
+    function loadCollapsed() {
+        try {
+            const raw = localStorage.getItem('entropy-editor-tree-collapsed');
+            const arr = raw ? JSON.parse(raw) : [];
+            return new Set(Array.isArray(arr) ? arr.filter(x => typeof x === 'string') : []);
+        } catch (e) { return new Set(); }
+    }
+    function saveCollapsed() {
+        try { localStorage.setItem('entropy-editor-tree-collapsed', JSON.stringify(Array.from(collapsed))); }
+        catch (e) { /* storage blocked: the state still holds for this session */ }
     }
 
     function render() {
         const data = EditorState.getData();
         if (!data) return;
+        lastSignature = signature();
 
         treeContainer.innerHTML = '';
         const rendered = new Set();
         const rootUl = document.createElement('ul');
         rootUl.className = 'tree-list';
         rootUl.setAttribute('role', 'tree');
-        renderNode(rootUl, data.root, data, rendered, true);
+        rootUl.setAttribute('aria-label', 'Nodes');
+        renderNode(rootUl, data.root, data, rendered, true, 1);
 
         Object.keys(data.nodes).forEach(id => {
             if (!rendered.has(id)) {
-                renderNode(rootUl, id, data, rendered, false);
+                renderNode(rootUl, id, data, rendered, false, 1);
             }
         });
 
         treeContainer.appendChild(rootUl);
         highlightActive(EditorState.getSelectedNodeId());
+        if (searchInput.value.trim()) handleSearch();   // keep the filter after a rebuild
     }
 
-    function renderNode(parentUl, nodeId, data, rendered, isRoot) {
+    function renderNode(parentUl, nodeId, data, rendered, isRoot, level) {
         const node = data.nodes[nodeId];
         if (!node || rendered.has(nodeId)) return;
         rendered.add(nodeId);
 
+        const hasChildren = node.children && node.children.length > 0;
+        const isCollapsed = hasChildren && collapsed.has(nodeId);
+
         const li = document.createElement('li');
-        li.className = 'tree-node';
+        li.className = 'tree-node' + (isCollapsed ? ' collapsed' : '');
         li.dataset.nodeId = nodeId;
+        li.setAttribute('role', 'treeitem');
+        li.setAttribute('aria-level', String(level));
+        li.setAttribute('aria-selected', 'false');
+        if (hasChildren) li.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
 
         const row = document.createElement('div');
         row.className = 'tree-row' + (isRoot ? ' root' : '');
         row.dataset.nodeId = nodeId;
-        row.setAttribute('tabindex', '0');
+        row.setAttribute('tabindex', '-1');
         row.setAttribute('draggable', isRoot ? 'false' : 'true');
 
         const icon = document.createElement('span');
-        icon.className = 'tree-icon';
-        const hasChildren = node.children && node.children.length > 0;
-        icon.textContent = hasChildren ? '▸' : '·';
+        icon.className = 'tree-icon' + (hasChildren ? ' tree-toggle' : '');
+        icon.textContent = hasChildren ? (isCollapsed ? '▸' : '▾') : '·';
+        if (hasChildren) {
+            icon.title = isCollapsed ? 'Expand' : 'Collapse';
+            icon.setAttribute('aria-hidden', 'true');
+            icon.addEventListener('click', e => {
+                e.stopPropagation();
+                setCollapsed(nodeId, !collapsed.has(nodeId));
+            });
+        }
 
         const label = document.createElement('span');
         label.className = 'tree-label';
@@ -3073,12 +3208,6 @@ const Tree = (() => {
         row.addEventListener('click', e => {
             e.stopPropagation();
             EditorState.selectNode(nodeId);
-        });
-        row.addEventListener('keydown', e => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                EditorState.selectNode(nodeId);
-            }
         });
 
         if (!isRoot) {
@@ -3095,18 +3224,149 @@ const Tree = (() => {
             const childUl = document.createElement('ul');
             childUl.className = 'tree-children';
             childUl.dataset.parentId = nodeId;
+            childUl.setAttribute('role', 'group');
 
             childUl.addEventListener('dragover', onChildListDragOver);
             childUl.addEventListener('dragleave', onChildListDragLeave);
             childUl.addEventListener('drop', onChildListDrop);
 
             node.children.forEach(childId => {
-                renderNode(childUl, childId, data, rendered, false);
+                renderNode(childUl, childId, data, rendered, false, level + 1);
             });
             li.appendChild(childUl);
         }
 
         parentUl.appendChild(li);
+    }
+
+    // --- Collapse / expand ---
+
+    function setCollapsed(nodeId, on) {
+        if (on) collapsed.add(nodeId); else collapsed.delete(nodeId);
+        saveCollapsed();
+        const li = treeContainer.querySelector('.tree-node[data-node-id="' + cssEscape(nodeId) + '"]');
+        if (!li) return;
+        li.classList.toggle('collapsed', on);
+        if (li.querySelector(':scope > .tree-children')) li.setAttribute('aria-expanded', on ? 'false' : 'true');
+        const icon = li.querySelector(':scope > .tree-row .tree-icon');
+        if (icon && icon.classList.contains('tree-toggle')) {
+            icon.textContent = on ? '▸' : '▾';
+            icon.title = on ? 'Expand' : 'Collapse';
+        }
+    }
+
+    // Every ancestor of a node is opened so the node can be seen.
+    function expandAncestors(nodeId) {
+        const li = treeContainer.querySelector('.tree-node[data-node-id="' + cssEscape(nodeId) + '"]');
+        let p = li ? li.parentElement : null;
+        while (p && p !== treeContainer) {
+            if (p.classList.contains('tree-node') && collapsed.has(p.dataset.nodeId)) setCollapsed(p.dataset.nodeId, false);
+            p = p.parentElement;
+        }
+    }
+
+    function cssEscape(s) {
+        return (window.CSS && CSS.escape) ? CSS.escape(String(s)) : String(s);
+    }
+
+    // --- Keyboard ---
+
+    function visibleRows() {
+        return Array.from(treeContainer.querySelectorAll('.tree-row')).filter(r => r.offsetParent !== null);
+    }
+
+    function focusRow(row) {
+        if (!row) return;
+        treeContainer.querySelectorAll('.tree-row').forEach(r => r.setAttribute('tabindex', r === row ? '0' : '-1'));
+        row.focus();
+    }
+
+    function onTreeKeydown(e) {
+        const row = e.target && e.target.closest && e.target.closest('.tree-row');
+        if (!row) return;
+        const nodeId = row.dataset.nodeId;
+        const li = row.closest('.tree-node');
+        const rows = visibleRows();
+        const i = rows.indexOf(row);
+        const hasChildren = !!li.querySelector(':scope > .tree-children');
+
+        if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+            e.preventDefault();
+            moveByKeyboard(nodeId, e.key);
+            return;
+        }
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                focusRow(rows[Math.min(i + 1, rows.length - 1)]);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                focusRow(rows[Math.max(i - 1, 0)]);
+                break;
+            case 'Home':
+                e.preventDefault();
+                focusRow(rows[0]);
+                break;
+            case 'End':
+                e.preventDefault();
+                focusRow(rows[rows.length - 1]);
+                break;
+            case 'ArrowRight':
+                e.preventDefault();
+                if (hasChildren && collapsed.has(nodeId)) setCollapsed(nodeId, false);
+                else if (hasChildren) focusRow(li.querySelector(':scope > .tree-children .tree-row'));
+                break;
+            case 'ArrowLeft': {
+                e.preventDefault();
+                if (hasChildren && !collapsed.has(nodeId)) { setCollapsed(nodeId, true); break; }
+                const parentLi = li.parentElement && li.parentElement.closest ? li.parentElement.closest('.tree-node') : null;
+                if (parentLi) focusRow(parentLi.querySelector(':scope > .tree-row'));
+                break;
+            }
+            case 'Enter':
+            case ' ':
+                e.preventDefault();
+                EditorState.selectNode(nodeId);
+                break;
+            default:
+                break;
+        }
+    }
+
+    // Alt+Up/Down move a node among its siblings; Alt+Left makes it follow its parent;
+    // Alt+Right tucks it under the sibling above. The root never moves.
+    function moveByKeyboard(nodeId, key) {
+        const data = EditorState.getData();
+        if (!data || nodeId === data.root) return;
+        const parentId = findParentOf(data, nodeId);
+        if (!parentId) return;
+        const siblings = data.nodes[parentId].children;
+        const idx = siblings.indexOf(nodeId);
+        let done = '';
+        EditorState.pushUndo();
+        if (key === 'ArrowUp' && idx > 0) {
+            siblings.splice(idx, 1); siblings.splice(idx - 1, 0, nodeId); done = 'Moved up';
+        } else if (key === 'ArrowDown' && idx < siblings.length - 1) {
+            siblings.splice(idx, 1); siblings.splice(idx + 1, 0, nodeId); done = 'Moved down';
+        } else if (key === 'ArrowLeft' && parentId !== data.root) {
+            removeFromAllParents(data, nodeId);
+            insertRelativeTo(data, nodeId, parentId, 'after');
+            done = 'Moved out, after "' + (data.nodes[parentId].title || parentId) + '"';
+        } else if (key === 'ArrowRight' && idx > 0) {
+            const newParent = siblings[idx - 1];
+            removeFromAllParents(data, nodeId);
+            if (!data.nodes[newParent].children) data.nodes[newParent].children = [];
+            data.nodes[newParent].children.push(nodeId);
+            collapsed.delete(newParent);
+            done = 'Moved under "' + (data.nodes[newParent].title || newParent) + '"';
+        }
+        if (!done) return;
+        EditorState.markDirty();
+        EditorState.emit('node-updated', nodeId);
+        const row = treeContainer.querySelector('.tree-row[data-node-id="' + cssEscape(nodeId) + '"]');
+        if (row) focusRow(row);
+        NodeEditor.toast(done, 'success');
     }
 
     // --- Drag and drop ---
@@ -3284,10 +3544,25 @@ const Tree = (() => {
 
     // --- Selection & search ---
 
+    // The selected row is the tree's single Tab stop, is opened into view, and is
+    // scrolled to when it was off-screen (palette, cross-links, graph, duplicate).
     function highlightActive(nodeId) {
+        if (nodeId) expandAncestors(nodeId);
+        let active = null;
         treeContainer.querySelectorAll('.tree-row').forEach(el => {
-            el.classList.toggle('active', el.dataset.nodeId === nodeId);
+            const on = el.dataset.nodeId === nodeId;
+            el.classList.toggle('active', on);
+            el.setAttribute('tabindex', on ? '0' : '-1');
+            const li = el.closest('.tree-node');
+            if (li) li.setAttribute('aria-selected', on ? 'true' : 'false');
+            if (on) active = el;
         });
+        if (!active) {
+            const first = treeContainer.querySelector('.tree-row');
+            if (first) first.setAttribute('tabindex', '0');
+            return;
+        }
+        if (active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });
     }
 
     function handleSearch() {
@@ -3670,11 +3945,18 @@ const NodeEditor = (() => {
             summary: document.getElementById('edit-summary'),
             notes: document.getElementById('edit-notes'),
             difficulty: document.getElementById('edit-difficulty'),
-            time: document.getElementById('edit-time'),
-            order: document.getElementById('edit-order')
+            time: document.getElementById('edit-time')
         };
         modifiedEl = document.getElementById('edit-modified');
         createdEl = document.getElementById('edit-created');
+
+        // Enter walks down into the text: title -> summary -> text (the summary is one line).
+        fields.title.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); fields.summary.focus(); }
+        });
+        fields.summary.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); focusContent(); }
+        });
 
         EditorState.on('node-selected', loadNode);
         EditorState.on('file-loaded', () => {
@@ -3713,7 +3995,7 @@ const NodeEditor = (() => {
     function formatStamp(iso) {
         if (!iso) return '—';
         const d = new Date(iso);
-        return isNaN(d.getTime()) ? '—' : d.toLocaleString();
+        return isNaN(d.getTime()) ? '—' : d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
     }
 
     // Refresh the meta-bar stamp from the currently loaded node.
@@ -3751,6 +4033,67 @@ const NodeEditor = (() => {
 
     function fnSanitizeId(s) {
         return String(s == null ? '' : s).replace(/[^A-Za-z0-9_-]/g, '-') || 'fn';
+    }
+    function cssEscape(s) {
+        return (window.CSS && CSS.escape) ? CSS.escape(String(s)) : String(s);
+    }
+    // True when the text right after an element starts with a space (so no extra one is
+    // needed after inserting a pill).
+    function spaceFollows(el) {
+        const n = el.nextSibling;
+        return !!(n && n.nodeType === Node.TEXT_NODE && /^[  	]/.test(n.data));
+    }
+
+    // Focus the text with the caret right after an element on the surface (or at the
+    // current caret when no element is given). Used when a pop-up closes.
+    function focusCaretAfter(el) {
+        if (!contentEl) return;
+        contentEl.focus();
+        if (!el || !contentEl.contains(el)) return;
+        const sel = window.getSelection();
+        const r = document.createRange();
+        r.setStartAfter(el);
+        r.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(r);
+    }
+
+    // Put the caret at the start of the text and focus it (after navigation or creation).
+    function focusContent() {
+        if (!contentEl || !editorEl || editorEl.hidden || contentEl.hidden) return;
+        contentEl.focus();
+        const sel = window.getSelection();
+        const r = document.createRange();
+        r.setStart(contentEl, 0);
+        r.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(r);
+    }
+
+    // Place a fixed-position pop-up under (or above) an anchor, inside the viewport.
+    function placePopupAt(popup, anchor) {
+        if (!popup || !anchor) return;
+        const r = anchor.getBoundingClientRect();
+        const pw = popup.offsetWidth, ph = popup.offsetHeight;
+        const left = Math.max(12, Math.min(r.left, window.innerWidth - pw - 12));
+        let top = r.bottom + 6;
+        if (top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 6);
+        popup.style.left = left + 'px';
+        popup.style.top = top + 'px';
+    }
+
+    // Keep Tab inside an open pop-up (dialog): cycle through its focusable controls.
+    function trapTabIn(popup, e) {
+        if (e.key !== 'Tab') return;
+        const items = Array.from(popup.querySelectorAll('input, textarea, button, a[href], [tabindex="0"]'))
+            .filter(el => !el.disabled && el.offsetParent !== null);
+        if (!items.length) return;
+        const i = items.indexOf(document.activeElement);
+        let next;
+        if (e.shiftKey) next = i <= 0 ? items[items.length - 1] : items[i - 1];
+        else next = i < 0 || i === items.length - 1 ? items[0] : items[i + 1];
+        e.preventDefault();
+        next.focus();
     }
 
     // Pull `[^id]: text` definitions out of markdown (skipping fenced code). A note may
@@ -3863,7 +4206,7 @@ const NodeEditor = (() => {
         ol.innerHTML = items.map((id, i) => {
             const has = Object.prototype.hasOwnProperty.call(_fnDefs, id) && _fnDefs[id] !== '';
             const body = has ? noteInlineEd(_fnDefs[id]) : '<span class="fn-error">[no footnote text yet]</span>';
-            return '<li class="editor-footnote" data-fnid="' + escHtml(id) + '" title="Click to edit this footnote">' +
+            return '<li class="editor-footnote" data-fnid="' + escHtml(id) + '" role="button" tabindex="0" title="Click to edit this footnote">' +
                 '<span class="editor-footnote-n">' + (i + 1) + '</span>' +
                 '<span class="editor-footnote-text">' + body + '</span></li>';
         }).join('');
@@ -3872,13 +4215,21 @@ const NodeEditor = (() => {
     function setupFootnoteList() {
         fnListEl = document.getElementById('edit-footnotes');
         if (!fnListEl) return;
-        fnListEl.addEventListener('click', e => {
-            const li = e.target && e.target.closest && e.target.closest('.editor-footnote');
+        const openFromEntry = li => {
             if (!li || reviewMode) return;
             const id = li.getAttribute('data-fnid') || '';
-            const sel = '.fn-pill[data-fnid="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]';
-            const pill = contentEl.querySelector(sel);
+            const pill = contentEl.querySelector('.fn-pill[data-fnid="' + cssEscape(id) + '"]');
             if (pill) openFootnoteEditor(pill, false, li);
+        };
+        fnListEl.addEventListener('click', e => {
+            openFromEntry(e.target && e.target.closest && e.target.closest('.editor-footnote'));
+        });
+        fnListEl.addEventListener('keydown', e => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const li = e.target && e.target.closest && e.target.closest('.editor-footnote');
+            if (!li) return;
+            e.preventDefault();
+            openFromEntry(li);
         });
     }
 
@@ -3956,7 +4307,7 @@ const NodeEditor = (() => {
     // On the editing surface an equation is an atomic pill (contenteditable=false); in the
     // preview (_fnEd is set while it renders) it is a plain span / div.
     function mathInlineHtml(tex) {
-        return (_fnEd ? '<span class="math-inline"' : '<span class="math-pill" contenteditable="false"') +
+        return (_fnEd ? '<span class="math-inline"' : '<span class="math-pill" contenteditable="false" aria-label="Equation: ' + escAttr(tex) + '"') +
             ' data-tex="' + escAttr(tex) + '">' + renderTex(tex, false) + '</span>';
     }
     function mathBlockHtml(tex) {
@@ -4441,14 +4792,17 @@ const NodeEditor = (() => {
             notes: fields.notes.value || undefined,
             content: readActiveContent(),
             difficulty: fields.difficulty.value || undefined,
-            estimatedTime: fields.time.value || undefined,
-            order: fields.order.value ? parseInt(fields.order.value) : undefined
+            estimatedTime: fields.time.value || undefined
         };
     }
 
     // --- Node loading ---
 
+    const _scrollPos = {};   // per-node centre-panel scroll offset, for this session
+
     function loadNode(nodeId) {
+        const panelCenter = document.getElementById('panel-center');
+        if (panelCenter && loadedNodeId && loadedNodeId !== nodeId) _scrollPos[loadedNodeId] = panelCenter.scrollTop;
         // Leaving a node closes any open review view (its hunks belong to the old node).
         if (reviewMode && loadedNodeId !== nodeId) {
             reviewMode = false;
@@ -4483,7 +4837,6 @@ const NodeEditor = (() => {
         fields.notes.value = node.notes || '';
         fields.difficulty.value = node.difficulty || '';
         fields.time.value = node.estimatedTime || '';
-        fields.order.value = node.order || '';
 
         // In Suggesting mode the surface shows the proposed text (baseline + hunks);
         // otherwise it shows the clean accepted content exactly as before.
@@ -4492,6 +4845,9 @@ const NodeEditor = (() => {
         const surfaceMd = (sHunks && sHunks.length) ? proposedText(baselineContent, sHunks) : (node.content || '');
         setSurfaceFromMarkdown(surfaceMd);
         contentDirty = false;
+        // Land where this node was last left (top for a first visit), not at the previous
+        // node's offset.
+        if (panelCenter) panelCenter.scrollTop = _scrollPos[nodeId] || 0;
 
         renderTags(node.tags || []);
         renderChildren(node.children || []);
@@ -4611,12 +4967,16 @@ const NodeEditor = (() => {
     }
 
     function updateSuggestUI() {
-        if (suggestBtn) suggestBtn.classList.toggle('active', suggestMode);
+        if (suggestBtn) {
+            suggestBtn.classList.toggle('active', suggestMode);
+            suggestBtn.setAttribute('aria-pressed', suggestMode ? 'true' : 'false');
+        }
         if (reviewBtn) {
             const n = currentSuggestions().length;
             reviewBtn.textContent = n ? ('Review (' + n + ')') : 'Review';
             reviewBtn.classList.toggle('active', reviewMode);
             reviewBtn.classList.toggle('has-suggestions', n > 0);
+            reviewBtn.hidden = !suggestMode && n === 0 && !reviewMode;   // nothing to review yet
         }
     }
 
@@ -4855,8 +5215,21 @@ const NodeEditor = (() => {
 
     // --- Rich text toolbar ---
 
+    const TOOLBAR_NAMES = {
+        bold: 'Bold', italic: 'Italic', underline: 'Underline', strikethrough: 'Strikethrough',
+        h2: 'Heading 2', h3: 'Heading 3', ul: 'Bullet list', ol: 'Numbered list', quote: 'Blockquote',
+        example: 'Example block', link: 'Insert link', footnote: 'Insert footnote',
+        equation: 'Insert equation (LaTeX)', code: 'Inline code', paragraph: 'Normal text',
+        hr: 'Horizontal rule', 'suggest-toggle': 'Suggesting mode', review: 'Review suggested changes'
+    };
+
     function setupToolbar() {
-        document.querySelectorAll('.toolbar-btn').forEach(btn => {
+        // Only buttons with an action: the A± menu trigger is handled by setupFormatMenu.
+        const buttons = Array.from(document.querySelectorAll('.toolbar-btn[data-action]'));
+        buttons.forEach(btn => {
+            if (TOOLBAR_NAMES[btn.dataset.action] && !btn.getAttribute('aria-label')) {
+                btn.setAttribute('aria-label', TOOLBAR_NAMES[btn.dataset.action]);
+            }
             btn.addEventListener('mousedown', e => e.preventDefault());
             btn.addEventListener('click', e => {
                 e.preventDefault();
@@ -4866,6 +5239,76 @@ const NodeEditor = (() => {
                 if (action === 'review') { reviewMode ? exitReview() : enterReview(); return; }
                 applyFormat(action);
             });
+        });
+
+        // One Tab stop for the whole toolbar; Left/Right (Home/End) move within it.
+        const bar = document.querySelector('.editor-toolbar');
+        if (bar) {
+            bar.setAttribute('role', 'toolbar');
+            bar.setAttribute('aria-label', 'Formatting');
+            const stops = () => Array.from(bar.querySelectorAll('.toolbar-btn')).filter(b => !b.hidden && b.offsetParent !== null);
+            const setCurrent = cur => stops().forEach(b => b.setAttribute('tabindex', b === cur ? '0' : '-1'));
+            setCurrent(bar.querySelector('.toolbar-btn'));
+            bar.addEventListener('focusin', e => {
+                const b = e.target.closest && e.target.closest('.toolbar-btn');
+                if (b) setCurrent(b);
+            });
+            bar.addEventListener('keydown', e => {
+                const b = e.target.closest && e.target.closest('.toolbar-btn');
+                if (!b) return;
+                const list = stops();
+                const i = list.indexOf(b);
+                let target = null;
+                if (e.key === 'ArrowRight') target = list[(i + 1) % list.length];
+                else if (e.key === 'ArrowLeft') target = list[(i - 1 + list.length) % list.length];
+                else if (e.key === 'Home') target = list[0];
+                else if (e.key === 'End') target = list[list.length - 1];
+                if (target) { e.preventDefault(); setCurrent(target); target.focus(); }
+            });
+        }
+        setupToolbarState();
+    }
+
+    // Buttons reflect the formatting at the caret (bold, italic, heading, list, ...).
+    function setupToolbarState() {
+        const byAction = {};
+        document.querySelectorAll('.toolbar-btn[data-action]').forEach(b => { byAction[b.dataset.action] = b; });
+        const stateButtons = ['bold', 'italic', 'underline', 'strikethrough', 'h2', 'h3', 'quote', 'ul', 'ol', 'example', 'code'];
+        let queued = false;
+        function refresh() {
+            queued = false;
+            const sel = window.getSelection();
+            const inside = sel && sel.rangeCount && contentEl && !contentEl.hidden &&
+                contentEl.contains(sel.getRangeAt(0).commonAncestorContainer);
+            let el = inside ? sel.getRangeAt(0).commonAncestorContainer : null;
+            if (el && el.nodeType === Node.TEXT_NODE) el = el.parentElement;
+            const on = {};
+            if (inside) {
+                try {
+                    on.bold = document.queryCommandState('bold');
+                    on.italic = document.queryCommandState('italic');
+                    on.underline = document.queryCommandState('underline');
+                    on.strikethrough = document.queryCommandState('strikeThrough');
+                } catch (e) { /* unsupported: leave off */ }
+                on.h2 = !!el.closest('h2');
+                on.h3 = !!el.closest('h3');
+                on.quote = !!el.closest('blockquote');
+                on.ul = !!el.closest('ul');
+                on.ol = !!el.closest('ol');
+                on.example = !!el.closest('.example-block');
+                on.code = !!el.closest('code');
+            }
+            stateButtons.forEach(a => {
+                const b = byAction[a];
+                if (!b) return;
+                b.classList.toggle('active', !!on[a]);
+                b.setAttribute('aria-pressed', on[a] ? 'true' : 'false');
+            });
+        }
+        document.addEventListener('selectionchange', () => {
+            if (queued) return;
+            queued = true;
+            requestAnimationFrame(refresh);
         });
     }
 
@@ -4958,6 +5401,8 @@ const NodeEditor = (() => {
             case 'clear':
                 clearFormatting();
                 break;
+            default:
+                return;                       // unknown action: nothing changed, nothing to save
         }
         contentEl.dispatchEvent(new Event('input'));
     }
@@ -5155,21 +5600,42 @@ const NodeEditor = (() => {
         const trigger = document.getElementById('btn-format-more');
         const dropdown = document.getElementById('format-dropdown');
 
-        function close() {
+        trigger.setAttribute('aria-controls', 'format-dropdown');
+        trigger.setAttribute('aria-label', 'More text formatting');
+        const menuItems = () => Array.from(dropdown.querySelectorAll('.dropdown-item, .swatch, input, .inline-confirm'))
+            .filter(el => !el.disabled && el.offsetParent !== null && el.tagName !== 'LABEL');
+        function close(refocus) {
             dropdown.hidden = true;
             trigger.setAttribute('aria-expanded', 'false');
             fmtSavedRange = null;        // never restore a stale selection later
+            if (refocus) trigger.focus();
         }
         function open() {
             saveFmtSelection();          // capture selection before focus can move
             dropdown.hidden = false;
             trigger.setAttribute('aria-expanded', 'true');
+            const first = menuItems()[0];
+            if (first) first.focus();
         }
+        // Arrow keys walk the menu; Escape returns to the trigger; Tab leaves and closes.
+        dropdown.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); return; }
+            if (e.key === 'Tab') { close(false); return; }
+            if (e.target && e.target.type === 'text' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Home' || e.key === 'End')) return;
+            const items = menuItems();
+            const i = items.indexOf(document.activeElement);
+            let target = null;
+            if (e.key === 'ArrowDown') target = items[(i + 1) % items.length];
+            else if (e.key === 'ArrowUp') target = items[(i - 1 + items.length) % items.length];
+            else if (e.key === 'Home') target = items[0];
+            else if (e.key === 'End') target = items[items.length - 1];
+            if (target) { e.preventDefault(); target.focus(); }
+        });
 
         trigger.addEventListener('mousedown', e => e.preventDefault());
         trigger.addEventListener('click', e => {
             e.preventDefault();
-            dropdown.hidden ? open() : close();
+            dropdown.hidden ? open() : close(true);
         });
 
         // Keep the contenteditable selection while clicking inside the menu. Colour and
@@ -5469,6 +5935,18 @@ const NodeEditor = (() => {
 
     function showLinkInput() {
         const sel = window.getSelection();
+        // Caret on or beside an existing link: edit that link instead of inserting another.
+        if (sel.rangeCount && _openLinkPopup) {
+            const range = sel.getRangeAt(0);
+            let host = range.commonAncestorContainer;
+            if (host.nodeType === Node.TEXT_NODE) host = host.parentElement;
+            const existing = (host && host.closest && host.closest('.link-pill')) ||
+                (sel.isCollapsed && (pillBesideCaret(range, 'before') || pillBesideCaret(range, 'after')));
+            if (existing && existing.classList.contains('link-pill') && contentEl.contains(existing)) {
+                _openLinkPopup(existing);
+                return;
+            }
+        }
         if (sel.rangeCount) savedRange = sel.getRangeAt(0).cloneRange();
 
         const form = document.getElementById('link-input-form');
@@ -5512,13 +5990,14 @@ const NodeEditor = (() => {
         a.setAttribute('contenteditable', 'false');
         a.textContent = text;
 
-        // A trailing space gives the caret an editable slot after the atomic pill.
-        const trailing = document.createTextNode(' ');
+        // A trailing space gives the caret an editable slot after the atomic pill, unless
+        // the text already continues with one.
         range.insertNode(a);
-        a.after(trailing);
+        const trailing = spaceFollows(a) ? null : document.createTextNode(' ');
+        if (trailing) a.after(trailing);
 
         const after = document.createRange();
-        after.setStartAfter(trailing);
+        after.setStartAfter(trailing || a);
         after.collapse(true);
         sel.removeAllRanges();
         sel.addRange(after);
@@ -5538,10 +6017,14 @@ const NodeEditor = (() => {
     // the only way to change their text/URL, so the raw markdown is never typed
     // over by hand. The popup lives on <body>, outside the contenteditable, so
     // typing in its inputs never mutates node content directly.
+    let _openLinkPopup = null;   // set by setupLinkPopup: opens the editor for a given pill
+
     function setupLinkPopup() {
         const popup = document.createElement('div');
         popup.className = 'link-popup';
         popup.hidden = true;
+        popup.setAttribute('role', 'dialog');
+        popup.setAttribute('aria-label', 'Edit link');
         popup.innerHTML =
             '<div class="link-popup-title">Edit link</div>' +
             '<div class="link-popup-row"><label for="lp-text">Text</label>' +
@@ -5595,6 +6078,8 @@ const NodeEditor = (() => {
             popup.hidden = true;
             currentPill = null;
         }
+        _openLinkPopup = pill => { cancelHide(); open(pill); pinned = true; textInput.focus(); };
+        popup.addEventListener('keydown', e => trapTabIn(popup, e));
         function hide() { if (!pinned) close(); }
         function scheduleHide() { clearTimeout(hideTimer); hideTimer = setTimeout(hide, 250); }
         function cancelHide() { clearTimeout(hideTimer); }
@@ -5669,6 +6154,8 @@ const NodeEditor = (() => {
 
     let _fnPopupEl = null;
     let _fnPopupPill = null;
+    let _fnPopupIsNew = false;
+    let _fnPopupAnchor = null;
 
     // Smallest positive integer not already used as a footnote id in the surface.
     function nextFootnoteId() {
@@ -5686,6 +6173,11 @@ const NodeEditor = (() => {
         if (!sel.rangeCount) return;
         const range = sel.getRangeAt(0);
         if (!contentEl.contains(range.commonAncestorContainer)) return;
+        // Caret beside an existing footnote: edit it rather than adding a second one.
+        if (sel.isCollapsed) {
+            const beside = pillBesideCaret(range, 'before') || pillBesideCaret(range, 'after');
+            if (beside && beside.classList.contains('fn-pill')) { openFootnoteEditor(beside, false); return; }
+        }
         range.deleteContents();
 
         const id = nextFootnoteId();
@@ -5694,12 +6186,13 @@ const NodeEditor = (() => {
         sup.setAttribute('contenteditable', 'false');
         sup.setAttribute('data-fnid', id);
         sup.textContent = '[?]';
-        const trailing = document.createTextNode(' ');
         range.insertNode(sup);
-        sup.after(trailing);
+        // An editable slot after the atomic pill; not when a space already follows it.
+        const trailing = spaceFollows(sup) ? null : document.createTextNode(' ');
+        if (trailing) sup.after(trailing);
 
         const after = document.createRange();
-        after.setStartAfter(trailing);
+        after.setStartAfter(trailing || sup);
         after.collapse(true);
         sel.removeAllRanges();
         sel.addRange(after);
@@ -5717,23 +6210,47 @@ const NodeEditor = (() => {
         const popup = document.createElement('div');
         popup.className = 'hunk-popup fn-edit-popup';
         popup.hidden = true;
+        popup.setAttribute('role', 'dialog');
+        popup.setAttribute('aria-label', 'Footnote text');
         popup.innerHTML =
             '<div class="hunk-popup-title">Footnote text</div>' +
             '<textarea class="hunk-popup-text" rows="3" aria-label="Footnote text"></textarea>' +
             '<div class="hunk-popup-actions">' +
             '<button type="button" class="hunk-popup-save">Save</button>' +
             '<button type="button" class="fn-popup-remove">Remove</button>' +
-            '</div>';
+            '</div>' +
+            '<div class="eq-popup-hint">Ctrl+Enter saves · Esc cancels · Enter starts a new line</div>';
         document.body.appendChild(popup);
         _fnPopupEl = popup;
         const ta = popup.querySelector('.hunk-popup-text');
 
-        function close() { popup.hidden = true; _fnPopupPill = null; }
-        function save() {
+        // Closing a brand-new footnote that got no text removes its pill (as the equation
+        // pop-up does). refocus: put the caret back in the text after the pill (Escape,
+        // Save); false when the author clicked somewhere else on purpose.
+        function close(refocus) {
+            const pill = _fnPopupPill;
+            const wasNew = _fnPopupIsNew;
+            popup.hidden = true;
+            _fnPopupPill = null;
+            _fnPopupIsNew = false;
+            _fnPopupAnchor = null;
+            if (pill && wasNew && !((_fnDefs[pill.getAttribute('data-fnid') || ''] || '').trim())) {
+                const id = pill.getAttribute('data-fnid') || '';
+                pill.remove();
+                if (!contentEl.querySelector('.fn-pill[data-fnid="' + cssEscape(id) + '"]')) delete _fnDefs[id];
+                renumberFootnotePills();
+                contentDirty = true;
+                contentEl.dispatchEvent(new Event('input'));
+                if (refocus) focusCaretAfter(null);
+            } else if (refocus) {
+                focusCaretAfter(pill);
+            }
+        }
+        function save(refocus) {
             if (!_fnPopupPill) return;
             const id = _fnPopupPill.getAttribute('data-fnid') || '';
             _fnDefs[id] = ta.value;
-            close();
+            close(refocus !== false);
             renderFootnoteList();
             contentDirty = true;
             contentEl.dispatchEvent(new Event('input'));
@@ -5754,14 +6271,16 @@ const NodeEditor = (() => {
             toast('Footnote removed', 'success');
         }
 
-        popup.querySelector('.hunk-popup-save').addEventListener('click', save);
+        popup.querySelector('.hunk-popup-save').addEventListener('click', () => save(true));
         popup.querySelector('.fn-popup-remove').addEventListener('click', remove);
-        ta.addEventListener('keydown', e => {
-            if (e.key === 'Escape') { e.preventDefault(); close(); contentEl.focus(); }
-            else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); }
+        popup.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); return; }
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(true); return; }
+            trapTabIn(popup, e);
         });
 
-        // Click a pill to edit; click elsewhere closes.
+        // Click a pill to edit; a click elsewhere keeps what was typed (saves a non-empty
+        // note, drops an empty new one) and lets the click land where it was aimed.
         contentEl.addEventListener('click', e => {
             const pill = e.target && e.target.closest && e.target.closest('.fn-pill');
             if (pill && contentEl.contains(pill)) { e.preventDefault(); openFootnoteEditor(pill, false); }
@@ -5770,25 +6289,30 @@ const NodeEditor = (() => {
             if (popup.hidden) return;
             if (popup.contains(e.target)) return;
             if (e.target.closest && e.target.closest('.fn-pill, .editor-footnote')) return;
-            close();
+            if (ta.value.trim()) save(false); else close(false);
+        });
+        // Escape closes it from anywhere (focus may have moved out with an outside click).
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && !popup.hidden && !popup.contains(e.target)) close(true);
+        });
+        // The pop-up follows its pill while the centre panel scrolls.
+        const panelCenter = document.getElementById('panel-center');
+        if (panelCenter) panelCenter.addEventListener('scroll', () => {
+            if (!popup.hidden && _fnPopupAnchor) placePopupAt(popup, _fnPopupAnchor);
         });
     }
 
     function openFootnoteEditor(pill, isNew, anchorEl) {
         if (!_fnPopupEl || !pill) return;
         _fnPopupPill = pill;
+        _fnPopupIsNew = !!isNew;
+        _fnPopupAnchor = anchorEl || pill;
         const id = pill.getAttribute('data-fnid') || '';
         const ta = _fnPopupEl.querySelector('.hunk-popup-text');
         ta.value = Object.prototype.hasOwnProperty.call(_fnDefs, id) ? (_fnDefs[id] || '') : '';
         _fnPopupEl.querySelector('.hunk-popup-title').textContent = isNew ? 'New footnote text' : 'Footnote text';
         _fnPopupEl.hidden = false;  // unhide to measure
-        const r = (anchorEl || pill).getBoundingClientRect();
-        const pw = _fnPopupEl.offsetWidth, ph = _fnPopupEl.offsetHeight;
-        const left = Math.max(12, Math.min(r.left, window.innerWidth - pw - 12));
-        let top = r.bottom + 6;
-        if (top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 6);
-        _fnPopupEl.style.left = left + 'px';
-        _fnPopupEl.style.top = top + 'px';
+        placePopupAt(_fnPopupEl, _fnPopupAnchor);
         ta.focus();
     }
 
@@ -5797,6 +6321,7 @@ const NodeEditor = (() => {
     let _eqPopupEl = null;
     let _eqPopupTarget = null;      // the .math-pill / .math-block being edited
     let _eqPopupIsNew = false;
+    let _eqPopupAnchor = null;
 
     function insertEquationAtCursor() {
         if (reviewMode) return;
@@ -5866,6 +6391,8 @@ const NodeEditor = (() => {
         const popup = document.createElement('div');
         popup.className = 'hunk-popup eq-popup';
         popup.hidden = true;
+        popup.setAttribute('role', 'dialog');
+        popup.setAttribute('aria-label', 'Equation (LaTeX)');
         popup.innerHTML =
             '<div class="hunk-popup-title">Equation (LaTeX)</div>' +
             '<textarea class="hunk-popup-text eq-popup-tex" rows="3" spellcheck="false" aria-label="Equation in LaTeX" placeholder="e.g. \\frac{a}{b}, x_{fu}^2, \\alpha"></textarea>' +
@@ -5901,17 +6428,29 @@ const NodeEditor = (() => {
         }
         popup.refresh = refreshPreview;
 
-        function close() {
+        // refocus: put the caret back in the text after the equation (Escape, Save); false
+        // when the author clicked somewhere else on purpose.
+        function close(refocus) {
+            let after = _eqPopupTarget;
             if (_eqPopupTarget && _eqPopupIsNew && !(_eqPopupTarget.getAttribute('data-tex') || '')) {
                 _eqPopupTarget.remove();              // a brand-new equation left empty
+                after = null;
                 contentDirty = true;
                 contentEl.dispatchEvent(new Event('input'));
             }
             popup.hidden = true;
             _eqPopupTarget = null;
             _eqPopupIsNew = false;
+            _eqPopupAnchor = null;
+            if (refocus) focusCaretAfter(after);
         }
-        function save() {
+        function texParses(tex, display) {
+            const k = katexLib();
+            if (!k) return true;
+            try { k.renderToString(tex, { displayMode: !!display, throwOnError: true, trust: false }); return true; }
+            catch (e) { return false; }
+        }
+        function save(refocus) {
             const target = _eqPopupTarget;
             if (!target) return;
             const tex = ta.value.replace(/\r\n?/g, '\n').trim();
@@ -5920,11 +6459,14 @@ const NodeEditor = (() => {
             let el = target;
             if (wantBlock !== target.classList.contains('math-block')) el = convertEquationKind(target, wantBlock);
             el.setAttribute('data-tex', tex);
+            el.setAttribute('aria-label', 'Equation: ' + tex);
             el.classList.remove('math-empty');
             el.innerHTML = renderTex(tex, wantBlock);
             _eqPopupIsNew = false;
             _eqPopupTarget = null;
-            close();
+            popup.hidden = true;
+            _eqPopupAnchor = null;
+            if (refocus !== false) focusCaretAfter(el);
             contentDirty = true;
             contentEl.dispatchEvent(new Event('input'));
             toast('Equation saved', 'success');
@@ -5953,16 +6495,19 @@ const NodeEditor = (() => {
             toast(tex ? 'Equation converted to plain text' : 'Equation removed', 'success');
         }
 
-        popup.querySelector('.hunk-popup-save').addEventListener('click', save);
+        popup.querySelector('.hunk-popup-save').addEventListener('click', () => save(true));
         popup.querySelector('.eq-popup-unwrap').addEventListener('click', unwrap);
         ta.addEventListener('input', refreshPreview);
         dispCb.addEventListener('change', refreshPreview);
-        ta.addEventListener('keydown', e => {
-            if (e.key === 'Escape') { e.preventDefault(); close(); contentEl.focus(); }
-            else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); }
+        popup.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); return; }
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(true); return; }
+            trapTabIn(popup, e);
         });
 
-        // Click an equation to edit it; click elsewhere closes.
+        // Click an equation to edit it. A click elsewhere keeps what was typed: a TeX that
+        // parses is saved, an empty new equation is dropped, and one with an error stays
+        // open (the message is showing) until it is fixed or Escape discards it.
         contentEl.addEventListener('click', e => {
             const el = e.target && e.target.closest && e.target.closest('.math-pill, .math-block');
             if (el && contentEl.contains(el)) { e.preventDefault(); openEquationEditor(el, false); }
@@ -5971,7 +6516,16 @@ const NodeEditor = (() => {
             if (popup.hidden) return;
             if (popup.contains(e.target)) return;
             if (e.target.closest && e.target.closest('.math-pill, .math-block')) return;
-            close();
+            const tex = ta.value.trim();
+            if (!tex) close(false);
+            else if (texParses(tex, dispCb.checked)) save(false);
+        });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && !popup.hidden && !popup.contains(e.target)) close(true);
+        });
+        const panelCenter = document.getElementById('panel-center');
+        if (panelCenter) panelCenter.addEventListener('scroll', () => {
+            if (!popup.hidden && _eqPopupAnchor) placePopupAt(popup, _eqPopupAnchor);
         });
     }
 
@@ -5985,13 +6539,8 @@ const NodeEditor = (() => {
         _eqPopupEl.querySelector('.hunk-popup-title').textContent = isNew ? 'New equation (LaTeX)' : 'Equation (LaTeX)';
         _eqPopupEl.hidden = false;  // unhide to measure
         _eqPopupEl.refresh();
-        const r = el.getBoundingClientRect();
-        const pw = _eqPopupEl.offsetWidth, ph = _eqPopupEl.offsetHeight;
-        const left = Math.max(12, Math.min(r.left, window.innerWidth - pw - 12));
-        let top = r.bottom + 6;
-        if (top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 6);
-        _eqPopupEl.style.left = left + 'px';
-        _eqPopupEl.style.top = top + 'px';
+        _eqPopupAnchor = el;
+        placePopupAt(_eqPopupEl, el);
         ta.focus();
     }
 
@@ -6166,10 +6715,8 @@ const NodeEditor = (() => {
                 if (li) {
                     e.preventDefault();
                     document.execCommand(e.shiftKey ? 'outdent' : 'indent', false);
-                } else {
-                    // Prevent losing focus from content area
-                    e.preventDefault();
                 }
+                // Outside a list Tab is left alone, so focus can move on (no keyboard trap).
             }
         });
 
@@ -6291,7 +6838,7 @@ const NodeEditor = (() => {
 
         container.querySelectorAll('.tag-remove').forEach(btn => {
             btn.addEventListener('click', () => removeTag(btn.dataset.tag));
-            btn.addEventListener('keydown', e => { if (e.key === 'Enter') removeTag(btn.dataset.tag); });
+            btn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); removeTag(btn.dataset.tag); } });
         });
     }
 
@@ -6687,7 +7234,7 @@ const NodeEditor = (() => {
     }
 
     return { init, toast, applyFormat, updatePreview, commitLink, cancelLink, flushContent,
-             toggleSuggestMode, enterReview, exitReview };
+             toggleSuggestMode, enterReview, exitReview, focusContent };
 })();
 
 // ===== js/viewer-template.js =====
@@ -7142,12 +7689,15 @@ const Palette = (() => {
     let currentResults = [];
 
     const commands = [
-        { type: 'cmd', label: 'New File', action: () => document.getElementById('btn-new').click(), hint: 'Ctrl+N' },
+        { type: 'cmd', label: 'New File', action: () => document.getElementById('btn-new').click(), hint: 'Alt+N' },
         { type: 'cmd', label: 'Open File', action: () => document.getElementById('btn-open').click(), hint: 'Ctrl+O' },
         { type: 'cmd', label: 'Save File', action: () => saveFile(), hint: 'Ctrl+S' },
         { type: 'cmd', label: 'Save As…', action: () => saveFileAs(), hint: 'Ctrl+Alt+S' },
-        { type: 'cmd', label: 'Add New Node', action: () => showNewNodeModal(), hint: 'Ctrl+Shift+N' },
-        { type: 'cmd', label: 'Open in Viewer', action: () => openPreview(), hint: 'Ctrl+P' },
+        { type: 'cmd', label: 'Add New Node', action: () => showNewNodeModal(), hint: 'Alt+Shift+N' },
+        { type: 'cmd', label: 'View in reader (new tab)', action: () => openPreview(), hint: 'Ctrl+P' },
+        { type: 'cmd', label: 'Toggle Nodes panel', action: () => App.togglePanel('left'), hint: 'Ctrl+Shift+[' },
+        { type: 'cmd', label: 'Toggle details panel', action: () => App.togglePanel('right'), hint: 'Ctrl+Shift+]' },
+        { type: 'cmd', label: 'Writing view (hide / show both panels)', action: () => App.togglePanel('both'), hint: 'Ctrl+Shift+\\' },
         { type: 'cmd', label: 'Generate PDF…', action: () => PdfExport.open() },
         { type: 'cmd', label: 'Toggle Suggesting Mode', action: () => NodeEditor.toggleSuggestMode(), hint: 'Ctrl+Shift+M' },
         { type: 'cmd', label: 'Review Suggested Changes', action: () => NodeEditor.enterReview() },
@@ -7160,10 +7710,19 @@ const Palette = (() => {
         { type: 'cmd', label: 'Keyboard Shortcuts', action: () => showShortcuts(), hint: '?' },
     ];
 
+    let savedRange = null;     // caret in the text when the palette opened
+    let openerEl = null;       // element focused when the palette opened
+
     function init() {
         paletteEl = document.getElementById('command-palette');
         inputEl = document.getElementById('palette-input');
         resultsEl = document.getElementById('palette-results');
+
+        inputEl.setAttribute('role', 'combobox');
+        inputEl.setAttribute('aria-autocomplete', 'list');
+        inputEl.setAttribute('aria-controls', 'palette-results');
+        inputEl.setAttribute('aria-expanded', 'false');
+        resultsEl.setAttribute('role', 'listbox');
 
         inputEl.addEventListener('input', updateResults);
         inputEl.addEventListener('keydown', handleKeydown);
@@ -7171,7 +7730,15 @@ const Palette = (() => {
     }
 
     function show() {
+        // Remember where the author was: a command such as Insert Footnote acts at the
+        // caret it finds, and opening the palette would otherwise move it.
+        const contentEl = document.getElementById('edit-content');
+        const sel = window.getSelection();
+        savedRange = (contentEl && sel && sel.rangeCount && contentEl.contains(sel.getRangeAt(0).commonAncestorContainer))
+            ? sel.getRangeAt(0).cloneRange() : null;
+        openerEl = document.activeElement;
         paletteEl.hidden = false;
+        inputEl.setAttribute('aria-expanded', 'true');
         inputEl.value = '';
         selectedIndex = 0;
         updateResults();
@@ -7180,6 +7747,10 @@ const Palette = (() => {
 
     function hide() {
         paletteEl.hidden = true;
+        inputEl.setAttribute('aria-expanded', 'false');
+        const back = openerEl;
+        openerEl = null;
+        if (back && back !== document.body && document.contains(back) && typeof back.focus === 'function') back.focus();
     }
 
     function isVisible() {
@@ -7190,12 +7761,7 @@ const Palette = (() => {
         const query = inputEl.value.toLowerCase().trim();
         currentResults = [];
 
-        commands.forEach(cmd => {
-            if (!query || cmd.label.toLowerCase().includes(query)) {
-                currentResults.push(cmd);
-            }
-        });
-
+        // Sections first: hopping between chapters is the common case. Commands follow.
         const allIds = EditorState.getAllNodeIds();
         allIds.forEach(id => {
             const node = EditorState.getNode(id);
@@ -7205,8 +7771,14 @@ const Palette = (() => {
                     type: 'node',
                     label: node.title,
                     hint: id,
-                    action: () => EditorState.selectNode(id)
+                    action: () => { EditorState.selectNode(id); NodeEditor.focusContent(); }
                 });
+            }
+        });
+
+        commands.forEach(cmd => {
+            if (!query || cmd.label.toLowerCase().includes(query)) {
+                currentResults.push(cmd);
             }
         });
 
@@ -7218,12 +7790,15 @@ const Palette = (() => {
         if (selectedIndex < 0) selectedIndex = 0;
 
         resultsEl.innerHTML = currentResults.map((item, i) => `
-            <li class="palette-result ${i === selectedIndex ? 'selected' : ''}" data-index="${i}" role="option">
+            <li class="palette-result ${i === selectedIndex ? 'selected' : ''}" data-index="${i}" id="palette-opt-${i}" role="option" aria-selected="${i === selectedIndex ? 'true' : 'false'}">
                 <span class="result-type">${item.type}</span>
                 <span class="result-label">${item.label}</span>
                 ${item.hint ? `<span class="result-hint">${item.hint}</span>` : ''}
             </li>
         `).join('');
+        inputEl.setAttribute('aria-activedescendant', currentResults.length ? ('palette-opt-' + selectedIndex) : '');
+        const sel = resultsEl.querySelector('.palette-result.selected');
+        if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: 'nearest' });
 
         resultsEl.querySelectorAll('.palette-result').forEach(el => {
             el.addEventListener('click', () => executeResult(parseInt(el.dataset.index)));
@@ -7250,14 +7825,25 @@ const Palette = (() => {
     function executeResult(index) {
         const item = currentResults[index];
         if (item && item.action) {
+            const range = savedRange;
+            savedRange = null;
             hide();
+            // Restore the caret the author had in the text before the command runs.
+            if (range) {
+                const contentEl = document.getElementById('edit-content');
+                if (contentEl && contentEl.contains(range.commonAncestorContainer)) {
+                    contentEl.focus();
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+            }
             item.action();
         }
     }
 
     function switchTab(tabName) {
-        document.querySelectorAll('.panel-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === `tab-${tabName}`));
+        App.activateTab(tabName);
     }
 
     return { init, show, hide, isVisible, switchTab };
@@ -7374,8 +7960,7 @@ function showNewNodeModal(forceAsChild) {
     titleInput.value = '';
     idInput.value = '';
     checkbox.checked = forceAsChild === true || !!EditorState.getSelectedNode();
-    modal.hidden = false;
-    requestAnimationFrame(() => titleInput.focus());
+    App.openModal(modal, titleInput);
 
     // Auto-generate ID from title
     titleInput.oninput = () => {
@@ -7420,8 +8005,9 @@ function createNewNode() {
     }
 
     EditorState.selectNode(id);
-    document.getElementById('new-node-modal').hidden = true;
+    App.closeModal(document.getElementById('new-node-modal'));
     NodeEditor.toast(`"${title}" created`, 'success');
+    NodeEditor.focusContent();   // start writing at once
 }
 
 function openPreview(opts) {
@@ -7458,7 +8044,8 @@ function openPreview(opts) {
 }
 
 function showShortcuts() {
-    document.getElementById('shortcuts-modal').hidden = false;
+    const modal = document.getElementById('shortcuts-modal');
+    App.openModal(modal, document.getElementById('shortcuts-close'));
 }
 
 // ===== js/graph.js =====
@@ -7477,11 +8064,16 @@ const Graph = (() => {
         canvas = document.getElementById('graph-canvas');
         ctx = canvas.getContext('2d');
 
-        EditorState.on('file-loaded', scheduleRender);
-        EditorState.on('node-added', scheduleRender);
-        EditorState.on('node-deleted', scheduleRender);
-        EditorState.on('node-updated', scheduleRender);
-        EditorState.on('node-selected', scheduleRender);
+        // Render only while the Graph tab is showing; opening the tab renders afresh.
+        const whenVisible = () => {
+            const tab = document.getElementById('tab-graph');
+            if (!tab || tab.classList.contains('active')) scheduleRender();
+        };
+        EditorState.on('file-loaded', whenVisible);
+        EditorState.on('node-added', whenVisible);
+        EditorState.on('node-deleted', whenVisible);
+        EditorState.on('node-updated', whenVisible);
+        EditorState.on('node-selected', whenVisible);
 
         document.querySelectorAll('.panel-tab').forEach(tab => {
             tab.addEventListener('click', () => {
@@ -7747,10 +8339,10 @@ const App = (() => {
     function confirmUnsavedChanges(onDiscard) {
         if (!EditorState.isDirty()) { onDiscard(); return; }
         const modal = document.getElementById('unsaved-modal');
-        modal.hidden = false;
+        openModal(modal, document.getElementById('unsaved-save'));
 
         const cleanup = () => {
-            modal.hidden = true;
+            closeModal(modal);
             saveBtn.removeEventListener('click', handleSave);
             discardBtn.removeEventListener('click', handleDiscard);
             cancelBtn.removeEventListener('click', handleCancel);
@@ -7861,18 +8453,20 @@ const App = (() => {
 
     function setupKeyboard() {
         document.addEventListener('keydown', e => {
+            const key = (e.key || '').toLowerCase();   // Caps Lock must not disable shortcuts
+
             // Escape closes things in priority order
             if (e.key === 'Escape') {
                 if (Palette.isVisible()) { Palette.hide(); return; }
                 const modals = document.querySelectorAll('.modal:not([hidden])');
-                if (modals.length) { modals.forEach(m => m.hidden = true); return; }
+                if (modals.length) { modals.forEach(m => closeModal(m)); return; }
                 // Close inline forms
                 document.querySelectorAll('.inline-add-form:not([hidden])').forEach(f => f.hidden = true);
                 return;
             }
 
             // Command palette
-            if (e.ctrlKey && e.key === 'k') {
+            if (e.ctrlKey && !e.altKey && key === 'k') {
                 e.preventDefault();
                 if (Palette.isVisible()) Palette.hide();
                 else Palette.show();
@@ -7880,50 +8474,62 @@ const App = (() => {
             }
 
             // Don't intercept shortcuts when a modal is open
-            if (document.querySelector('.modal:not([hidden])')) {
-                // Enter in new node modal creates the node
-                if (e.key === 'Enter' && !document.getElementById('new-node-modal').hidden) {
+            const openDialog = document.querySelector('.modal:not([hidden])');
+            if (openDialog) {
+                // Enter in the new-node title or id field creates the node (not on Cancel)
+                if (e.key === 'Enter' && e.target && e.target.matches && e.target.matches('#new-node-title, #new-node-id')) {
                     e.preventDefault();
                     createNewNode();
+                    return;
                 }
+                if (e.key === 'Tab') trapTabInModal(openDialog, e);
                 return;
             }
 
             // Undo (only global undo when NOT in contenteditable)
-            if (e.ctrlKey && e.key === 'z' && !isInputFocused()) {
+            if (e.ctrlKey && !e.altKey && key === 'z' && !isInputFocused()) {
                 e.preventDefault();
                 EditorState.undo();
                 return;
             }
 
+            // Panels: Ctrl+Shift+[ nodes, Ctrl+Shift+] details, Ctrl+Shift+\ both (writing view)
+            if (e.ctrlKey && e.shiftKey && !e.altKey && (e.code === 'BracketLeft' || e.code === 'BracketRight' || e.code === 'Backslash')) {
+                e.preventDefault();
+                togglePanel(e.code === 'BracketLeft' ? 'left' : e.code === 'BracketRight' ? 'right' : 'both');
+                return;
+            }
+
             // File operations
-            if (e.ctrlKey && e.altKey && (e.key === 's' || e.key === 'S')) {   // Ctrl+Alt+S = Save As
+            if (e.ctrlKey && e.altKey && key === 's') {   // Ctrl+Alt+S = Save As
                 e.preventDefault();
                 saveFileAs();
                 return;
             }
-            if (e.ctrlKey && e.key === 's') {
+            if (e.ctrlKey && !e.altKey && key === 's') {
                 e.preventDefault();
                 saveFile();
             }
-            if (e.ctrlKey && e.key === 'o' && !e.shiftKey) {
+            if (e.ctrlKey && !e.altKey && key === 'o' && !e.shiftKey) {
                 e.preventDefault();
                 confirmUnsavedChanges(() => openFile());
             }
-            if (e.ctrlKey && e.key === 'n' && !e.shiftKey) {
+            // Alt+N / Alt+Shift+N: Ctrl+N and Ctrl+Shift+N are reserved by Chromium browsers
+            // (new window / incognito) and never reach the page.
+            if (e.altKey && !e.ctrlKey && key === 'n' && !e.shiftKey) {
                 e.preventDefault();
                 confirmUnsavedChanges(() => EditorState.newFile());
             }
-            if (e.ctrlKey && e.shiftKey && (e.key === 'N' || e.key === 'n')) {
+            if (e.altKey && !e.ctrlKey && e.shiftKey && key === 'n') {
                 e.preventDefault();
                 showNewNodeModal();
             }
-            if (e.ctrlKey && e.shiftKey && (e.key === 'M' || e.key === 'm')) {
+            if (e.ctrlKey && !e.altKey && e.shiftKey && key === 'm') {
                 e.preventDefault();
                 NodeEditor.toggleSuggestMode();
                 return;
             }
-            if (e.ctrlKey && e.key === 'p') {
+            if (e.ctrlKey && !e.altKey && key === 'p') {
                 e.preventDefault();
                 openPreview();
             }
@@ -7936,41 +8542,106 @@ const App = (() => {
         });
     }
 
+    // Right-panel tabs: one activator for clicks, the palette and arrow keys, keeping the
+    // tab/tabpanel states in step.
+    function activateTab(tabName, focusTab) {
+        const tabs = Array.from(document.querySelectorAll('.panel-tab'));
+        if (!tabs.some(t => t.dataset.tab === tabName)) return;
+        tabs.forEach(t => {
+            const on = t.dataset.tab === tabName;
+            t.classList.toggle('active', on);
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+            t.setAttribute('tabindex', on ? '0' : '-1');
+            if (on && focusTab) t.focus();
+        });
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === `tab-${tabName}`));
+    }
+
     function setupTabs() {
-        document.querySelectorAll('.panel-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+        const tabs = Array.from(document.querySelectorAll('.panel-tab'));
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => activateTab(tab.dataset.tab));
+            tab.addEventListener('keydown', e => {
+                const i = tabs.indexOf(tab);
+                let next = null;
+                if (e.key === 'ArrowRight') next = tabs[(i + 1) % tabs.length];
+                else if (e.key === 'ArrowLeft') next = tabs[(i - 1 + tabs.length) % tabs.length];
+                else if (e.key === 'Home') next = tabs[0];
+                else if (e.key === 'End') next = tabs[tabs.length - 1];
+                if (next) { e.preventDefault(); activateTab(next.dataset.tab, true); }
             });
         });
+        const current = tabs.find(t => t.classList.contains('active')) || tabs[0];
+        if (current) activateTab(current.dataset.tab);
+    }
+
+    // Modals as dialogs: focus moves in, stays in (Tab wraps), and returns on close.
+    const modalOpeners = new WeakMap();
+    function openModal(modal, first) {
+        if (!modal) return;
+        modalOpeners.set(modal, document.activeElement);
+        modal.hidden = false;
+        const target = first || modal.querySelector('input, textarea, select, button');
+        if (target) requestAnimationFrame(() => target.focus());
+    }
+    function closeModal(modal) {
+        if (!modal || modal.hidden) return;
+        modal.hidden = true;
+        const back = modalOpeners.get(modal);
+        modalOpeners.delete(modal);
+        if (back && back !== document.body && document.contains(back) && typeof back.focus === 'function') back.focus();
+    }
+    function trapTabInModal(modal, e) {
+        const items = Array.from(modal.querySelectorAll('.modal-content input, .modal-content textarea, .modal-content select, .modal-content button, .modal-content a[href]'))
+            .filter(el => !el.disabled && el.offsetParent !== null);
+        if (!items.length) return;
+        const i = items.indexOf(document.activeElement);
+        let next;
+        if (e.shiftKey) next = i <= 0 ? items[items.length - 1] : items[i - 1];
+        else next = i < 0 || i === items.length - 1 ? items[0] : items[i + 1];
+        e.preventDefault();
+        next.focus();
     }
 
     function setupModals() {
         // Shortcuts modal
         document.getElementById('btn-shortcuts').addEventListener('click', showShortcuts);
         document.getElementById('shortcuts-close').addEventListener('click', () => {
-            document.getElementById('shortcuts-modal').hidden = true;
+            closeModal(document.getElementById('shortcuts-modal'));
         });
 
         // New node modal
         document.getElementById('new-node-create').addEventListener('click', createNewNode);
         document.getElementById('new-node-cancel').addEventListener('click', () => {
-            document.getElementById('new-node-modal').hidden = true;
+            closeModal(document.getElementById('new-node-modal'));
         });
 
         // Close modals on backdrop click
         document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
             backdrop.addEventListener('click', () => {
-                backdrop.closest('.modal').hidden = true;
+                closeModal(backdrop.closest('.modal'));
             });
         });
     }
 
+    const panelControls = {};   // panelId -> { toggle, setCollapsed, isCollapsed }
+
     function setupResize() {
         setupResizeHandle('resize-left', 'panel-left', 160, 350, false, 'collapse-left', 'Nodes');
-        setupResizeHandle('resize-right', 'panel-right', 200, 400, true, 'collapse-right', 'properties');
+        setupResizeHandle('resize-right', 'panel-right', 220, 520, true, 'collapse-right', 'details');
+    }
+
+    // 'left' / 'right' toggle one panel; 'both' gives a full-width writing view and back.
+    function togglePanel(which) {
+        const left = panelControls['panel-left'];
+        const right = panelControls['panel-right'];
+        if (which === 'left' && left) left.toggle();
+        else if (which === 'right' && right) right.toggle();
+        else if (which === 'both' && left && right) {
+            const anyOpen = !left.isCollapsed() || !right.isCollapsed();
+            left.setCollapsed(anyOpen);
+            right.setCollapsed(anyOpen);
+        }
     }
 
     function savePanelCollapsed(panelId, collapsed) {
@@ -8048,6 +8719,7 @@ const App = (() => {
         }
 
         function toggle() { setCollapsed(!panel.classList.contains('collapsed')); }
+        panelControls[panelId] = { toggle, setCollapsed, isCollapsed: () => panel.classList.contains('collapsed') };
 
         // Double-clicking the bar (but not the button itself) toggles collapse.
         handle.addEventListener('dblclick', e => {
@@ -8178,7 +8850,7 @@ const App = (() => {
     });
 
     document.addEventListener('DOMContentLoaded', init);
-    return {};
+    return { activateTab, togglePanel, openModal, closeModal };
 })();
 
     </script>
