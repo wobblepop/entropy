@@ -233,6 +233,11 @@
                     <div id="edit-content" class="editor-content" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Node content" data-placeholder="Start writing your content here..."></div>
                     <!-- Read-only track-changes review surface (shown instead of #edit-content during review) -->
                     <div id="review-content" class="editor-content review-content" hidden aria-label="Suggested changes review"></div>
+                    <!-- The node's footnote texts, in number order; click one to edit it -->
+                    <div id="edit-footnotes" class="editor-footnotes" hidden aria-label="Footnotes">
+                        <div class="editor-footnotes-title">Footnotes <span class="editor-footnotes-hint">click a note to edit it</span></div>
+                        <ol></ol>
+                    </div>
                 </div>
 
                 <!-- Private author notes (never shown to readers or in the PDF) -->

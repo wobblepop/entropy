@@ -45,6 +45,7 @@ const NodeEditor = (() => {
         setupContentEditor();
         setupLinkPopup();
         setupFootnotePopup();
+        setupFootnoteList();
         setupEquationPopup();
         setupSuggestUI();
         setupTags();
@@ -189,7 +190,47 @@ const NodeEditor = (() => {
             if (n === undefined) { n = next++; seen[id] = n; }
             pill.textContent = '[' + n + ']';
         });
+        renderFootnoteList();
         return next - 1;
+    }
+
+    // The note texts themselves, listed under the editing surface in pill order, so a
+    // footnote can be read in the text view without opening it (a pill alone shows only
+    // its number). Clicking an entry opens the same editor the pill does. Hidden when the
+    // node has no footnotes.
+    let fnListEl = null;
+    function renderFootnoteList() {
+        if (!fnListEl) return;
+        const ol = fnListEl.querySelector('ol');
+        const seen = {};
+        const items = [];
+        contentEl.querySelectorAll('.fn-pill').forEach(pill => {
+            const id = pill.getAttribute('data-fnid') || '';
+            if (seen[id]) return;
+            seen[id] = true;
+            items.push(id);
+        });
+        if (!items.length) { ol.innerHTML = ''; fnListEl.hidden = true; return; }
+        ol.innerHTML = items.map((id, i) => {
+            const has = Object.prototype.hasOwnProperty.call(_fnDefs, id) && _fnDefs[id] !== '';
+            const body = has ? noteInlineEd(_fnDefs[id]) : '<span class="fn-error">[no footnote text yet]</span>';
+            return '<li class="editor-footnote" data-fnid="' + escHtml(id) + '" title="Click to edit this footnote">' +
+                '<span class="editor-footnote-n">' + (i + 1) + '</span>' +
+                '<span class="editor-footnote-text">' + body + '</span></li>';
+        }).join('');
+        fnListEl.hidden = false;
+    }
+    function setupFootnoteList() {
+        fnListEl = document.getElementById('edit-footnotes');
+        if (!fnListEl) return;
+        fnListEl.addEventListener('click', e => {
+            const li = e.target && e.target.closest && e.target.closest('.editor-footnote');
+            if (!li || reviewMode) return;
+            const id = li.getAttribute('data-fnid') || '';
+            const sel = '.fn-pill[data-fnid="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]';
+            const pill = contentEl.querySelector(sel);
+            if (pill) openFootnoteEditor(pill, false, li);
+        });
     }
 
     // Whitelist filter for inline style attributes that we persist as raw HTML in the
@@ -838,7 +879,12 @@ const NodeEditor = (() => {
             el.addEventListener('change', scheduleSave);
         });
 
-        contentEl.addEventListener('input', () => { contentDirty = true; scheduleSave(); });
+        contentEl.addEventListener('input', () => {
+            contentDirty = true;
+            scheduleSave();
+            // A pill may have been deleted or pasted back: keep numbers and the list current.
+            if (fnListEl && (contentEl.querySelector('.fn-pill') || !fnListEl.hidden)) renumberFootnotePills();
+        });
     }
 
     function flushContent() {
@@ -2038,6 +2084,7 @@ const NodeEditor = (() => {
             const id = _fnPopupPill.getAttribute('data-fnid') || '';
             _fnDefs[id] = ta.value;
             close();
+            renderFootnoteList();
             contentDirty = true;
             contentEl.dispatchEvent(new Event('input'));
             toast('Footnote saved', 'success');
@@ -2072,12 +2119,12 @@ const NodeEditor = (() => {
         document.addEventListener('mousedown', e => {
             if (popup.hidden) return;
             if (popup.contains(e.target)) return;
-            if (e.target.closest && e.target.closest('.fn-pill')) return;
+            if (e.target.closest && e.target.closest('.fn-pill, .editor-footnote')) return;
             close();
         });
     }
 
-    function openFootnoteEditor(pill, isNew) {
+    function openFootnoteEditor(pill, isNew, anchorEl) {
         if (!_fnPopupEl || !pill) return;
         _fnPopupPill = pill;
         const id = pill.getAttribute('data-fnid') || '';
@@ -2085,7 +2132,7 @@ const NodeEditor = (() => {
         ta.value = Object.prototype.hasOwnProperty.call(_fnDefs, id) ? (_fnDefs[id] || '') : '';
         _fnPopupEl.querySelector('.hunk-popup-title').textContent = isNew ? 'New footnote text' : 'Footnote text';
         _fnPopupEl.hidden = false;  // unhide to measure
-        const r = pill.getBoundingClientRect();
+        const r = (anchorEl || pill).getBoundingClientRect();
         const pw = _fnPopupEl.offsetWidth, ph = _fnPopupEl.offsetHeight;
         const left = Math.max(12, Math.min(r.left, window.innerWidth - pw - 12));
         let top = r.bottom + 6;
