@@ -64,7 +64,7 @@ Schema: `shared/schema.json`
 - `js/state.js` — editor state with dirty tracking
 - `js/tree.js` — left panel node tree
 - `js/editor.js` — center panel node editing
-- `js/pdf-export.js` — "Generate PDF": checkbox picker of every section (ticking one ticks its sub-sections; any tick, the heading included, can be removed); POSTs the book snapshot + ticked ids to the local PDF service and saves the returned PDF (save picker, or a download) as `<book> - <selection>.pdf`; checks `GET /health` when opened and says how to start the service when it is down
+- `js/pdf-export.js` — "Generate PDF": checkbox picker of every section (ticking one ticks its sub-sections; any tick, the heading included, can be removed); asks where to save first (the browser only allows the save picker within a few seconds of the click), POSTs the book snapshot + ticked ids to the local PDF service, writes the returned PDF to that file and verifies the size on disk (a failed write removes the empty placeholder and sends the PDF to Downloads instead, saying why), or downloads it when no picker is available, as `<book> - <selection>.pdf`; checks `GET /health` when opened and says how to start the service when it is down
 - `js/palette.js` — Ctrl+K command palette
 - `js/graph.js` — canvas-based relationship visualizer
 - `js/app.js` — entry point, keyboard shortcuts, file I/O

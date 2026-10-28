@@ -7679,24 +7679,25 @@ const PdfExport = (() => {
 
     // --- generating through the local service ---
 
-    // Write the PDF where the author chooses (File System Access API), or hand it
-    // to the browser as a download. Returns 'saved' | 'downloaded' | 'cancelled'.
-    async function saveBlob(blob, filename) {
-        if (typeof window.showSaveFilePicker === 'function') {
-            try {
-                const handle = await window.showSaveFilePicker({
-                    suggestedName: filename,
-                    types: [{ description: 'PDF document', accept: { 'application/pdf': ['.pdf'] } }]
-                });
-                const writable = await handle.createWritable();
-                await writable.write(blob);
-                await writable.close();
-                return 'saved';
-            } catch (err) {
-                if (err && err.name === 'AbortError') return 'cancelled';
-                // Picker unavailable or refused (e.g. a blocked location): fall back to a download.
-            }
+    // Ask where the PDF should go BEFORE rendering: the browser only shows the save
+    // picker within a few seconds of the click, and a long render used to exhaust that,
+    // so the picker was refused and the file silently went to Downloads. Returns the
+    // file handle, null when the picker is unavailable or refused (download later), or
+    // 'cancelled' when the author closed the dialog.
+    async function chooseDestination(filename) {
+        if (typeof window.showSaveFilePicker !== 'function') return null;
+        try {
+            return await window.showSaveFilePicker({
+                suggestedName: filename,
+                types: [{ description: 'PDF document', accept: { 'application/pdf': ['.pdf'] } }]
+            });
+        } catch (err) {
+            if (err && err.name === 'AbortError') return 'cancelled';
+            return null;
         }
+    }
+
+    function downloadBlob(blob, filename) {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -7705,7 +7706,25 @@ const PdfExport = (() => {
         a.click();
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 60000);
-        return 'downloaded';
+    }
+
+    // Write the PDF to the chosen file and verify it landed in full. On any failure the
+    // empty placeholder the dialog created is removed where the browser allows it, and
+    // the PDF goes to Downloads instead, with the reason in the toast.
+    async function writeToHandle(handle, blob) {
+        let reason = '';
+        try {
+            const writable = await handle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            const file = await handle.getFile();
+            if (file.size !== blob.size) reason = 'the file on disk is ' + file.size + ' bytes, expected ' + blob.size;
+        } catch (err) {
+            reason = (err && err.message) ? err.message : String(err);
+        }
+        if (!reason) return '';
+        try { if (typeof handle.remove === 'function') await handle.remove(); } catch (e) { /* leave it */ }
+        return reason;
     }
 
     async function save() {
@@ -7714,17 +7733,24 @@ const PdfExport = (() => {
         if (busy) return;
         const ticked = tickedIds();
         if (!expandSelection(live, ticked, false).length) { toast('Tick at least one section', 'error'); return; }
-        if (serviceState !== 'ready') { toast('The PDF service is not running — start it, then Retry', 'error'); return; }
+        if (serviceState !== 'ready' && serviceState !== 'stale') { toast('The PDF service is not running — start it, then Retry', 'error'); return; }
 
         NodeEditor.flushContent();
         const data = EditorState.getExportData();
         const filename = titleForSelection(data, ticked) + '.pdf';
+
+        // Destination first, while the click still counts as a user gesture.
+        const handle = await chooseDestination(filename);
+        if (handle === 'cancelled') { toast('Save cancelled — no PDF was generated', 'info'); return; }
+        const target = handle ? (handle.name || filename) : filename;
+
         const url = serviceUrl();
         const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
         const timer = ctrl ? setTimeout(() => ctrl.abort(), RENDER_TIMEOUT_MS) : null;
 
         setBusy(true);
-        toast('Generating PDF… (a few seconds per pass)', 'info');
+        close();
+        toast('Generating ' + target + '… (a few seconds per pass)', 'info');
         try {
             const res = await fetch(url + '/pdf', {
                 method: 'POST',
@@ -7734,15 +7760,24 @@ const PdfExport = (() => {
             });
             if (!res.ok) {
                 toast(errorFromResponse(res.status, await res.text()), 'error');
+                if (handle) { try { if (typeof handle.remove === 'function') await handle.remove(); } catch (e) { /* leave it */ } }
                 return;
             }
             const blob = await res.blob();
-            if (!blob || !blob.size) { toast('PDF service returned an empty file', 'error'); return; }
-            close();
-            const how = await saveBlob(blob, filename);
-            if (how === 'saved') toast('PDF saved: ' + filename, 'success');
-            else if (how === 'downloaded') toast('PDF downloaded: ' + filename, 'success');
-            else toast('Save cancelled — the PDF was not written', 'info');
+            if (!blob || !blob.size) {
+                toast('PDF service returned an empty file', 'error');
+                if (handle) { try { if (typeof handle.remove === 'function') await handle.remove(); } catch (e) { /* leave it */ } }
+                return;
+            }
+            if (handle) {
+                const problem = await writeToHandle(handle, blob);
+                if (!problem) { toast('PDF saved: ' + target + ' (' + Math.round(blob.size / 1024) + ' KB)', 'success'); return; }
+                downloadBlob(blob, filename);
+                toast('Could not write ' + target + ' (' + problem + '); the PDF went to your Downloads folder as ' + filename, 'error');
+                return;
+            }
+            downloadBlob(blob, filename);
+            toast('PDF downloaded: ' + filename + ' (the browser offered no save dialog)', 'success');
         } catch (err) {
             const aborted = err && err.name === 'AbortError';
             toast(aborted ? 'PDF generation timed out' : ('Could not reach the PDF service: ' + (err && err.message ? err.message : err)), 'error');
