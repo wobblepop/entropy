@@ -58,6 +58,7 @@ const NodeEditor = (() => {
         setupFootnotePopup();
         setupFootnoteList();
         setupEquationPopup();
+        loadJustify();
         setupSuggestUI();
         setupTags();
         setupChildren();
@@ -122,6 +123,32 @@ const NodeEditor = (() => {
     function spaceFollows(el) {
         const n = el.nextSibling;
         return !!(n && n.nodeType === Node.TEXT_NODE && /^[  	]/.test(n.data));
+    }
+
+    // Justified text: an editor display preference (surface + preview), remembered per
+    // browser. Content and exports are untouched.
+    const JUSTIFY_KEY = 'entropy-editor-justify';
+    let justified = false;
+    function applyJustify(on, persist) {
+        justified = !!on;
+        contentEl.classList.toggle('justified', justified);
+        if (reviewEl) reviewEl.classList.toggle('justified', justified);
+        const pv = document.getElementById('preview-pane');
+        if (pv) pv.classList.toggle('justified', justified);
+        const item = document.querySelector('[data-action="justify-toggle"]');
+        if (item) item.setAttribute('aria-checked', justified ? 'true' : 'false');
+        if (persist) {
+            try { localStorage.setItem(JUSTIFY_KEY, justified ? '1' : '0'); } catch (e) { /* session only */ }
+        }
+    }
+    function toggleJustify() {
+        applyJustify(!justified, true);
+        toast(justified ? 'Text justified (this editor only)' : 'Text left-aligned', 'info');
+    }
+    function loadJustify() {
+        let on = false;
+        try { on = localStorage.getItem(JUSTIFY_KEY) === '1'; } catch (e) { /* default */ }
+        applyJustify(on, false);
     }
 
     // Focus the text with the caret right after an element on the surface (or at the
@@ -1393,6 +1420,10 @@ const NodeEditor = (() => {
     }
 
     function applyFormat(action, value) {
+        // Layout preferences: change how the text is shown, never the text itself.
+        if (action === 'justify-toggle') { toggleJustify(); return; }
+        if (action === 'column-reset') { App.setColumnWidth(null); return; }
+        if (action === 'column-fill') { App.setColumnWidth(Infinity); return; }
         if (reviewMode) return;  // editing surface is hidden during review
         contentEl.focus();
         switch (action) {

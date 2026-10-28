@@ -3,11 +3,44 @@
    Rich text, inline forms, tags, links
    ============================================ */
 
-/* Node editor layout */
+/* Node editor layout: a centred column whose width the author sets (see --column-width). */
 .node-editor {
-    max-width: 800px;
+    position: relative;
+    max-width: var(--column-width);
     margin: 0 auto;
 }
+
+/* Column edge handles: drag to widen or narrow the column (both edges move, the column
+   stays centred); double-click resets; Left/Right, Home, End work from the keyboard. */
+.column-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 12px;
+    cursor: col-resize;
+    opacity: 0;
+    z-index: 20;
+    transition: opacity var(--transition);
+}
+.column-handle.left { left: -16px; }
+.column-handle.right { right: -16px; }
+.column-handle::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 5px;
+    width: 2px;
+    border-radius: 1px;
+    background: var(--accent);
+}
+.node-editor:hover .column-handle, .column-handle:focus-visible { opacity: 0.45; }
+.column-handle:hover, .column-handle.active { opacity: 1; }
+.column-handle:focus-visible { outline: none; }
+
+/* Justified text is a display preference of this editor (and its preview), not content. */
+.editor-content.justified, .preview-pane.justified { text-align: justify; }
+.dropdown-item[aria-checked="true"] { color: var(--accent); }
 
 /* Node id (read-only) and the Created/Edited stamps live in the right panel's Node tab */
 .id-input {
@@ -1270,9 +1303,7 @@
 .hunk-popup-cancel:hover { color: var(--text); }
 
 /* ---- Review round 2: alignment, consistency, focus, hit targets ---- */
-/* Body text keeps a readable measure inside the full-width surface. */
-.editor-content > * { max-width: 74ch; }
-.editor-content > .math-block { max-width: none; }
+/* The measure follows the column width the author chooses (no fixed character cap). */
 /* Focus on the writing surface: one inset accent line (the caret does the rest). */
 .editor-content:focus-visible { box-shadow: inset 0 0 0 1px var(--accent); }
 /* Suggest / Review sit apart from the formatting commands. */

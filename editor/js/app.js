@@ -17,6 +17,7 @@ const App = (() => {
         setupResize();
         setupDirtyIndicator();
         setupMeta();
+        setupColumnWidth();
         setupAutosave();
     }
 
@@ -315,6 +316,95 @@ const App = (() => {
         setupResizeHandle('resize-right', 'panel-right', 220, 520, true, 'collapse-right', 'details');
     }
 
+    // Writing column width: a CSS custom property, set by dragging the column's edge
+    // handles (both edges move, the column stays centred), by the A± menu or the palette,
+    // and remembered per browser. Bounded by a readable minimum and the centre panel.
+    const COLUMN_KEY = 'entropy-editor-column-width';
+    const COLUMN_DEFAULT = 800;
+    const COLUMN_MIN = 480;
+    let columnRequested = COLUMN_DEFAULT;
+
+    function columnMax() {
+        const panel = document.getElementById('panel-center');
+        return panel ? Math.max(COLUMN_MIN, panel.clientWidth - 40) : 4000;
+    }
+
+    // width: a number of px, null for the default, Infinity to fill the panel.
+    function setColumnWidth(width, persist = true) {
+        let w = (width === null || width === undefined) ? COLUMN_DEFAULT : Number(width);
+        if (!isFinite(w)) w = columnMax();
+        if (isNaN(w)) w = COLUMN_DEFAULT;
+        columnRequested = Math.round(Math.max(COLUMN_MIN, w));
+        const applied = Math.min(columnRequested, columnMax());
+        document.documentElement.style.setProperty('--column-width', applied + 'px');
+        if (persist) {
+            try { localStorage.setItem(COLUMN_KEY, String(columnRequested)); } catch (e) { /* session only */ }
+        }
+        return applied;
+    }
+
+    function setupColumnWidth() {
+        const editor = document.getElementById('node-editor');
+        if (!editor) return;
+        let saved = COLUMN_DEFAULT;
+        try {
+            const v = parseInt(localStorage.getItem(COLUMN_KEY), 10);
+            if (v >= COLUMN_MIN) saved = v;
+        } catch (e) { /* default */ }
+        setColumnWidth(saved, false);
+        window.addEventListener('resize', () => setColumnWidth(columnRequested, false));
+
+        ['left', 'right'].forEach(side => {
+            const handle = document.createElement('div');
+            handle.className = 'column-handle ' + side;
+            handle.title = 'Drag to change the column width · double-click for the default';
+            handle.setAttribute('role', 'separator');
+            handle.setAttribute('aria-orientation', 'vertical');
+            handle.setAttribute('aria-label', 'Column width (Left/Right adjust, Home default, End fill)');
+            handle.tabIndex = 0;
+            editor.appendChild(handle);
+
+            let startX = 0, startWidth = 0;
+            const sign = side === 'left' ? -1 : 1;
+            function onMove(ev) {
+                setColumnWidth(startWidth + (ev.clientX - startX) * 2 * sign, false);
+            }
+            function onUp() {
+                handle.classList.remove('active');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                setColumnWidth(editor.getBoundingClientRect().width, true);
+            }
+            handle.addEventListener('mousedown', e => {
+                e.preventDefault();
+                startX = e.clientX;
+                startWidth = editor.getBoundingClientRect().width;
+                handle.classList.add('active');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            });
+            handle.addEventListener('dblclick', () => setColumnWidth(null));
+            handle.addEventListener('keydown', e => {
+                const current = editor.getBoundingClientRect().width;
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    const step = (e.key === 'ArrowRight' ? 40 : -40) * sign;
+                    setColumnWidth(current + step);
+                } else if (e.key === 'Home') {
+                    e.preventDefault();
+                    setColumnWidth(null);
+                } else if (e.key === 'End') {
+                    e.preventDefault();
+                    setColumnWidth(Infinity);
+                }
+            });
+        });
+    }
+
     // 'left' / 'right' toggle one panel; 'both' gives a full-width writing view and back.
     function togglePanel(which) {
         const left = panelControls['panel-left'];
@@ -534,5 +624,5 @@ const App = (() => {
     });
 
     document.addEventListener('DOMContentLoaded', init);
-    return { activateTab, togglePanel, openModal, closeModal };
+    return { activateTab, togglePanel, openModal, closeModal, setColumnWidth };
 })();

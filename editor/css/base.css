@@ -9,6 +9,7 @@
 }
 
 :root {
+    --column-width: 800px;    /* writing column; drag its edges or use the A± menu */
     --bg: #1a1a1a;
     --bg-surface: #222222;
     --bg-elevated: #2a2a2a;

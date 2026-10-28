@@ -21,6 +21,7 @@
 }
 
 :root {
+    --column-width: 800px;    /* writing column; drag its edges or use the A± menu */
     --bg: #1a1a1a;
     --bg-surface: #222222;
     --bg-elevated: #2a2a2a;
@@ -818,11 +819,44 @@ body {
    Rich text, inline forms, tags, links
    ============================================ */
 
-/* Node editor layout */
+/* Node editor layout: a centred column whose width the author sets (see --column-width). */
 .node-editor {
-    max-width: 800px;
+    position: relative;
+    max-width: var(--column-width);
     margin: 0 auto;
 }
+
+/* Column edge handles: drag to widen or narrow the column (both edges move, the column
+   stays centred); double-click resets; Left/Right, Home, End work from the keyboard. */
+.column-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 12px;
+    cursor: col-resize;
+    opacity: 0;
+    z-index: 20;
+    transition: opacity var(--transition);
+}
+.column-handle.left { left: -16px; }
+.column-handle.right { right: -16px; }
+.column-handle::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 5px;
+    width: 2px;
+    border-radius: 1px;
+    background: var(--accent);
+}
+.node-editor:hover .column-handle, .column-handle:focus-visible { opacity: 0.45; }
+.column-handle:hover, .column-handle.active { opacity: 1; }
+.column-handle:focus-visible { outline: none; }
+
+/* Justified text is a display preference of this editor (and its preview), not content. */
+.editor-content.justified, .preview-pane.justified { text-align: justify; }
+.dropdown-item[aria-checked="true"] { color: var(--accent); }
 
 /* Node id (read-only) and the Created/Edited stamps live in the right panel's Node tab */
 .id-input {
@@ -2085,9 +2119,7 @@ body {
 .hunk-popup-cancel:hover { color: var(--text); }
 
 /* ---- Review round 2: alignment, consistency, focus, hit targets ---- */
-/* Body text keeps a readable measure inside the full-width surface. */
-.editor-content > * { max-width: 74ch; }
-.editor-content > .math-block { max-width: none; }
+/* The measure follows the column width the author chooses (no fixed character cap). */
 /* Focus on the writing surface: one inset accent line (the caret does the rest). */
 .editor-content:focus-visible { box-shadow: inset 0 0 0 1px var(--accent); }
 /* Suggest / Review sit apart from the formatting commands. */
@@ -2444,6 +2476,11 @@ input.form-input, select.form-input { height: 28px; padding: 4px 8px; box-sizing
                                 <div class="dropdown-sep"></div>
                                 <button class="dropdown-item" data-action="upside-down" role="menuitem"><span>Upside-down text</span><span class="dd-demo">¡oן</span></button>
                                 <button class="dropdown-item" data-action="clear" role="menuitem"><span>Clear formatting</span><span class="dd-demo">⌫</span></button>
+                                <div class="dropdown-sep"></div>
+                                <div class="dropdown-label">Layout (this editor only)</div>
+                                <button class="dropdown-item" data-action="justify-toggle" role="menuitemcheckbox" aria-checked="false"><span>Justify text</span><span class="dd-demo">&#8801;</span></button>
+                                <button class="dropdown-item" data-action="column-reset" role="menuitem"><span>Column width: default</span><span class="dd-demo">&#8660;</span></button>
+                                <button class="dropdown-item" data-action="column-fill" role="menuitem"><span>Column width: fill the panel</span><span class="dd-demo">&#10231;</span></button>
                             </div>
                         </div>
                         <span class="toolbar-modes">
@@ -3978,6 +4015,7 @@ const NodeEditor = (() => {
         setupFootnotePopup();
         setupFootnoteList();
         setupEquationPopup();
+        loadJustify();
         setupSuggestUI();
         setupTags();
         setupChildren();
@@ -4042,6 +4080,32 @@ const NodeEditor = (() => {
     function spaceFollows(el) {
         const n = el.nextSibling;
         return !!(n && n.nodeType === Node.TEXT_NODE && /^[  	]/.test(n.data));
+    }
+
+    // Justified text: an editor display preference (surface + preview), remembered per
+    // browser. Content and exports are untouched.
+    const JUSTIFY_KEY = 'entropy-editor-justify';
+    let justified = false;
+    function applyJustify(on, persist) {
+        justified = !!on;
+        contentEl.classList.toggle('justified', justified);
+        if (reviewEl) reviewEl.classList.toggle('justified', justified);
+        const pv = document.getElementById('preview-pane');
+        if (pv) pv.classList.toggle('justified', justified);
+        const item = document.querySelector('[data-action="justify-toggle"]');
+        if (item) item.setAttribute('aria-checked', justified ? 'true' : 'false');
+        if (persist) {
+            try { localStorage.setItem(JUSTIFY_KEY, justified ? '1' : '0'); } catch (e) { /* session only */ }
+        }
+    }
+    function toggleJustify() {
+        applyJustify(!justified, true);
+        toast(justified ? 'Text justified (this editor only)' : 'Text left-aligned', 'info');
+    }
+    function loadJustify() {
+        let on = false;
+        try { on = localStorage.getItem(JUSTIFY_KEY) === '1'; } catch (e) { /* default */ }
+        applyJustify(on, false);
     }
 
     // Focus the text with the caret right after an element on the surface (or at the
@@ -5313,6 +5377,10 @@ const NodeEditor = (() => {
     }
 
     function applyFormat(action, value) {
+        // Layout preferences: change how the text is shown, never the text itself.
+        if (action === 'justify-toggle') { toggleJustify(); return; }
+        if (action === 'column-reset') { App.setColumnWidth(null); return; }
+        if (action === 'column-fill') { App.setColumnWidth(Infinity); return; }
         if (reviewMode) return;  // editing surface is hidden during review
         contentEl.focus();
         switch (action) {
@@ -7698,6 +7766,9 @@ const Palette = (() => {
         { type: 'cmd', label: 'Toggle Nodes panel', action: () => App.togglePanel('left'), hint: 'Ctrl+Shift+[' },
         { type: 'cmd', label: 'Toggle details panel', action: () => App.togglePanel('right'), hint: 'Ctrl+Shift+]' },
         { type: 'cmd', label: 'Writing view (hide / show both panels)', action: () => App.togglePanel('both'), hint: 'Ctrl+Shift+\\' },
+        { type: 'cmd', label: 'Toggle justified text (this editor only)', action: () => NodeEditor.applyFormat('justify-toggle') },
+        { type: 'cmd', label: 'Column width: default', action: () => App.setColumnWidth(null) },
+        { type: 'cmd', label: 'Column width: fill the panel', action: () => App.setColumnWidth(Infinity) },
         { type: 'cmd', label: 'Generate PDF…', action: () => PdfExport.open() },
         { type: 'cmd', label: 'Toggle Suggesting Mode', action: () => NodeEditor.toggleSuggestMode(), hint: 'Ctrl+Shift+M' },
         { type: 'cmd', label: 'Review Suggested Changes', action: () => NodeEditor.enterReview() },
@@ -8333,6 +8404,7 @@ const App = (() => {
         setupResize();
         setupDirtyIndicator();
         setupMeta();
+        setupColumnWidth();
         setupAutosave();
     }
 
@@ -8631,6 +8703,95 @@ const App = (() => {
         setupResizeHandle('resize-right', 'panel-right', 220, 520, true, 'collapse-right', 'details');
     }
 
+    // Writing column width: a CSS custom property, set by dragging the column's edge
+    // handles (both edges move, the column stays centred), by the A± menu or the palette,
+    // and remembered per browser. Bounded by a readable minimum and the centre panel.
+    const COLUMN_KEY = 'entropy-editor-column-width';
+    const COLUMN_DEFAULT = 800;
+    const COLUMN_MIN = 480;
+    let columnRequested = COLUMN_DEFAULT;
+
+    function columnMax() {
+        const panel = document.getElementById('panel-center');
+        return panel ? Math.max(COLUMN_MIN, panel.clientWidth - 40) : 4000;
+    }
+
+    // width: a number of px, null for the default, Infinity to fill the panel.
+    function setColumnWidth(width, persist = true) {
+        let w = (width === null || width === undefined) ? COLUMN_DEFAULT : Number(width);
+        if (!isFinite(w)) w = columnMax();
+        if (isNaN(w)) w = COLUMN_DEFAULT;
+        columnRequested = Math.round(Math.max(COLUMN_MIN, w));
+        const applied = Math.min(columnRequested, columnMax());
+        document.documentElement.style.setProperty('--column-width', applied + 'px');
+        if (persist) {
+            try { localStorage.setItem(COLUMN_KEY, String(columnRequested)); } catch (e) { /* session only */ }
+        }
+        return applied;
+    }
+
+    function setupColumnWidth() {
+        const editor = document.getElementById('node-editor');
+        if (!editor) return;
+        let saved = COLUMN_DEFAULT;
+        try {
+            const v = parseInt(localStorage.getItem(COLUMN_KEY), 10);
+            if (v >= COLUMN_MIN) saved = v;
+        } catch (e) { /* default */ }
+        setColumnWidth(saved, false);
+        window.addEventListener('resize', () => setColumnWidth(columnRequested, false));
+
+        ['left', 'right'].forEach(side => {
+            const handle = document.createElement('div');
+            handle.className = 'column-handle ' + side;
+            handle.title = 'Drag to change the column width · double-click for the default';
+            handle.setAttribute('role', 'separator');
+            handle.setAttribute('aria-orientation', 'vertical');
+            handle.setAttribute('aria-label', 'Column width (Left/Right adjust, Home default, End fill)');
+            handle.tabIndex = 0;
+            editor.appendChild(handle);
+
+            let startX = 0, startWidth = 0;
+            const sign = side === 'left' ? -1 : 1;
+            function onMove(ev) {
+                setColumnWidth(startWidth + (ev.clientX - startX) * 2 * sign, false);
+            }
+            function onUp() {
+                handle.classList.remove('active');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                setColumnWidth(editor.getBoundingClientRect().width, true);
+            }
+            handle.addEventListener('mousedown', e => {
+                e.preventDefault();
+                startX = e.clientX;
+                startWidth = editor.getBoundingClientRect().width;
+                handle.classList.add('active');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            });
+            handle.addEventListener('dblclick', () => setColumnWidth(null));
+            handle.addEventListener('keydown', e => {
+                const current = editor.getBoundingClientRect().width;
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    const step = (e.key === 'ArrowRight' ? 40 : -40) * sign;
+                    setColumnWidth(current + step);
+                } else if (e.key === 'Home') {
+                    e.preventDefault();
+                    setColumnWidth(null);
+                } else if (e.key === 'End') {
+                    e.preventDefault();
+                    setColumnWidth(Infinity);
+                }
+            });
+        });
+    }
+
     // 'left' / 'right' toggle one panel; 'both' gives a full-width writing view and back.
     function togglePanel(which) {
         const left = panelControls['panel-left'];
@@ -8850,7 +9011,7 @@ const App = (() => {
     });
 
     document.addEventListener('DOMContentLoaded', init);
-    return { activateTab, togglePanel, openModal, closeModal };
+    return { activateTab, togglePanel, openModal, closeModal, setColumnWidth };
 })();
 
     </script>
