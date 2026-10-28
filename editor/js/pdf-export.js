@@ -26,11 +26,14 @@ const PdfExport = (() => {
     let btn = null, modal = null, tree = null, summary = null;
     let saveBtn = null, cancelBtn = null, allBtn = null, noneBtn = null, currentBtn = null;
     let serviceBox = null, serviceText = null, retryBtn = null;
-    let serviceState = 'unknown';   // 'checking' | 'ready' | 'down' | 'unknown'
+    let serviceState = 'unknown';   // 'checking' | 'ready' | 'stale' | 'down' | 'unknown'
     let busy = false;               // a PDF request is in flight
     const DEFAULT_SERVICE_URL = 'http://127.0.0.1:8644';
     const SERVICE_URL_KEY = 'entropy-pdf-service-url';
     const HEALTH_TIMEOUT_MS = 2500;
+    // What this editor can put in a book that the service's exporter must know how to
+    // render; an older service answers /health without them and would drop them silently.
+    const REQUIRED_FEATURES = { fonts: 'text fonts', equations: 'equations', 'footnote-lines': 'multi-line footnotes' };
     const RENDER_TIMEOUT_MS = 10 * 60 * 1000;
     const SAVE_LABEL = 'Generate PDF';
 
@@ -185,10 +188,37 @@ const PdfExport = (() => {
         serviceState = state;
         if (!serviceBox) return;
         serviceBox.classList.toggle('ok', state === 'ready');
+        serviceBox.classList.toggle('stale', state === 'stale');
         serviceBox.classList.toggle('down', state === 'down');
         serviceText.textContent = message;
-        retryBtn.hidden = state !== 'down';
+        retryBtn.hidden = state !== 'down' && state !== 'stale';
         refresh();
+    }
+
+    // The folder this editor was opened from (file:// builds), lower-cased with forward
+    // slashes; '' when it is served over http and the comparison does not apply.
+    function editorFolder() {
+        if (typeof location === 'undefined' || location.protocol !== 'file:') return '';
+        try {
+            const p = decodeURIComponent(location.pathname).replace(/\\/g, '/').replace(/^\/([A-Za-z]:)/, '$1');
+            return p.slice(0, p.lastIndexOf('/'));
+        } catch (e) { return ''; }
+    }
+
+    // Reasons a running service would not produce what this editor shows: features its
+    // exporter lacks, or an exporter loaded from a different folder than this editor.
+    function serviceProblems(info) {
+        const out = [];
+        const have = Array.isArray(info.features) ? info.features : [];
+        const missing = Object.keys(REQUIRED_FEATURES).filter(f => !have.includes(f)).map(f => REQUIRED_FEATURES[f]);
+        if (missing.length) out.push('its PDFs would drop ' + missing.join(', '));
+        const here = editorFolder();
+        if (here && typeof info.exporter === 'string' && info.exporter) {
+            const there = info.exporter.replace(/\\/g, '/').toLowerCase();
+            const dir = there.slice(0, there.lastIndexOf('/'));
+            if (dir && dir !== here.toLowerCase()) out.push('it runs from ' + dir + ', not from this editor\'s folder');
+        }
+        return out;
     }
 
     async function checkService() {
@@ -200,7 +230,16 @@ const PdfExport = (() => {
             const res = await fetch(url + '/health', { method: 'GET', cache: 'no-store', signal: ctrl ? ctrl.signal : undefined });
             const info = res.ok ? await res.json() : null;
             if (info && info.ok === true && info.service === 'entropy-pdf') {
-                setServiceState('ready', 'PDF service ready at ' + url);
+                const problems = serviceProblems(info);
+                if (problems.length) {
+                    const here = editorFolder();
+                    setServiceState('stale', 'The PDF service at ' + url + ' is an older build: ' + problems.join('; ') +
+                        '. Stop it and start it from ' + (here || 'this editor\'s folder') +
+                        ' (start_pdf_service.bat or py pdf_service.py), then Retry.');
+                } else {
+                    setServiceState('ready', 'PDF service ready at ' + url +
+                        (typeof info.exporter === 'string' && info.exporter ? ' (exporter: ' + info.exporter + ')' : ''));
+                }
             } else {
                 setServiceState('down', 'Something at ' + url + ' answered, but it is not the Entropy PDF service. Start it with: py pdf_service.py (or start_pdf_service.bat) in the entropy folder.');
             }
@@ -312,7 +351,7 @@ const PdfExport = (() => {
         });
         const total = expandSelection(data, tickedIds(), false).length;
         summary.textContent = summaryText(total);
-        saveBtn.disabled = busy || total === 0 || serviceState !== 'ready';
+        saveBtn.disabled = busy || total === 0 || (serviceState !== 'ready' && serviceState !== 'stale');
     }
 
     function setBusy(b) {

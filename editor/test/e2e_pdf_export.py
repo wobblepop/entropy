@@ -382,6 +382,8 @@ def main():
             status, body, _ = http("GET", "/health", timeout=5)
             info = json.loads(body)
             check(status == 200 and info.get("ok") is True and info.get("service") == "entropy-pdf", "/health answers ok")
+            check(set(info.get("features", [])) >= {"fonts", "equations", "footnote-lines"} and info.get("exporter", "").endswith("entropy_to_pdf_v2.py"),
+                  f"/health names the exporter and its features ({info.get('features')}, {info.get('exporter')})")
             status, body, _ = http("POST", "/pdf", {"data": data, "sections": ["nope"]}, timeout=30)
             check(status == 400 and "unknown section" in json.loads(body).get("error", ""), "unknown section id -> 400 with a JSON error")
             status, body, _ = http("POST", "/pdf", raw=b"{not json", timeout=30)

@@ -18,7 +18,9 @@ Leave the window open while editing; Ctrl+C stops it. Requires playwright
 (+ chromium) and pymupdf, exactly like the exporter.
 
 Endpoints:
-    GET  /health -> {"ok": true, "service": "entropy-pdf", "version": 1}
+    GET  /health -> {"ok": true, "service": "entropy-pdf", "version": 2, "baseDir": "...",
+                     "exporter": "<path of the entropy_to_pdf_v2.py in use>",
+                     "features": ["fonts", "equations", "footnote-lines"]}
     POST /pdf    <- {"data": <book json>, "sections": [node ids] | null, "filename": "name.pdf"}
                  -> application/pdf as an attachment, or {"error": "..."} with 400 / 500
 """
@@ -42,8 +44,30 @@ except ImportError as exc:  # pragma: no cover - environment problem, not logic
     print(f"Cannot import entropy_to_pdf_v2.py next to this script: {exc}")
     sys.exit(1)
 
-SERVICE_VERSION = 1
+SERVICE_VERSION = 2
 DEFAULT_PORT = 8644
+
+
+def _exporter_features():
+    """What the exporter next to this script can render, so the editor can tell an
+    older service apart from the one that matches it. Probed, not declared, so a stale
+    copy of the exporter cannot claim more than it does."""
+    feats = []
+    if "font-family" in getattr(exporter, "_SAFE_STYLE_PROPS", ()):
+        feats.append("fonts")
+    if hasattr(exporter, "_MATH_SCAN") and hasattr(exporter, "_lift_math_blocks"):
+        feats.append("equations")
+    try:
+        _, defs = exporter._harvest_footnote_defs("x[^1]\n\n[^1]: a\n    b")
+        if defs.get("1") == "a\nb":
+            feats.append("footnote-lines")
+    except Exception:  # an exporter without the helper, or an older signature
+        pass
+    return feats
+
+
+FEATURES = _exporter_features()
+EXPORTER_SOURCE = str(Path(exporter.__file__).resolve())
 MAX_BODY_BYTES = 256 * 1024 * 1024   # book JSONs run to ~8 MB; leave generous headroom
 BASE_DIR = HERE                       # overridden by --base-dir
 
@@ -134,7 +158,8 @@ class Handler(BaseHTTPRequestHandler):
         path = urllib.parse.urlsplit(self.path).path
         if path == "/health":
             self._send_json(HTTPStatus.OK, {"ok": True, "service": "entropy-pdf", "version": SERVICE_VERSION,
-                                            "baseDir": str(BASE_DIR)})
+                                            "baseDir": str(BASE_DIR), "exporter": EXPORTER_SOURCE,
+                                            "features": FEATURES})
             return
         self._send_json(HTTPStatus.NOT_FOUND, {"error": "unknown endpoint; use GET /health or POST /pdf"})
 

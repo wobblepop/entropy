@@ -146,3 +146,6 @@
 .pdf-service.down {
     color: var(--warning);
 }
+
+/* An older service (or one from another folder): usable, but what it would drop is said. */
+.pdf-service.stale { color: var(--warning); }
