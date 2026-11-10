@@ -49,6 +49,36 @@ one group, re-run with the other groups' codes unchanged plus a new code for
 the revoked group (readers with the old code lose access; everyone else just
 keeps using theirs).
 
+## Multi-edition gate (frauddyscotty.com/chickenwhispering)
+
+`build_chickenwhispering_multi.py` assembles one page over several editions
+(`EDITION_CATALOG` in that file: appropriate, unhinged, textbook). The reader's
+code decides which editions they get: each edition's manifest lists only the
+codes allowed to open it, so this is enforced by the encryption. The page
+shows only the editions the code opened, pre-selects nothing when there are
+several, and selects the edition automatically when there is only one.
+
+Codes live in a codes file (e.g. `../frauddyscotty/codes.txt`), a table with
+`Label | Code | Opens`, where Opens is `all` or a comma-separated list of
+edition keys. Add a generated code without printing it:
+
+```
+py reader_gate/add_access_code.py --codes-file "../frauddyscotty/codes.txt" --label students2 --opens textbook
+```
+
+Assemble (prebuilt bundles are verified against the codes file before copying;
+`--edition-json KEY=FILE` builds an edition now instead):
+
+```
+py build_chickenwhispering_multi.py --codes-file "../frauddyscotty/codes.txt" ^
+    --edition appropriate=<bundle dir> --edition unhinged=<bundle dir> ^
+    --out <new empty folder>
+```
+
+Changing who can open an existing edition means rebuilding that edition: a
+prebuilt bundle's code list is fixed, and the builder refuses a bundle whose
+codes no longer match the codes file. Test: `py reader_gate/test_e2e_multi.py`.
+
 ## What this does and does not protect
 
 - **Does:** keeps the book unreadable without a code (real AES-256-GCM

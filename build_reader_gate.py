@@ -205,7 +205,10 @@ def generate_artifacts(json_path, work_dir, reuse):
 # ---------------------------------------------------------------------------
 # Build
 # ---------------------------------------------------------------------------
-def build(json_path, codes, out_dir, log_endpoint, watermark, reuse):
+def build(json_path, codes, out_dir, log_endpoint, watermark, reuse, print_codes=True):
+    """Build one encrypted edition. print_codes=False keeps codes out of the
+    output (used by build_chickenwhispering_multi.py, which reads them from a
+    codes file the owner already keeps)."""
     json_path = Path(json_path).resolve()
     if not json_path.exists():
         raise FileNotFoundError(f"input not found: {json_path}")
@@ -278,9 +281,12 @@ def build(json_path, codes, out_dir, log_endpoint, watermark, reuse):
     total = sum(p.stat().st_size for p in out_dir.rglob("*") if p.is_file())
     print(f"\nDone -> {out_dir}")
     print(f"  Upload everything in that folder. Total size: {total / 1024 / 1024:.1f} MB")
-    print(f"  Codes are NOT stored anywhere -- record them yourself:")
-    for label, norm in codes:
-        print(f"    {label}: {norm}")
+    if print_codes:
+        print(f"  Codes are NOT stored anywhere -- record them yourself:")
+        for label, norm in codes:
+            print(f"    {label}: {norm}")
+    else:
+        print(f"  Code labels: {', '.join(label for label, _ in codes)} (codes not printed)")
     print("  Requires HTTPS hosting (browser crypto refuses insecure pages).")
     return out_dir
 
