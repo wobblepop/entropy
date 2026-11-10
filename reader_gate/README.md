@@ -59,7 +59,7 @@ shows only the editions the code opened, pre-selects nothing when there are
 several, and selects the edition automatically when there is only one.
 
 Codes live in a codes file (e.g. `../frauddyscotty/codes.txt`), a table with
-`Label | Code | Opens`, where Opens is `all` or a comma-separated list of
+`Group | Code | Opens` (first header may also read Label), where Opens is `all` or a comma-separated list of
 edition keys. Add a generated code without printing it:
 
 ```

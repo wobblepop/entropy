@@ -13,9 +13,10 @@ below. A build includes any subset of them; the page lists only the editions
 in that build (the builder writes the list into index.html).
 
 Access codes come from a codes file: a box-drawn table such as
-frauddyscotty/codes.txt with three columns,
+frauddyscotty/codes.txt with three columns (the header's first cell may read
+Label or Group),
 
-    │ Label     │ Code         │ Opens    │
+    │ Group     │ Code         │ Opens    │
     │ group1    │ ...          │ all      │
     │ students1 │ ...          │ textbook │
 
@@ -152,6 +153,22 @@ def parse_opens(text, label, catalog):
     return frozenset(keys)
 
 
+def table_cells(line):
+    """Cells of one box-table row, or None for borders/separators."""
+    if BOX_V not in line:
+        return None
+    return [c.strip() for c in line.split(BOX_V)[1:-1]]
+
+
+def is_header(cells):
+    """The header row is the one whose second cell is 'Code' (any case).
+
+    Its first cell may be 'Label' or 'Group'. A real code can never be the
+    bare word 'code': codes need at least MIN_CODE_LEN characters.
+    """
+    return len(cells) >= 2 and cells[1].lower() == "code"
+
+
 def read_codes_file(path, catalog=None):
     """Parse the codes table. Returns [{'label', 'code', 'opens'}] in file order.
 
@@ -170,11 +187,9 @@ def read_codes_file(path, catalog=None):
 
     rows, labels, codes = [], set(), set()
     for n, line in enumerate(text.splitlines(), 1):
-        if BOX_V not in line:
-            continue                      # borders / separators
-        cells = [c.strip() for c in line.split(BOX_V)[1:-1]]
-        if not cells or cells[0].lower() == "label":
-            continue                      # header row
+        cells = table_cells(line)
+        if not cells or is_header(cells):
+            continue                      # borders, separators, header row
         if len(cells) != 3:
             raise ValueError(f"codes file line {n}: expected 3 columns "
                              f"(Label | Code | Opens), found {len(cells)}")

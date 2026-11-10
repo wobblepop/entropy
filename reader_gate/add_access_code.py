@@ -40,14 +40,17 @@ HEADERS = ("Label", "Code", "Opens")
 
 
 def read_raw_rows(path, existing_opens):
-    """Rows as written: [(label, code_as_written, opens_text)]. Never echoes codes."""
+    """Rows as written: [(label, code_as_written, opens_text)], plus the header's
+    first-column title ('Label' if there is no header) and the file's newline.
+    Never echoes codes."""
     text = path.read_text(encoding="utf-8")
-    rows = []
+    rows, first_header = [], "Label"
     for n, line in enumerate(text.splitlines(), 1):
-        if multi.BOX_V not in line:
+        cells = multi.table_cells(line)
+        if not cells:
             continue
-        cells = [c.strip() for c in line.split(multi.BOX_V)[1:-1]]
-        if not cells or cells[0].lower() == "label":
+        if multi.is_header(cells):
+            first_header = cells[0] or first_header
             continue
         if len(cells) == 3:
             rows.append(tuple(cells))
@@ -60,11 +63,12 @@ def read_raw_rows(path, existing_opens):
             raise ValueError(f"line {n}: expected 2 or 3 columns, found {len(cells)}")
     if not rows:
         raise ValueError(f"no code rows found in {path}")
-    return rows, ("\r\n" if "\r\n" in text else "\n")
+    return rows, first_header, ("\r\n" if "\r\n" in text else "\n")
 
 
-def render_table(rows):
-    widths = [max(len(h), *(len(r[i]) for r in rows)) for i, h in enumerate(HEADERS)]
+def render_table(rows, first_header="Label"):
+    headers = (first_header,) + HEADERS[1:]
+    widths = [max(len(h), *(len(r[i]) for r in rows)) for i, h in enumerate(headers)]
 
     def row_line(cells, header=False):
         parts = []
@@ -75,7 +79,7 @@ def render_table(rows):
     def rule(left, mid, right):
         return "  " + left + mid.join("─" * (w + 2) for w in widths) + right
 
-    lines = [rule("┌", "┬", "┐"), row_line(HEADERS, header=True)]
+    lines = [rule("┌", "┬", "┐"), row_line(headers, header=True)]
     for r in rows:
         lines.append(rule("├", "┼", "┤"))
         lines.append(row_line(r))
@@ -113,7 +117,7 @@ def main(argv):
         if args.existing_opens:
             multi.parse_opens(args.existing_opens, "(existing rows)", catalog)
 
-        rows, newline = read_raw_rows(path, args.existing_opens)
+        rows, first_header, newline = read_raw_rows(path, args.existing_opens)
         if any(r[0] == args.label for r in rows):
             raise ValueError(f"label '{args.label}' already exists")
         # Validate the existing rows exactly as the builder will.
@@ -122,7 +126,7 @@ def main(argv):
 
         new_code = generate_code(args.length, taken)
         new_rows = rows + [(args.label, new_code, args.opens.strip())]
-        text = newline.join(render_table(new_rows)) + newline
+        text = newline.join(render_table(new_rows, first_header)) + newline
 
         tmp = path.with_name(path.name + ".tmp")
         tmp.write_text(text, encoding="utf-8", newline="")

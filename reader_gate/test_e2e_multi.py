@@ -275,7 +275,7 @@ def builder_checks(work):
     # add_access_code.py: migrate a legacy two-column table and add a code.
     legacy = work / "codes_legacy.txt"
     legacy.write_text(
-        "  │ Label  │ Code            │\n  ├────────┼─────────────────┤\n"
+        "  │ Group  │      Code       │\n  ├────────┼─────────────────┤\n"
         f"  │ group1 │ {CODE}  │\n  ├────────┼─────────────────┤\n"
         f"  │ group2 │ {CODE2}   │\n", encoding="utf-8")
     buf = io.StringIO()
@@ -295,6 +295,8 @@ def builder_checks(work):
     check("add_access_code never prints the code", bool(new) and new[0]["code"] not in printed)
     check("add_access_code wrote a backup", any(p.name.startswith("codes_legacy.txt.bak-")
                                                 for p in work.iterdir()))
+    check("add_access_code keeps the 'Group' header",
+          "│ Group " in legacy.read_text(encoding="utf-8").splitlines()[1])
     return out
 
 
