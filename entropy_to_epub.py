@@ -64,6 +64,7 @@ from entropy_to_html import (  # noqa: E402  (path setup must precede import)
     _meta_bar,
     _media_html,
     _relations_html,
+    ai_display_html,
 )
 
 
@@ -177,6 +178,11 @@ figcaption{font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.78em;
   font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.7em;
   font-weight:bold; color:#2563eb; margin-bottom:0.3em;}
 .example-block p{margin-bottom:0.5em;}
+/* AI-written text (disclosure markup <span class="ai">): 7.4:1 on white, 6.8:1 on
+   the example background. Color is the cue that survives a reader font override. */
+.ai-text{font-family:"Segoe UI",Helvetica,Arial,sans-serif; color:#6b3fa0;}
+.sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
+  clip:rect(0 0 0 0); white-space:nowrap; border:0;}
 
 /* ---- relations: See also / In this section ---- */
 .relations{margin-top:1.4em; padding-top:0.9em; border-top:1px solid #e5e5e5;}
@@ -539,12 +545,13 @@ def _titlepage_doc(meta):
     return _xhtml_doc(meta.get("title", "Untitled"), body)
 
 
-def _part_doc(num, title):
-    """Part divider page (Part I / II / ... + part title)."""
+def _part_doc(num, title, display_title=""):
+    """Part divider page (Part I / II / ... + part title). `display_title` is the optional
+    AI-disclosure copy of the title (see entropy_to_html.ai_display_html)."""
     body = (
         f'<section class="part-divider" id="part-{int(num)}">'
         f'<p class="part-eyebrow">Part {esc(roman(num))}</p>'
-        f'<h1 class="part-title">{esc(title or "")}</h1>'
+        f'<h1 class="part-title">{ai_display_html(title or "", display_title)}</h1>'
         "</section>"
     )
     return _xhtml_doc(f"Part {roman(num)}: {title or ''}", sanitize_xhtml(body))
@@ -560,10 +567,10 @@ def _node_doc(node, nid, nodes, base_dir, eyebrow_html, registry, stats,
     out = [f'<section class="node" id="node-{esc(str(nid))}">']
     if eyebrow_html:
         out.append(eyebrow_html)
-    out.append(f'<h1 class="node-title">{esc(node.get("title", nid))}</h1>')
+    out.append(f'<h1 class="node-title">{ai_display_html(node.get("title", nid), node.get("display_title"))}</h1>')
     out.append(_meta_bar(node))
     if node.get("summary"):
-        out.append(f'<p class="node-summary">{esc(node["summary"])}</p>')
+        out.append(f'<p class="node-summary">{ai_display_html(node["summary"], node.get("display_summary"))}</p>')
     out.append('<hr class="title-rule" />')
     body_html = markdown_to_html(node.get("content", ""), base_dir, fn_prefix=_sanitize_id(str(nid)))
     body_html = _math_to_mathml(body_html)
@@ -848,7 +855,7 @@ def build_epub(json_path, output_path=None):
 
     for it in items:
         if it["kind"] == "part":
-            docs[it["file"]] = _part_doc(it["num"], it["title"])
+            docs[it["file"]] = _part_doc(it["num"], it["title"], it.get("display_title", ""))
             continue
         nid = it["nid"]
         node = nodes.get(nid, {})

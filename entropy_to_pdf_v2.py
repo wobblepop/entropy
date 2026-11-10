@@ -95,6 +95,32 @@ def esc(text):
     return html.escape(str(text), quote=True)
 
 
+# AI-written text (disclosure markup). Mirrors entropy_to_html: the exact markup
+# <span class="ai">...</span> renders as <span class="ai-text"> (distinct typeface and
+# purple). The PDF carries no visually hidden screen-reader text, because hidden text
+# would still end up in copy-paste and text extraction from the PDF.
+_AI_OPEN_ESCAPED = "&lt;span class=&quot;ai&quot;&gt;"
+_AI_OPEN_HTML = '<span class="ai-text">'
+_AI_SPAN_RAW = re.compile(r'<span class="ai">|</span>')
+
+
+def ai_display_html(plain, display):
+    """Escaped heading text for a title or summary; `display` (optional) is the same text
+    with <span class="ai">...</span> around AI-written words. Used only when the spans are
+    balanced, unnested, and stripping them gives back exactly `plain`."""
+    plain = "" if plain is None else str(plain)
+    if not isinstance(display, str) or not display:
+        return esc(plain)
+    depth = 0
+    for m in _AI_SPAN_RAW.finditer(display):
+        depth += 1 if m.group(0).startswith("<span") else -1
+        if depth not in (0, 1):
+            return esc(plain)
+    if depth != 0 or _AI_SPAN_RAW.sub("", display) != plain:
+        return esc(plain)
+    return esc(display).replace(_AI_OPEN_ESCAPED, _AI_OPEN_HTML).replace("&lt;/span&gt;", "</span>")
+
+
 import katex_assets  # noqa: E402  (sibling module; sys.path handled by the caller or cwd)
 
 # Equations (LaTeX), the same dialect as the editor and the reader: inline $...$ (opener
@@ -389,6 +415,8 @@ def _inline(text, base_dir, fn_ctx=None):
         return f'<span style="{safe}">' if safe else m.group(0)
     # esc() escapes quotes to &quot;, so the style attribute is delimited by &quot; here.
     text = re.sub(r"&lt;span style=&quot;(.*?)&quot;&gt;", _span, text)
+    #   <span class="ai">  AI-written words (disclosure markup; exact class only)
+    text = text.replace(_AI_OPEN_ESCAPED, _AI_OPEN_HTML)
     text = text.replace("&lt;/span&gt;", "</span>")
 
     # images: ![alt](src)  -> resolved <img>
@@ -664,7 +692,8 @@ def structured_items(data):
         items.append({"kind": "front", "nid": nid})
     ch = 0
     for i, part in enumerate(s.get("parts", []) or [], start=1):
-        items.append({"kind": "part", "num": i, "title": part.get("title", ""), "pid": f"part-{i}"})
+        items.append({"kind": "part", "num": i, "title": part.get("title", ""), "pid": f"part-{i}",
+                      "display_title": part.get("display_title", "")})
         for nid in part.get("nodes", []) or []:
             ch += 1
             items.append({"kind": "chapter", "nid": nid, "num": ch})
@@ -818,6 +847,8 @@ figcaption{font-family:var(--sans);font-size:12px;font-style:italic;color:var(--
   color:var(--accent);margin-bottom:4px;
 }
 .example-block p:last-child{margin-bottom:0;}
+/* AI-written text (disclosure markup <span class="ai">): 7.4:1 on white, 6.8:1 on --accent-light */
+.ai-text{font-family:"Segoe UI",Helvetica,Arial,sans-serif;color:#6b3fa0;}
 
 /* ---- cover ---- */
 .cover{
@@ -1038,10 +1069,10 @@ def _chapter_section(parts, node, nid, base_dir, nodes, num_html="", rendered=No
         parts.append(f'<span class="pagemark">{MARK_PREFIX}{esc(nid)}{MARK_PREFIX}</span>')
     if num_html:
         parts.append(num_html)
-    parts.append(f'<h1 class="chapter-title">{esc(node.get("title", nid))}</h1>')
+    parts.append(f'<h1 class="chapter-title">{ai_display_html(node.get("title", nid), node.get("display_title"))}</h1>')
     parts.append(_meta_bar(node))
     if node.get("summary"):
-        parts.append(f'<p class="chapter-summary">{esc(node["summary"])}</p>')
+        parts.append(f'<p class="chapter-summary">{ai_display_html(node["summary"], node.get("display_summary"))}</p>')
     parts.append('<hr class="title-rule">')
     body = markdown_to_html(node.get("content", ""), base_dir, fn_prefix=_sanitize_id(nid))
     parts.append(f'<div class="chapter-body">{body}</div>')
@@ -1179,7 +1210,7 @@ def build_main_html(data, base_dir, order, page_map=None, selection=None, marks=
                 if marks:
                     parts.append(f'<span class="pagemark">{MARK_PREFIX}{it["pid"]}{MARK_PREFIX}</span>')
                 parts.append(f'<div class="part-eyebrow">Part {roman(it["num"])}</div>')
-                parts.append(f'<h1 class="part-title">{esc(it["title"])}</h1>')
+                parts.append(f'<h1 class="part-title">{ai_display_html(it["title"], it.get("display_title"))}</h1>')
                 parts.append("</section>")
                 continue
             nid = it["nid"]
@@ -1198,10 +1229,10 @@ def build_main_html(data, base_dir, order, page_map=None, selection=None, marks=
             parts.append(f'<section class="chapter depth-{depth}" id="node-{esc(nid)}">')
             if marks:
                 parts.append(f'<span class="pagemark">{MARK_PREFIX}{esc(nid)}{MARK_PREFIX}</span>')
-            parts.append(f'<h1 class="chapter-title">{esc(node.get("title", nid))}</h1>')
+            parts.append(f'<h1 class="chapter-title">{ai_display_html(node.get("title", nid), node.get("display_title"))}</h1>')
             parts.append(_meta_bar(node))
             if node.get("summary"):
-                parts.append(f'<p class="chapter-summary">{esc(node["summary"])}</p>')
+                parts.append(f'<p class="chapter-summary">{ai_display_html(node["summary"], node.get("display_summary"))}</p>')
             parts.append('<hr class="title-rule">')
             body = markdown_to_html(node.get("content", ""), base_dir, fn_prefix=_sanitize_id(nid))
             parts.append(f'<div class="chapter-body">{body}</div>')

@@ -189,6 +189,49 @@ def _sanitize_style(style):
     return "; ".join(out)
 
 
+# ---------------------------------------------------------------------------
+# AI-written text (disclosure markup)
+# ---------------------------------------------------------------------------
+# A book can mark words that were written by an AI editor with the exact markup
+#     <span class="ai">...</span>
+# Exporters render it as <span class="ai-text">, which the stylesheet sets in a
+# distinct sans-serif typeface and an accessible purple (light and dark themes).
+# The HTML and EPUB versions also carry visually hidden text so screen readers
+# announce the passage as AI-written. Only this exact class attribute is
+# recognised; anything else stays escaped literal text, as with other raw HTML.
+AI_SR_TEXT = "AI-written: "
+_AI_OPEN_ESCAPED = "&lt;span class=&quot;ai&quot;&gt;"
+_AI_SPAN_RAW = re.compile(r'<span class="ai">|</span>')
+
+
+def ai_open_html(screen_reader=True):
+    """Opening markup for an AI-written passage (closed by the generic </span>)."""
+    sr = f'<span class="sr-only">{AI_SR_TEXT}</span>' if screen_reader else ""
+    return f'<span class="ai-text">{sr}'
+
+
+def ai_display_html(plain, display, screen_reader=True):
+    """Escaped heading text for a title or summary.
+
+    `display` is an optional copy of `plain` with <span class="ai">...</span> around the
+    AI-written words. It is used only when it holds nothing but that markup, the spans
+    are balanced and unnested, and stripping them gives back exactly `plain`. Otherwise
+    the plain text is used, so a stale or malformed display field can never change what
+    a heading says."""
+    plain = "" if plain is None else str(plain)
+    if not isinstance(display, str) or not display:
+        return esc(plain)
+    depth = 0
+    for m in _AI_SPAN_RAW.finditer(display):
+        depth += 1 if m.group(0).startswith("<span") else -1
+        if depth not in (0, 1):
+            return esc(plain)
+    if depth != 0 or _AI_SPAN_RAW.sub("", display) != plain:
+        return esc(plain)
+    out = esc(display).replace(_AI_OPEN_ESCAPED, ai_open_html(screen_reader))
+    return out.replace("&lt;/span&gt;", "</span>")
+
+
 def sentence_case(label):
     """First letter upper, rest unchanged -> design-system sentence case."""
     if not label:
@@ -368,6 +411,8 @@ def _inline(text, base_dir, fn_ctx=None):
         return f'<span style="{safe}">' if safe else m.group(0)
     # esc() escapes quotes to &quot;, so the style attribute is delimited by &quot; here.
     text = re.sub(r"&lt;span style=&quot;(.*?)&quot;&gt;", _span, text)
+    #   <span class="ai">  AI-written words (disclosure markup; exact class only)
+    text = text.replace(_AI_OPEN_ESCAPED, ai_open_html(True))
     text = text.replace("&lt;/span&gt;", "</span>")
 
     # images: ![alt](src)  -> resolved <img>
@@ -642,7 +687,8 @@ def structured_items(data):
         items.append({"kind": "front", "nid": nid})
     ch = 0
     for i, part in enumerate(s.get("parts", []) or [], start=1):
-        items.append({"kind": "part", "num": i, "title": part.get("title", ""), "pid": f"part-{i}"})
+        items.append({"kind": "part", "num": i, "title": part.get("title", ""), "pid": f"part-{i}",
+                      "display_title": part.get("display_title", "")})
         for nid in part.get("nodes", []) or []:
             ch += 1
             items.append({"kind": "chapter", "nid": nid, "num": ch})
@@ -662,12 +708,15 @@ CSS = """
   --sans:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --serif:Georgia,"Iowan Old Style","Palatino Linotype","Times New Roman",serif;
   --mono:"Consolas","SFMono-Regular","Liberation Mono",Menlo,monospace;
+  /* AI-written text: 7.4:1 on --bg, 6.8:1 on --accent-light */
+  --ai:#6b3fa0; --ai-font:"Segoe UI",Helvetica,Arial,sans-serif;
 }
 @media (prefers-color-scheme:dark){
   :root{
     --bg:#16181c; --text:#e7e7e7; --text-2:#b2b2b2; --text-3:#8a8a8a;
     --border:#2c2f36; --accent:#6ea8fe; --accent-light:#1b2433;
     --code-bg:#22252b; --pre-bg:#1b1e23;
+    --ai:#b79cff;  /* 7.8:1 on --bg, 6.8:1 on --accent-light */
   }
 }
 *{box-sizing:border-box;}
@@ -771,6 +820,11 @@ figcaption{font-family:var(--sans); font-size:.78rem; font-style:italic; color:v
 .example-block{background:var(--accent-light); border-left:3px solid var(--accent); padding:10px 16px; margin:1em 0; border-radius:0 8px 8px 0;}
 .example-block .example-label{display:block; font-family:var(--sans); font-size:.7rem; font-weight:600; color:var(--accent); margin-bottom:4px;}
 .example-block p:last-child{margin-bottom:0;}
+
+/* ---- AI-written text (disclosure markup <span class="ai">) ---- */
+.ai-text{font-family:var(--ai-font); color:var(--ai);}
+.sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
+  clip:rect(0 0 0 0); white-space:nowrap; border:0;}
 
 /* ---- relations: See also ---- */
 .relations{margin-top:22px; padding-top:14px; border-top:0.5px solid var(--border);}
@@ -1135,10 +1189,10 @@ def build_html(data, base_dir, order, source_name):
         parts.append(f'<section class="{cls}" id="node-{esc(nid)}"{attrs}>')
         if num_html:
             parts.append(num_html)
-        parts.append(f'<h2 class="node-title">{esc(node.get("title", nid))}</h2>')
+        parts.append(f'<h2 class="node-title">{ai_display_html(node.get("title", nid), node.get("display_title"))}</h2>')
         parts.append(_meta_bar(node))
         if node.get("summary"):
-            parts.append(f'<p class="node-summary">{esc(node["summary"])}</p>')
+            parts.append(f'<p class="node-summary">{ai_display_html(node["summary"], node.get("display_summary"))}</p>')
         parts.append('<hr class="title-rule">')
         parts.append(_pdf_button_html(label or node.get("title", nid)))
         body = markdown_to_html(node.get("content", ""), base_dir, fn_prefix=_sanitize_id(nid))
@@ -1159,7 +1213,7 @@ def build_html(data, base_dir, order, source_name):
             if it["kind"] == "part":
                 current_part = it["pid"]
                 part_label = f'Part {roman(it["num"])} - {it["title"]}'
-                parts.append(f'<section class="part-divider" id="{it["pid"]}"><div class="part-eyebrow">Part {roman(it["num"])}</div><h2 class="part-title">{esc(it["title"])}</h2>'
+                parts.append(f'<section class="part-divider" id="{it["pid"]}"><div class="part-eyebrow">Part {roman(it["num"])}</div><h2 class="part-title">{ai_display_html(it["title"], it.get("display_title"))}</h2>'
                              + _pdf_button_html(part_label, "Save Part as PDF") + "</section>")
                 continue
             nid = it["nid"]
